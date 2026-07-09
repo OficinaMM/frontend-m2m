@@ -69,7 +69,7 @@ function App() {
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
   const [notaGeneral, setNotaGeneral] = useState('');
   const [tareasDelDia, setTareasDelDia] = useState([
-    { obra: listaObras[0], trabajo: baseDatosObras[listaObras[0]][0], horas: '8', especificarOtros: '' }
+    { obra: listaObras[0], trabajo: baseDatosObras[listaObras[0]][0], horas: '0', especificarOtros: '' }
   ]);
 
   const [filtroParteMes, setFiltroParteMes] = useState('');
