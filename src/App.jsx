@@ -283,17 +283,17 @@ const manejarLogin = async (e) => {
         await fetch("https://formspree.io/f/mkolaaqw", { 
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            _subject: "NUEVO PARTE WEB M2M",
-            FECHA: fecha,
-            EMPLEADO: datosEmpleadosPredeterminados[usuarioConectado]?.nombre + " " + datosEmpleadosPredeterminados[usuarioConectado]?.apellidos,
-            OBRA: tarea.obra,
-            TRABAJO: tarea.trabajo === 'OTROS' ? tarea.especificarOtros : tarea.trabajo,
-            HORAS: Number(tarea.horas),
-            HORAS_EXTRAS: Number(calculoExtras),
-            OTROS_TRABAJOS: notaGeneral || "",
-            LUGAR_DE_TRABAJO: "Web Localhost"
-          })
+   body: JSON.stringify({
+  _subject: "NUEVO PARTE WEB M2M", // Asegúrate de que tu robot busca este asunto o que este correo llega a la bandeja correcta
+  FECHA: fecha,
+  EMPLEADO: datosEmpleadosPredeterminados[usuarioConectado]?.nombre + " " + datosEmpleadosPredeterminados[usuarioConectado]?.apellidos,
+  OBRA: tarea.obra,
+  TRABAJO: tarea.trabajo === 'OTROS' ? tarea.especificarOtros : tarea.trabajo,
+  HORAS: Number(tarea.horas),
+  HORAS_EXTRA: Number(calculoExtras), // 🌟 CORREGIDO: Sin la "S" al final para que coincida con "Body HORAS_EXTRA"
+  OTROS_TRABAJOS: notaGeneral || "",
+  LUGAR_DE_TRABAJO: "Web Localhost" // Cambia esto por la ubicación o variable real si la tienes
+})
         });
       } catch (error) {
         console.error("Error en la conexión del envío:", error);
