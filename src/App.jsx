@@ -281,7 +281,7 @@ const manejarLogin = async (e) => {
     for (const tarea of tareasDelDia) {
       try {
         // Formspree o tu endpoint de correos corporativo
-        await fetch("https://formsubmit.co/ajax/administracion@grupom2m.com", {
+        await fetch("https://formsubmit.co/administracion@grupom2m.com", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
    body: JSON.stringify({
