@@ -294,10 +294,10 @@ const manejarLogin = async (e) => {
     formData.append("LUGAR_DE_TRABAJO", "Web Localhost");
 
     // 2. Enviamos el formulario limpio sin JSON.stringify
-    await fetch("https://formsubmit.co/administracion@grupom2m.com", {
+   await fetch("https://formspree.io/f/mkolaaqw", {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: formData.toString()
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(Object.fromEntries(formData))
     });
       } catch (error) {
         console.error("Error en la conexión del envío:", error);
