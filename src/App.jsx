@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import logoEmpresa from './assets/logo.png';
 import { supabase } from './supabaseClient';
+
 function App() {
   // 1. BASE DE DATOS DE EMPLEADOS
   const datosEmpleadosPredeterminados = {
@@ -16,7 +17,7 @@ function App() {
     'jajuanito.barcelo81@gmail.com': { nombre: 'Juan Antonio', apellidos: 'Barceló Contestí', telefono: '43130415X', posicion: 'Oficial de 2ª', dni: '43130415X' },
     'marcelo09vargas90@gmail.com': { nombre: 'Marcelo José', apellidos: 'Vargas López', telefono: '600000011', posicion: 'Oficial de 2ª', dni: 'E28631832' },
     'rojasquinterosrodrigo0@gmail.com': { nombre: 'Rodrigo', apellidos: 'Rojas Quinteros', telefono: '600000012', posicion: 'Peón Especializado', dni: 'Z2561343E' },   
-   'rimercamacho48@gmail.com': { nombre: 'Rimer', apellidos: 'Camacho', telefono: '600000012', posicion: 'Oficial de 1ª', dni: 'Z3236151X' },
+    'rimercamacho48@gmail.com': { nombre: 'Rimer', apellidos: 'Camacho', telefono: '600000012', posicion: 'Oficial de 1ª', dni: 'Z3236151X' },
     'exon.saa0707@gmail.com': { nombre: 'Edson', apellidos: 'Sabino Alvarez Argote', telefono: '600000013', posicion: 'Oficial de 1ª', dni: '54631451B' }
   };
 
@@ -107,78 +108,74 @@ function App() {
   }, [usuarioConectado]);
 
   const precioHoraActual = tarifasPorCategoria[posicionUser] || 10;
-const manejarLogin = async (e) => {
-  e.preventDefault();
-  const correoIntroducido = correo.trim().toLowerCase();
-  const passwordIntroducido = password.trim();
 
-  if (correosAutorizados.includes(correoIntroducido)) {
-    try {
-      // Consultamos en Supabase si este usuario ya ha guardado una contraseña personalizada
-      const { data: usuarioDb, error } = await supabase
-        .from('empleados')
-        .select('*')
-        .eq('correo', correoIntroducido)
-        .single();
+  const manejarLogin = async (e) => {
+    e.preventDefault();
+    const correoIntroducido = correo.trim().toLowerCase();
+    const passwordIntroducido = password.trim();
 
-      if (error && error.code !== 'PGRST116') { // PGRST116 significa que aún no tiene registro, es normal
-        console.error("Error al consultar Supabase:", error);
-      }
+    if (correosAutorizados.includes(correoIntroducido)) {
+      try {
+        const { data: usuarioDb, error } = await supabase
+          .from('empleados')
+          .select('*')
+          .eq('correo', correoIntroducido)
+          .single();
 
-      // Si existe en la BD usa esa contraseña; si no, usa la TEMPORAL
-      const passwordCorrecta = usuarioDb ? usuarioDb.password : PASSWORD_TEMPORAL;
-
-      if (passwordIntroducido === passwordCorrecta) {
-        setUsuarioConectado(correoIntroducido);
-        
-        // Si no hay registro en la BD, es que entra por primera vez y debe cambiar la clave temporal
-        if (!usuarioDb) {
-          setPantallaActual('primer-cambio-pass');
-        } else {
-          setPantallaActual('menu');
+        if (error && error.code !== 'PGRST116') {
+          console.error("Error al consultar Supabase:", error);
         }
-      } else {
-        alert('❌ Contraseña incorrecta.');
+
+        const passwordCorrecta = usuarioDb ? usuarioDb.password : PASSWORD_TEMPORAL;
+
+        if (passwordIntroducido === passwordCorrecta) {
+          setUsuarioConectado(correoIntroducido);
+          if (!usuarioDb) {
+            setPantallaActual('primer-cambio-pass');
+          } else {
+            setPantallaActual('menu');
+          }
+        } else {
+          alert('❌ Contraseña incorrecta.');
+        }
+      } catch (err) {
+        console.error("Error en el login:", err);
+        alert('❌ Error al intentar conectar con la base de datos.');
       }
-    } catch (err) {
-      console.error("Error en el login:", err);
-      alert('❌ Error al intentar conectar con la base de datos.');
+    } else {
+      alert('❌ Acceso denegado. Este correo electrónico no está autorizado.');
     }
-  } else {
-    alert('❌ Acceso denegado. Este correo electrónico no está autorizado.');
-  }
-};
+  };
 
   const manejarChangePassword = async (e) => {
-  e.preventDefault();
-  if (nuevaPassword.trim().length < 4) {
-    alert('⚠️ La contraseña debe tener al menos 4 caracteres.');
-    return;
-  }
-  if (nuevaPassword.trim() === PASSWORD_TEMPORAL) {
-    alert('⚠️ No puedes usar la contraseña temporal. Elige una nueva.');
-    return;
-  }
+    e.preventDefault();
+    if (nuevaPassword.trim().length < 4) {
+      alert('⚠️ La contraseña debe tener al menos 4 caracteres.');
+      return;
+    }
+    if (nuevaPassword.trim() === PASSWORD_TEMPORAL) {
+      alert('⚠️ No puedes usar la contraseña temporal. Elige una nueva.');
+      return;
+    }
 
-  try {
-    // Guardamos o actualizamos la contraseña del usuario en Supabase de forma definitiva
-    const { error } = await supabase
-      .from('empleados')
-      .upsert({ 
-        correo: usuarioConectado, 
-        password: nuevaPassword.trim() 
-      }, { onConflict: 'correo' });
+    try {
+      const { error } = await supabase
+        .from('empleados')
+        .upsert({ 
+          correo: usuarioConectado, 
+          password: nuevaPassword.trim() 
+        }, { onConflict: 'correo' });
 
-    if (error) throw error;
+      if (error) throw error;
 
-    alert('✅ Contraseña guardada en la nube correctamente.');
-    setNuevaPassword('');
-    setPantallaActual('menu');
-  } catch (err) {
-    console.error("Error al guardar contraseña:", err);
-    alert('❌ No se pudo guardar la contraseña en la base de datos.');
-  }
-};
+      alert('✅ Contraseña guardada en la nube correctamente.');
+      setNuevaPassword('');
+      setPantallaActual('menu');
+    } catch (err) {
+      console.error("Error al guardar contraseña:", err);
+      alert('❌ No se pudo guardar la contraseña in la base de datos.');
+    }
+  };
 
   const manejarVerificarDatosRecovery = (e) => {
     e.preventDefault();
@@ -197,7 +194,7 @@ const manejarLogin = async (e) => {
     }
 
     setCorreoValidadoRecovery(correoForm);
-    setPantallaActual('recovery-escribir-pass');
+    setPantaranActual('recovery-escribir-pass');
   };
 
   const manejarGuardarNuevaPasswordRecovery = (e) => {
@@ -255,10 +252,9 @@ const manejarLogin = async (e) => {
     setTareasDelDia(nuevasTareas);
   };
 
-   const manejarEnviarParte = async (e) => {
+  const manejarEnviarParte = async (e) => {
     e.preventDefault();
 
-    // 1. Evitamos duplicados si el estado tiene algo registrado
     const yaExisteParte = historialPartes.some(
         (parte) => parte.empleado === usuarioConectado && parte.fecha === fecha
     );
@@ -275,16 +271,13 @@ const manejarLogin = async (e) => {
     const esFinDeSemana = diaSemana === 6 || diaSemana === 0;
     let calculoExtras = esFinDeSemana ? totalHoras : totalHoras > 8 ? totalHoras - 8 : 0;
 
-    // Guardaremos una lista de las tareas enviadas para actualizar la pantalla
     let tareasInsertadasParaHistorial = [];
 
-    // Bucle para enviar cada tarea
     for (const tarea of tareasDelDia) {
         try {
             const nombreCompleto = datosEmpleadosPredeterminados[usuarioConectado]?.nombre + " " + datosEmpleadosPredeterminados[usuarioConectado]?.apellidos;
             const trabajoRealizado = tarea.trabajo === 'OTROS' ? tarea.especificarOtros : tarea.trabajo;
 
-            // --- PASO A: Envío por Formspree ---
             const formData = new URLSearchParams();
             formData.append("_subject", "NUEVO PARTE WEB M2M");
             formData.append("FECHA", fecha);
@@ -302,7 +295,6 @@ const manejarLogin = async (e) => {
                 body: JSON.stringify(Object.fromEntries(formData))
             });
 
-            // --- PASO B: Guardado en Supabase ---
             const { error: errorSupabase } = await supabase
                 .from('partes')
                 .insert([{
@@ -336,7 +328,6 @@ const manejarLogin = async (e) => {
         }
     }
 
-    // 2. Actualizamos los estados visuales en la app
     if (tareasInsertadasParaHistorial.length > 0) {
         const nuevoHistorialPartes = [...tareasInsertadasParaHistorial, ...historialPartes];
         setHistorialPartes(nuevoHistorialPartes);
@@ -365,7 +356,7 @@ const manejarLogin = async (e) => {
     } else {
         alert('❌ Hubo un problema al registrar el parte en la base de datos.');
     }
-};
+
     setNotaGeneral('');
     setTareasDelDia([{ obra: listaObras[0], trabajo: baseDatosObras[listaObras[0]][0], horas: '8', especificarOtros: '' }]);
     setPantallaActual('menu');
@@ -557,7 +548,7 @@ const manejarLogin = async (e) => {
                 {partesFiltrados.map((p) => (
                   <div key={p.id} style={{ padding: '10px', background: '#f5f5f5', borderRadius: '6px', marginBottom: '8px', borderLeft: '4px solid #043424' }}>
                     <strong>📆 {p.fecha.split('-').reverse().join('-')}</strong>
-                    {p.tareas.map((t, idx) => (
+                    {p.tareas && p.tareas.map((t, idx) => (
                       <div key={idx} style={{ fontSize: '13px', paddingLeft: '5px' }}>• {t.obra} ({t.horas}h) - {t.trabajo === 'OTROS' ? t.especificarOtros : t.trabajo}</div>
                     ))}
                   </div>
@@ -584,9 +575,9 @@ const manejarLogin = async (e) => {
 
           </div>
         </div>
-   )}
+      )}
     </div>
   );
-};
+}
 
 export default App;
