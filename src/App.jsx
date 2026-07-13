@@ -3,7 +3,7 @@ import logoEmpresa from './assets/logo.png';
 import { supabase } from './supabaseClient';
 
 function App() {
-  // 1. BASE DE DATOS DE EMPLEADOS (DNI Modificados: Administración, Proyectos e Info)
+  // 1. BASE DE DATOS DE EMPLEADOS
   const datosEmpleadosPredeterminados = {
     'administracion@grupom2m.com': { nombre: 'Fanny', apellidos: 'Rodríguez', telefono: '600000001', posicion: 'Administración', dni: '43220225M' },
     'proyectos@grupom2m.com': { nombre: 'Paco', apellidos: 'Lopez Moreno', telefono: '600000002', posicion: 'Técnico de Proyectos', dni: '44325886X' },
@@ -383,7 +383,7 @@ function App() {
     return fechaParte >= lunesSemana && fechaParte <= domingoSemana;
   };
 
-  // --- LÓGICA DE UNIFICACIÓN PARA LA PANTALLA DE HISTORIAL ---
+  // --- LÓGICA DE HISTORIAL ---
   const partesFiltradosBase = historialPartes.filter(p => {
     if (p.empleado !== usuarioConectado) return false;
     if (filtroParteMes && p.fecha.substring(0, 7) !== filtroParteMes) return false;
