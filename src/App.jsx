@@ -259,9 +259,9 @@ const manejarLogin = async (e) => {
   const manejarEnviarParte = async (e) => {
     e.preventDefault();
 
-    // 1. Evitamos duplicados locales si el estado tiene algo
+    // 1. Evitamos duplicados si el estado tiene algo registrado
     const yaExisteParte = historialPartes.some(
-        (parte) => parte.empleado === usuarioConnected && parte.fecha === fecha
+        (parte) => parte.empleado === usuarioConectado && parte.fecha === fecha
     );
 
     if (yaExisteParte) {
@@ -276,16 +276,16 @@ const manejarLogin = async (e) => {
     const esFinDeSemana = diaSemana === 6 || diaSemana === 0;
     let calculoExtras = esFinDeSemana ? totalHoras : totalHoras > 8 ? totalHoras - 8 : 0;
 
-    // Guardaremos una lista de las tareas enviadas a Supabase para actualizar la pantalla
+    // Guardaremos una lista de las tareas enviadas para actualizar la pantalla
     let tareasInsertadasParaHistorial = [];
 
-    // Bucle para enviar cada tarea (a Formspree para tu Excel y a Supabase para el Historial)
+    // Bucle para enviar cada tarea
     for (const tarea of tareasDelDia) {
         try {
             const nombreCompleto = datosEmpleadosPredeterminados[usuarioConectado]?.nombre + " " + datosEmpleadosPredeterminados[usuarioConectado]?.apellidos;
             const trabajoRealizado = tarea.trabajo === 'OTROS' ? tarea.especificarOtros : tarea.trabajo;
 
-            // --- PASO A: Envío por webhook a Formspree (Para que Power Automate rellene tu Excel) ---
+            // --- PASO A: Envío por Formspree ---
             const formData = new URLSearchParams();
             formData.append("_subject", "NUEVO PARTE WEB M2M");
             formData.append("FECHA", fecha);
@@ -293,7 +293,7 @@ const manejarLogin = async (e) => {
             formData.append("OBRA", tarea.obra);
             formData.append("TRABAJO", trabajoRealizado);
             formData.append("HORAS", Number(tarea.horas));
-            formData.append("HORAS_EXTRA", Number(calculoExtras)); // O reparte según tu criterio si hay múltiples tareas
+            formData.append("HORAS_EXTRA", Number(calculoExtras));
             formData.append("OTROS_TRABAJOS", notaGeneral || "");
             formData.append("LUGAR_DE_TRABAJO", "Web Localhost");
 
@@ -303,12 +303,12 @@ const manejarLogin = async (e) => {
                 body: JSON.stringify(Object.fromEntries(formData))
             });
 
-            // --- PASO B: Guardado Directo en Supabase (Historial en la nube gratuito e inmortal) ---
+            // --- PASO B: Guardado en Supabase ---
             const { error: errorSupabase } = await supabase
-                .from('partes') // El nombre exacto de tu tabla en Supabase
+                .from('partes')
                 .insert([{
                     fecha: fecha,
-                    empleado: usuarioConectado, // Guardamos su correo para filtrar luego fácil
+                    empleado: usuarioConectado,
                     obra: tarea.obra,
                     trabajo: trabajoRealizado,
                     horas: Number(tarea.horas),
@@ -319,6 +319,54 @@ const manejarLogin = async (e) => {
 
             if (errorSupabase) {
                 console.error("Error al guardar fila en Supabase:", errorSupabase);
+            } else {
+                const formatoParteHistorial = {
+                    id: Date.now() + Math.random(),
+                    empleado: usuarioConectado,
+                    fecha: fecha,
+                    obra: tarea.obra,
+                    trabajo: trabajoRealizado,
+                    horas: tarea.horas,
+                    notas: notaGeneral
+                };
+                tareasInsertadasParaHistorial.push(formatoParteHistorial);
+            }
+
+        } catch (error) {
+            console.error("Error en la conexión del envío de la tarea:", error);
+        }
+    }
+
+    // 2. Actualizamos los estados visuales en la app
+    if (tareasInsertadasParaHistorial.length > 0) {
+        const nuevoHistorialPartes = [...tareasInsertadasParaHistorial, ...historialPartes];
+        setHistorialPartes(nuevoHistorialPartes);
+        localStorage.setItem('m2m_historial_partes', JSON.stringify(nuevoHistorialPartes));
+
+        const obrasTocadasHoy = [...new Set(tareasDelDia.map(t => t.obra))];
+        let motivoExtra = diaSemana === 6 ? 'Sábado' : diaSemana === 0 ? 'Domingo' : 'Exceso jornada (>8h)';
+
+        if (calculoExtras > 0) {
+            const nuevoHistorialExtras = [{ 
+                id: 'ex-' + Date.now(), 
+                empleado: usuarioConectado, 
+                fecha: fecha, 
+                horas: calculoExtras, 
+                motivo: motivoExtra, 
+                obrasDelDia: obrasTocadasHoy 
+            }, ...horasExtrasHistorial];
+            
+            setHorasExtrasHistorial(nuevoHistorialExtras);
+            localStorage.setItem('m2m_horas_extra', JSON.stringify(nuevoHistorialExtras));
+            
+            alert(`🚀 ¡Parte Enviado y Registrado!\nSe detectaron ${calculoExtras}h extras.`);
+        } else {
+            alert('🚀 ¡Parte Enviado y Registrado con éxito!');
+        }
+    } else {
+        alert('❌ Hubo un problema al registrar el parte en la base de datos.');
+    }
+};
             } else {
                 // Si se guarda bien en la nube, lo preparamos para el estado visual de la app
                 const formatoParteHistorial = {
