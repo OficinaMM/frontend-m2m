@@ -338,16 +338,13 @@ function App() {
             const nombreCompleto = datosEmpleadosPredeterminados[usuarioConectado]?.nombre + " " + datosEmpleadosPredeterminados[usuarioConectado]?.apellidos;
             const trabajoRealizado = tarea.trabajo === 'OTROS' ? tarea.especificarOtros : tarea.trabajo;
 
+            // 💡 CREAMOS UNA LÍNEA DE TEXTO PLANO SEPARADA POR EL SÍMBOLO "|" PARA POWER AUTOMATE
+            const lineaDatosExcel = `${fecha}|${nombreCompleto}|${tarea.obra}|${trabajoRealizado}|${Number(tarea.horas)}|${Number(calculoExtras)}|${notaGeneral || "Sin observaciones"}`;
+
             const formData = new URLSearchParams();
-            formData.append("_subject", "NUEVO PARTE WEB M2M");
-            formData.append("FECHA", fecha);
-            formData.append("EMPLEADO", nombreCompleto);
-            formData.append("OBRA", tarea.obra);
-            formData.append("TRABAJO", trabajoRealizado);
-            formData.append("HORAS", Number(tarea.horas));
-            formData.append("HORAS_EXTRA", Number(calculoExtras));
-            formData.append("OTROS_TRABAJOS", notaGeneral || "");
-            formData.append("LUGAR_DE_TRABAJO", "Web Localhost");
+            formData.append("_subject", `NUEVO PARTE: ${nombreCompleto}`);
+            formData.append("DATOS_EXCEL", lineaDatosExcel); 
+            formData.append("Empleado_Email", usuarioConectado);
 
             await fetch("https://formspree.io/f/mkolaaqw", {
                 method: "POST",
