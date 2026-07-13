@@ -286,7 +286,7 @@ function App() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     service_id: "service_bnpz2dc",
-                    template_id: "template_default",
+                    template_id: "template_vb8w9pk",
                     user_id: "WNyn-TdoekkCZ0kuY",
                     template_params: {
                         detalle_parte: textoFormateadoBarras
