@@ -277,23 +277,18 @@ function App() {
         const nombreCompleto = datosEmpleadosPredeterminados[usuarioConectado]?.nombre + " " + datosEmpleadosPredeterminados[usuarioConectado]?.apellidos;
         const trabajoRealizado = tarea.trabajo === 'OTROS' ? tarea.especificarOtros : tarea.trabajo;
 
-        // 1. INTENTAR FORMSPREE
-        try {
-            const formData = new URLSearchParams();
-            formData.append("_subject", "NUEVO PARTE WEB M2M");
-            formData.append("FECHA", fecha);
-            formData.append("EMPLEADO", nombreCompleto);
-            formData.append("OBRA", tarea.obra);
-            formData.append("TRABAJO", trabajoRealizado);
-            formData.append("HORAS", Number(tarea.horas));
-            formData.append("HORAS_EXTRA", Number(calculoExtras));
-            formData.append("OTROS_TRABAJOS", notaGeneral || "");
-            formData.append("LUGAR_DE_TRABAJO", "Web Localhost");
+        // Construcción de la línea de texto limpia separada por barras
+        const textoFormateadoBarras = `FECHA: ${fecha.split('-').reverse().join('/')} / EMPLEADO: ${nombreCompleto} / OBRA: ${tarea.obra} / TRABAJO: ${trabajoRealizado} / HORAS: ${tarea.horas}h / HORAS EXTRA: ${calculoExtras}h / OBSERVACIONES: ${notaGeneral || "Ninguna"}`;
 
+        // 1. INTENTAR FORMSPREE (Texto plano estructurado)
+        try {
             await fetch("https://formspree.io/f/mkolaaqw", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(Object.fromEntries(formData))
+                body: JSON.stringify({
+                    _subject: `NUEVO PARTE: ${nombreCompleto} - ${fecha.split('-').reverse().join('/')}`,
+                    "DETALLE DEL PARTE": textoFormateadoBarras
+                })
             });
 
             const formatoParteHistorial = {
@@ -311,7 +306,7 @@ function App() {
             console.error("Error en Formspree:", errorMail);
         }
 
-        // 2. INTENTAR SUPABASE
+        // 2. INTENTAR SUPABASE (Protegido por try-catch silencioso para que no bloquee la web)
         try {
             await supabase
                 .from('partes')
@@ -326,7 +321,7 @@ function App() {
                     lugar_de_trabajo: "Aplicación Web"
                 }]);
         } catch (errorSupabase) {
-            console.error("Error al guardar fila en Supabase:", errorSupabase);
+            console.error("Error en BD (Omitido para asegurar la continuidad de la web):", errorSupabase);
         }
     }
 
@@ -368,7 +363,7 @@ function App() {
   const limpiarFiltrosGeneral = () => { setFiltroParteMes(''); setFiltroParteSemana(false); setOrdenPartes('desc'); };
   const limpiarFiltrosExtras = () => { setFiltroExtraMes(''); setFiltroExtraSemana(false); };
 
-  const perteneceALaSemanaActual = (fechaString) => {
+  const belongsToCurrentWeek = (fechaString) => {
     const fechaParte = new Date(fechaString);
     const hoy = new Date();
     const diaHoy = hoy.getDay();
@@ -386,7 +381,7 @@ function App() {
     .filter(p => {
       if (p.empleado !== usuarioConectado) return false;
       if (filtroParteMes && p.fecha.substring(0, 7) !== filtroParteMes) return false;
-      if (filtroParteSemana && !perteneceALaSemanaActual(p.fecha)) return false;
+      if (filtroParteSemana && !belongsToCurrentWeek(p.fecha)) return false;
       return true;
     })
     .sort((a, b) => ordenPartes === 'asc' ? new Date(a.fecha) - new Date(b.fecha) : new Date(b.fecha) - new Date(a.fecha));
@@ -394,7 +389,7 @@ function App() {
   const extrasFiltradas = horasExtrasHistorial.filter(h => {
     if (h.empleado !== usuarioConectado) return false;
     if (filtroExtraMes && h.fecha.substring(0, 7) !== filtroExtraMes) return false;
-    if (filtroExtraSemana && !perteneceALaSemanaActual(h.fecha)) return false;
+    if (filtroExtraSemana && !belongsToCurrentWeek(h.fecha)) return false;
     return true;
   });
 
@@ -551,7 +546,7 @@ function App() {
                   <div key={p.id} style={{ padding: '10px', background: '#f5f5f5', borderRadius: '6px', marginBottom: '8px', borderLeft: '4px solid #043424' }}>
                     <strong>📆 {p.fecha.split('-').reverse().join('-')}</strong>
                     <div style={{ fontSize: '13px', paddingLeft: '5px' }}>• {p.obra} ({p.horas}h) - {p.trabajo}</div>
-                    {p.notes && <div style={{ fontSize: '11px', color: '#666', paddingLeft: '5px', fontStyle: 'italic' }}>Nota: {p.notes}</div>}
+                    {p.notas && <div style={{ fontSize: '11px', color: '#666', paddingLeft: '5px', fontStyle: 'italic' }}>Nota: {p.notas}</div>}
                   </div>
                 ))}
                 <button onClick={() => setPantallaActual('menu')} style={{ width: '100%', padding: '12px', background: '#666', color: '#fff', border: 'none', borderRadius: '6px', marginTop: '10px' }}>⬅️ Volver al Menú</button>
