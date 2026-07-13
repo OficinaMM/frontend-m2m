@@ -255,8 +255,7 @@ const manejarLogin = async (e) => {
     setTareasDelDia(nuevasTareas);
   };
 
-  // --- FUNCIÓN DE ENVÍO INTEGRADA SIN PREMIUM ---
-  const manejarEnviarParte = async (e) => {
+   const manejarEnviarParte = async (e) => {
     e.preventDefault();
 
     // 1. Evitamos duplicados si el estado tiene algo registrado
@@ -367,58 +366,6 @@ const manejarLogin = async (e) => {
         alert('❌ Hubo un problema al registrar el parte en la base de datos.');
     }
 };
-            } else {
-                // Si se guarda bien en la nube, lo preparamos para el estado visual de la app
-                const formatoParteHistorial = {
-                    id: Date.now() + Math.random(),
-                    empleado: usuarioConectado,
-                    fecha: fecha,
-                    obra: tarea.obra,
-                    trabajo: trabajoRealizado,
-                    horas: tarea.horas,
-                    notas: notaGeneral
-                };
-                tareasInsertadasParaHistorial.push(formatoParteHistorial);
-            }
-
-        } catch (error) {
-            console.error("Error en la conexión del envío de la tarea:", error);
-        }
-    }
-
-    // 2. Actualizamos los estados visuales en la pantalla de la app
-    if (tareasInsertadasParaHistorial.length > 0) {
-        const nuevoHistorialPartes = [...tareasInsertadasParaHistorial, ...historialPartes];
-        setHistorialPartes(nuevoHistorialPartes);
-        // Dejamos el localStorage solo como un "espejo rápido" por si abren la app sin internet
-        localStorage.setItem('m2m_historial_partes', JSON.stringify(nuevoHistorialPartes));
-
-        // Gestión visual de Horas Extras en la interfaz
-        const obrasTocadasHoy = [...new Set(tareasDelDia.map(t => t.obra))];
-        let motivoExtra = diaSemana === 6 ? 'Sábado' : diaSemana === 0 ? 'Domingo' : 'Exceso jornada (>8h)';
-
-        if (calculoExtras > 0) {
-            const nuevoHistorialExtras = [{ 
-                id: 'ex-' + Date.now(), 
-                empleado: usuarioConectado, 
-                fecha: fecha, 
-                horas: calculoExtras, 
-                motivo: motivoExtra, 
-                obrasDelDia: obrasTocadasHoy 
-            }, ...horasExtrasHistorial];
-            
-            setHorasExtrasHistorial(nuevoHistorialExtras);
-            localStorage.setItem('m2m_horas_extra', JSON.stringify(nuevoHistorialExtras));
-            
-            alert(`🚀 ¡Parte Enviado y Registrado en la Nube!\nSe ha mandado el reporte y se detectaron ${calculoExtras}h extras.`);
-        } else {
-            alert('🚀 ¡Parte Enviado y Registrado con éxito en la Nube!');
-        }
-    } else {
-        alert('❌ Hubo un problema al registrar el parte en la base de datos.');
-    }
-};
-    
     setNotaGeneral('');
     setTareasDelDia([{ obra: listaObras[0], trabajo: baseDatosObras[listaObras[0]][0], horas: '8', especificarOtros: '' }]);
     setPantallaActual('menu');
