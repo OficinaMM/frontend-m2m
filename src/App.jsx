@@ -277,9 +277,8 @@ function App() {
     for (const tarea of tareasDelDia) {
         const nombreCompleto = datosEmpleadosPredeterminados[usuarioConectado]?.nombre + " " + datosEmpleadosPredeterminados[usuarioConectado]?.apellidos;
         const trabajoRealizado = tarea.trabajo === 'OTROS' ? tarea.especificarOtros : tarea.trabajo;
-        const infoLugar = tarea.obra === 'TRABAJOS CON RODADO' ? (tarea.lugarTrabajo || "No especificado") : "Aplicación Web";
+        const infoLugar = tarea.obra === 'TRABAJOS CON RODADO' ? (tarea.lugarTrabajo ? tarea.lugarTrabajo.trim() : "No especificado") : "Aplicación Web";
 
-        // Incluimos LUGAR en la cadena limpia con barras para Power Automate
         const textoFormateadoBarras = `FECHA: ${fecha.split('-').reverse().join('/')} / EMPLEADO: ${nombreCompleto} / OBRA: ${tarea.obra} / TRABAJO: ${trabajoRealizado} / HORAS: ${tarea.horas}h / HORAS EXTRA: ${calculoExtras}h / LUGAR: ${infoLugar} / OBSERVACIONES: ${notaGeneral || "Ninguna"}`;
 
         // 1. ENVÍO CON EMAILJS
@@ -305,7 +304,7 @@ function App() {
                 trabajo: trabajoRealizado,
                 horas: tarea.horas,
                 notes: notaGeneral,
-                lugarTrabajo: tarea.obra === 'TRABAJOS CON RODADO' ? tarea.lugarTrabajo : ''
+                lugarTrabajo: tarea.obra === 'TRABAJOS CON RODADO' ? infoLugar : ''
             };
             tareasInsertadasParaHistorial.push(formatoParteHistorial);
 
@@ -384,14 +383,42 @@ function App() {
     return fechaParte >= lunesSemana && fechaParte <= domingoSemana;
   };
 
-  const partesFiltrados = historialPartes
-    .filter(p => {
-      if (p.empleado !== usuarioConectado) return false;
-      if (filtroParteMes && p.fecha.substring(0, 7) !== filtroParteMes) return false;
-      if (filtroParteSemana && !belongsToCurrentWeek(p.fecha)) return false;
-      return true;
-    })
-    .sort((a, b) => ordenPartes === 'asc' ? new Date(a.fecha) - new Date(b.fecha) : new Date(b.fecha) - new Date(a.fecha));
+  // --- LÓGICA DE UNIFICACIÓN PARA LA PANTALLA DE HISTORIAL ---
+  const partesFiltradosBase = historialPartes.filter(p => {
+    if (p.empleado !== usuarioConectado) return false;
+    if (filtroParteMes && p.fecha.substring(0, 7) !== filtroParteMes) return false;
+    if (filtroParteSemana && !belongsToCurrentWeek(p.fecha)) return false;
+    return true;
+  });
+
+  const partesAgrupadosPorDia = [];
+  partesFiltradosBase.forEach(parte => {
+    const diaExistente = partesAgrupadosPorDia.find(item => item.fecha === parte.fecha);
+    if (diaExistente) {
+      diaExistente.horasTotales += Number(parte.horas);
+      diaExistente.detalles.push({
+        obra: parte.obra,
+        trabajo: parte.trabajo,
+        lugarTrabajo: parte.lugarTrabajo,
+        notes: parte.notes
+      });
+    } else {
+      partesAgrupadosPorDia.push({
+        fecha: parte.fecha,
+        horasTotales: Number(parte.horas),
+        detalles: [{
+          obra: parte.obra,
+          trabajo: parte.trabajo,
+          lugarTrabajo: parte.lugarTrabajo,
+          notes: parte.notes
+        }]
+      });
+    }
+  });
+
+  const partesFiltrados = partesAgrupadosPorDia.sort((a, b) => 
+    ordenPartes === 'asc' ? new Date(a.fecha) - new Date(b.fecha) : new Date(b.fecha) - new Date(a.fecha)
+  );
   
   const extrasFiltradas = horasExtrasHistorial.filter(h => {
     if (h.empleado !== usuarioConectado) return false;
@@ -470,7 +497,7 @@ function App() {
                 <h2 style={{ color: '#043424', fontSize: '20px' }}>🔑 Seguridad Obligatoria</h2>
                 <p style={{ fontSize: '14px', color: '#333' }}>Es tu primera vez entrando. Por tu privacidad, <strong>debes modificar tu contraseña</strong>.</p>
                 <form onSubmit={manejarChangePassword} style={{ display: 'flex', flexDirection: 'column', gap: '15px', maxWidth: '300px', margin: '0 auto' }}>
-                  <input type="password" placeholder="Nueva contraseña personal" value={nuevaPassword} onChange={(e) => setNuevaPassword(e.target.value)} required style={{ padding: '12px', borderRadius: '6px', border: '1px solid #ccc' }} />
+                  <input type="password" placeholder="Nueva contraseña personal" value={nuevaPassword} onChange={(e) => setNuevaPassword} required style={{ padding: '12px', borderRadius: '6px', border: '1px solid #ccc' }} />
                   <button type="submit" style={{ padding: '12px', background: '#b27d14', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold' }}>Establecer Contraseña</button>
                 </form>
               </div>
@@ -532,14 +559,27 @@ function App() {
                       </div>
 
                       {tarea.trabajo === 'OTROS' && (
-                        <input type="text" placeholder="Especifica el trabajo..." value={tarea.especificarOtros} onChange={(e) => actualizarCampoTarea(index, 'especificarOtros', e.target.value)} required style={{ padding: '10px', borderRadius: '4px', border: '1px solid #b27d14', background: '#ffffe0' }} />
+                        <input 
+                          type="text" 
+                          placeholder="Especifica el trabajo..." 
+                          value={tarea.especificarOtros || ''} 
+                          onChange={(e) => actualizarCampoTarea(index, 'especificarOtros', e.target.value)} 
+                          required 
+                          style={{ padding: '10px', borderRadius: '4px', border: '1px solid #b27d14', background: '#ffffe0', marginBottom: '5px' }} 
+                        />
                       )}
 
-                      {/* CUADRO AÑADIDO: SOLO APARECE SI SE SELECCIONA TRABAJOS CON RODADO */}
                       {tarea.obra === 'TRABAJOS CON RODADO' && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '5px' }}>
                           <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#333' }}>Lugar de trabajo:</label>
-                          <input type="text" placeholder="Indica la zona, tramo o PK..." value={tarea.lugarTrabajo || ''} onChange={(e) => actualizarCampoTarea(index, 'lugarTrabajo', e.target.value)} required style={{ padding: '10px', borderRadius: '4px', border: '1px solid #b27d14', background: '#ffffe0' }} />
+                          <input 
+                            type="text" 
+                            placeholder="Indica la zona, tramo o PK..." 
+                            value={tarea.lugarTrabajo || ''} 
+                            onChange={(e) => actualizarCampoTarea(index, 'lugarTrabajo', e.target.value)} 
+                            required 
+                            style={{ padding: '10px', borderRadius: '4px', border: '1px solid #b27d14', background: '#ffffe0' }} 
+                          />
                         </div>
                       )}
                     </div>
@@ -587,18 +627,27 @@ function App() {
                   {partesFiltrados.length === 0 ? (
                     <p style={{ textAlign: 'center', color: '#666', fontSize: '14px' }}>No hay partes que coincidan con los filtros seleccionados.</p>
                   ) : (
-                    partesFiltrados.map((parte) => (
-                      <div key={parte.id} style={{ border: '1px solid #ddd', padding: '12px', borderRadius: '6px', background: '#fff' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '4px', marginBottom: '6px' }}>
-                          <span style={{ fontWeight: 'bold', color: '#043424', fontSize: '13px' }}>📅 {parte.fecha.split('-').reverse().join('/')}</span>
-                          <span style={{ background: '#043424', color: '#fff', padding: '2px 6px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold' }}>{parte.horas} Horas</span>
+                    partesFiltrados.map((dia, index) => (
+                      <div key={index} style={{ border: '2px solid #043424', padding: '12px', borderRadius: '6px', background: '#fff' }}>
+                        
+                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #eee', paddingBottom: '6px', marginBottom: '8px' }}>
+                          <span style={{ fontWeight: 'bold', color: '#043424', fontSize: '14px' }}>📅 {dia.fecha.split('-').reverse().join('/')}</span>
+                          <span style={{ background: '#b27d14', color: '#fff', padding: '3px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold' }}>
+                            Total: {dia.horasTotales} Horas
+                          </span>
                         </div>
-                        <div style={{ fontSize: '13px', color: '#333' }}>
-                          <p style={{ margin: '2px 0' }}><strong>Obra:</strong> {parte.obra}</p>
-                          <p style={{ margin: '2px 0' }}><strong>Trabajo:</strong> {parte.trabajo}</p>
-                          {parte.lugarTrabajo && <p style={{ margin: '2px 0' }}><strong>Lugar:</strong> {parte.lugarTrabajo}</p>}
-                          {parte.notes && <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#666', fontStyle: 'italic', background: '#f9f9f9', padding: '4px', borderRadius: '4px' }}>Obs: {parte.notes}</p>}
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {dia.detalles.map((det, i) => (
+                            <div key={i} style={{ background: '#f9f9f9', padding: '6px 10px', borderRadius: '4px', borderLeft: '3px solid #043424', fontSize: '13px' }}>
+                              <p style={{ margin: '2px 0' }}><strong>Obra:</strong> {det.obra}</p>
+                              <p style={{ margin: '2px 0' }}><strong>Trabajo:</strong> {det.trabajo}</p>
+                              {det.lugarTrabajo && <p style={{ margin: '2px 0' }}><strong>Lugar:</strong> {det.lugarTrabajo}</p>}
+                              {det.notes && <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: '#666', fontStyle: 'italic' }}>Obs: {det.notes}</p>}
+                            </div>
+                          ))}
                         </div>
+
                       </div>
                     ))
                   )}
