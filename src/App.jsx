@@ -277,17 +277,20 @@ function App() {
         const nombreCompleto = datosEmpleadosPredeterminados[usuarioConectado]?.nombre + " " + datosEmpleadosPredeterminados[usuarioConectado]?.apellidos;
         const trabajoRealizado = tarea.trabajo === 'OTROS' ? tarea.especificarOtros : tarea.trabajo;
 
-        // Construcción de la línea de texto limpia separada por barras
         const textoFormateadoBarras = `FECHA: ${fecha.split('-').reverse().join('/')} / EMPLEADO: ${nombreCompleto} / OBRA: ${tarea.obra} / TRABAJO: ${trabajoRealizado} / HORAS: ${tarea.horas}h / HORAS EXTRA: ${calculoExtras}h / OBSERVACIONES: ${notaGeneral || "Ninguna"}`;
 
-        // 1. INTENTAR FORMSPREE (Texto plano estructurado)
+        // 1. ENVÍO GRATUITO CON EMAILJS
         try {
-            await fetch("https://formspree.io/f/mkolaaqw", {
+            await fetch("https://api.emailjs.com/api/v1.0/email/send", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    _subject: `NUEVO PARTE: ${nombreCompleto} - ${fecha.split('-').reverse().join('/')}`,
-                    "DETALLE DEL PARTE": textoFormateadoBarras
+                    service_id: "service_bnpz2dc",
+                    template_id: "template_default",
+                    user_id: "WNyn-TdoekkCZ0kuY",
+                    template_params: {
+                        detalle_parte: textoFormateadoBarras
+                    }
                 })
             });
 
@@ -298,15 +301,15 @@ function App() {
                 obra: tarea.obra,
                 trabajo: trabajoRealizado,
                 horas: tarea.horas,
-                notas: notaGeneral
+                notes: notaGeneral
             };
             tareasInsertadasParaHistorial.push(formatoParteHistorial);
 
         } catch (errorMail) {
-            console.error("Error en Formspree:", errorMail);
+            console.error("Error en EmailJS:", errorMail);
         }
 
-        // 2. INTENTAR SUPABASE (Protegido por try-catch silencioso para que no bloquee la web)
+        // 2. RESPALDO EN SUPABASE (Silenciado)
         try {
             await supabase
                 .from('partes')
@@ -321,7 +324,7 @@ function App() {
                     lugar_de_trabajo: "Aplicación Web"
                 }]);
         } catch (errorSupabase) {
-            console.error("Error en BD (Omitido para asegurar la continuidad de la web):", errorSupabase);
+            console.error("Error en BD:", errorSupabase);
         }
     }
 
@@ -346,12 +349,12 @@ function App() {
             setHorasExtrasHistorial(nuevoHistorialExtras);
             localStorage.setItem('m2m_horas_extras', JSON.stringify(nuevoHistorialExtras));
             
-            alert(`🚀 ¡Parte Enviado y Registrado!\nSe detectaron ${calculoExtras}h extras.`);
+            alert(`🚀 ¡Parte Envíado y Registrado!\nSe detectaron ${calculoExtras}h extras.`);
         } else {
             alert('🚀 ¡Parte Enviado y Registrado con éxito!');
         }
     } else {
-        alert('❌ Error crítico: No se pudo procesar el envío del parte.');
+        alert('❌ Error al procesar el envío del parte.');
     }
 
     setNotaGeneral('');
