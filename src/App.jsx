@@ -329,7 +329,7 @@ function App() {
     const [ano, mes, dia] = fecha.split('-');
     const diaSemana = new Date(Date.UTC(ano, mes - 1, dia)).getUTCDay();
     const esFinDeSemana = diaSemana === 6 || diaSemana === 0;
-    let calculoExtras = esFinDeSemana ? totalHoras : totalHoras > 8 ? totalHoras - 8 : 0;
+    const calculoExtrasTotal = esFinDeSemana ? totalHoras : totalHoras > 8 ? totalHoras - 8 : 0;
 
     let tareasInsertadasParaHistorial = [];
 
@@ -338,7 +338,8 @@ function App() {
             const nombreCompleto = datosEmpleadosPredeterminados[usuarioConectado]?.nombre + " " + datosEmpleadosPredeterminados[usuarioConectado]?.apellidos;
             const trabajoRealizado = tarea.trabajo === 'OTROS' ? tarea.especificarOtros : tarea.trabajo;
 
-            const lineaDatosExcel = `${fecha}|${nombreCompleto}|${tarea.obra}|${trabajoRealizado}|${Number(tarea.horas)}|${Number(calculoExtras)}|${notaGeneral || "Sin observaciones"}`;
+            // 💡 Aseguramos que pasamos el cálculo correcto como número
+            const lineaDatosExcel = `${fecha}|${nombreCompleto}|${tarea.obra}|${trabajoRealizado}|${Number(tarea.horas)}|${Number(calculoExtrasTotal)}|${notaGeneral || "Sin observaciones"}`;
 
             const formData = new URLSearchParams();
             formData.append("_subject", `NUEVO PARTE: ${nombreCompleto}`);
@@ -359,7 +360,7 @@ function App() {
                     obra: tarea.obra,
                     trabajo: trabajoRealizado,
                     horas: Number(tarea.horas),
-                    horas_extra: Number(calculoExtras),
+                    horas_extra: Number(calculoExtrasTotal),
                     otros_trabajos: notaGeneral || "",
                     lugar_de_trabajo: "Aplicación Web"
                 }]);
@@ -391,18 +392,18 @@ function App() {
         const obrasTocadasHoy = [...new Set(tareasDelDia.map(t => t.obra))];
         let motivoExtra = diaSemana === 6 ? 'Sábado' : diaSemana === 0 ? 'Domingo' : 'Exceso jornada (>8h)';
 
-        if (calculoExtras > 0) {
+        if (calculoExtrasTotal > 0) {
             const nuevoHistorialExtras = [{ 
                 id: 'ex-' + Date.now(), 
                 empleado: usuarioConectado, 
                 fecha: fecha, 
-                horas: calculoExtras, 
+                horas: calculoExtrasTotal, 
                 motivo: motivoExtra, 
                 obrasDelDia: obrasTocadasHoy 
             }, ...horasExtrasHistorial];
             
             setHorasExtrasHistorial(nuevoHistorialExtras);
-            alert(`🚀 ¡Parte Enviado y Registrado!\nSe detectaron ${calculoExtras}h extras.`);
+            alert(`🚀 ¡Parte Enviado y Registrado!\nSe detectaron ${calculoExtrasTotal}h extras.`);
         } else {
             alert('🚀 ¡Parte Enviado y Registrado con éxito!');
         }
@@ -596,7 +597,7 @@ function App() {
             )}
 
             {pantallaActual === 'mis-partes' && (
-              <div style={{ textAlign: 'left' }}>
+              <div style={{ textAlignment: 'left' }}>
                 <h2 style={{ color: '#043424', textAlign: 'center', fontSize: '20px' }}>📄 Mis Partes Enviados ({partesFiltrados.length})</h2>
                 {partesFiltrados.map((p) => (
                   <div key={p.id} style={{ padding: '10px', background: '#f5f5f5', borderRadius: '6px', marginBottom: '8px', borderLeft: '4px solid #043424' }}>
