@@ -602,9 +602,8 @@ function App() {
                     <textarea placeholder="Notas u observaciones sobre la jornada de hoy..." value={notaGeneral} onChange={(e) => setNotaGeneral(e.target.value)} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc', minHeight: '70px', resize: 'vertical' }} />
                   </div>
 
-                  <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                    <button type="button" onClick={() => setPantallaActual('menu')} style={{ flex: 1, padding: '12px', background: '#777', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', textAlign: 'center' }}>⬅️ Volver</button>
-                    <button type="submit" style={{ flex: 2, padding: '12px', background: '#043424', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', textAlign: 'center' }}>🚀 Enviar Parte</button>
+                  <div style={{ marginTop: '10px' }}>
+                    <button type="submit" style={{ width: '100%', padding: '14px', background: '#043424', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer', textAlign: 'center' }}>🚀 Enviar Parte</button>
                   </div>
                 </form>
               </div>
