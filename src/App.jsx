@@ -81,16 +81,10 @@ function App() {
   const [filtroExtraMes, setFiltroExtraMes] = useState(''); 
   const [filtroExtraSemana, setFiltroExtraSemana] = useState(false); 
 
-  const [horasExtrasHistorial, setHorasExtrasHistorial] = useState(() => {
-    const guardado = localStorage.getItem('m2m_horas_extras');
-    return guardado ? JSON.parse(guardado) : [];
-  });
-  
-  const [historialPartes, setHistorialPartes] = useState(() => {
-    const guardado = localStorage.getItem('m2m_historial_partes');
-    return guardado ? JSON.parse(guardado) : [];
-  });
+  const [horasExtrasHistorial, setHorasExtrasHistorial] = useState([]);
+  const [historialPartes, setHistorialPartes] = useState([]);
 
+  // 🔄 EFECTO CENTRAL: Cargar toda la info desde la nube (Supabase) al conectar al usuario
   useEffect(() => {
     if (usuarioConectado) {
       const infoDefecto = datosEmpleadosPredeterminados[usuarioConectado] || { nombre: '', apellidos: '', telefono: '', posicion: 'No Asignada' };
@@ -104,6 +98,72 @@ function App() {
       } else {
         setTelefonoEdit(infoDefecto.telefono);
       }
+
+      // Descargar partes desde Supabase
+      const cargarPartesDesdeNube = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('partes')
+            .select('*')
+            .eq('empleado', usuarioConectado)
+            .order('fecha', { ascending: false });
+
+          if (error) {
+            console.error("Error al descargar partes:", error);
+          } else if (data) {
+            const partesFormateados = data.map(p => ({
+              id: p.id,
+              empleado: p.empleado,
+              fecha: p.fecha,
+              tareas: [{
+                obra: p.obra,
+                trabajo: p.trabajo,
+                horas: p.horas
+              }]
+            }));
+            setHistorialPartes(partesFormateados);
+          }
+        } catch (err) {
+          console.error("Error en la conexión con la nube (partes):", err);
+        }
+      };
+
+      // Descargar horas extras desde Supabase
+      const cargarHorasExtrasDesdeNube = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('partes')
+            .select('id, fecha, horas_extra, obra')
+            .eq('empleado', usuarioConectado)
+            .gt('horas_extra', 0)
+            .order('fecha', { ascending: false });
+
+          if (error) {
+            console.error("Error al descargar horas extras:", error);
+          } else if (data) {
+            const extrasFormateadas = data.map(h => {
+              const [ano, mes, dia] = h.fecha.split('-');
+              const diaSemana = new Date(Date.UTC(ano, mes - 1, dia)).getUTCDay();
+              let motivoExtra = diaSemana === 6 ? 'Sábado' : diaSemana === 0 ? 'Domingo' : 'Exceso jornada (>8h)';
+
+              return {
+                id: h.id,
+                empleado: usuarioConectado,
+                fecha: h.fecha,
+                horas: Number(h.horas_extra),
+                motivo: motivoExtra,
+                obrasDelDia: [h.obra]
+              };
+            });
+            setHorasExtrasHistorial(extrasFormateadas);
+          }
+        } catch (err) {
+          console.error("Error en la conexión con la nube (extras):", err);
+        }
+      };
+
+      cargarPartesDesdeNube();
+      cargarHorasExtrasDesdeNube();
     }
   }, [usuarioConectado]);
 
@@ -173,7 +233,7 @@ function App() {
       setPantallaActual('menu');
     } catch (err) {
       console.error("Error al guardar contraseña:", err);
-      alert('❌ No se pudo guardar la contraseña in la base de datos.');
+      alert('❌ No se pudo guardar la contraseña en la base de datos.');
     }
   };
 
@@ -194,7 +254,7 @@ function App() {
     }
 
     setCorreoValidadoRecovery(correoForm);
-    setPantaranActual('recovery-escribir-pass');
+    setPantallaActual('recovery-escribir-pass');
   };
 
   const manejarGuardarNuevaPasswordRecovery = (e) => {
@@ -331,7 +391,6 @@ function App() {
     if (tareasInsertadasParaHistorial.length > 0) {
         const nuevoHistorialPartes = [...tareasInsertadasParaHistorial, ...historialPartes];
         setHistorialPartes(nuevoHistorialPartes);
-        localStorage.setItem('m2m_historial_partes', JSON.stringify(nuevoHistorialPartes));
 
         const obrasTocadasHoy = [...new Set(tareasDelDia.map(t => t.obra))];
         let motivoExtra = diaSemana === 6 ? 'Sábado' : diaSemana === 0 ? 'Domingo' : 'Exceso jornada (>8h)';
@@ -347,8 +406,6 @@ function App() {
             }, ...horasExtrasHistorial];
             
             setHorasExtrasHistorial(nuevoHistorialExtras);
-            localStorage.setItem('m2m_horas_extra', JSON.stringify(nuevoHistorialExtras));
-            
             alert(`🚀 ¡Parte Enviado y Registrado!\nSe detectaron ${calculoExtras}h extras.`);
         } else {
             alert('🚀 ¡Parte Enviado y Registrado con éxito!');
@@ -548,7 +605,7 @@ function App() {
                 {partesFiltrados.map((p) => (
                   <div key={p.id} style={{ padding: '10px', background: '#f5f5f5', borderRadius: '6px', marginBottom: '8px', borderLeft: '4px solid #043424' }}>
                     <strong>📆 {p.fecha.split('-').reverse().join('-')}</strong>
-                    {p.tareas && p.tareas.map((t, idx) => (
+                    {p.tareas.map((t, idx) => (
                       <div key={idx} style={{ fontSize: '13px', paddingLeft: '5px' }}>• {t.obra} ({t.horas}h) - {t.trabajo === 'OTROS' ? t.especificarOtros : t.trabajo}</div>
                     ))}
                   </div>
