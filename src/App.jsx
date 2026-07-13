@@ -338,7 +338,6 @@ function App() {
             const nombreCompleto = datosEmpleadosPredeterminados[usuarioConectado]?.nombre + " " + datosEmpleadosPredeterminados[usuarioConectado]?.apellidos;
             const trabajoRealizado = tarea.trabajo === 'OTROS' ? tarea.especificarOtros : tarea.trabajo;
 
-            // 💡 CREAMOS UNA LÍNEA DE TEXTO PLANO SEPARADA POR EL SÍMBOLO "|" PARA POWER AUTOMATE
             const lineaDatosExcel = `${fecha}|${nombreCompleto}|${tarea.obra}|${trabajoRealizado}|${Number(tarea.horas)}|${Number(calculoExtras)}|${notaGeneral || "Sin observaciones"}`;
 
             const formData = new URLSearchParams();
@@ -603,7 +602,7 @@ function App() {
                   <div key={p.id} style={{ padding: '10px', background: '#f5f5f5', borderRadius: '6px', marginBottom: '8px', borderLeft: '4px solid #043424' }}>
                     <strong>📆 {p.fecha.split('-').reverse().join('-')}</strong>
                     {p.tareas.map((t, idx) => (
-                      <div key={idx} style={{ fontSize: '13px', paddingLeft: '5px' }}>• {t.obra} ({t.horas}h) - {t.trabajo === 'OTROS' ? t.especificarOtros : t.trabajo}</div>
+                      <div key={idx} style={{ fontSize: '13px', paddingLeft: '5px' }}>• {t.obra} ({t.horas}h) - {t.trabajo}</div>
                     ))}
                   </div>
                 ))}
