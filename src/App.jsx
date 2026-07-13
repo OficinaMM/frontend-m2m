@@ -71,7 +71,7 @@ function App() {
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
   const [notaGeneral, setNotaGeneral] = useState('');
   const [tareasDelDia, setTareasDelDia] = useState([
-    { obra: listaObras[0], trabajo: baseDatosObras[listaObras[0]][0], horas: '0', especificarOtros: '' }
+    { obra: listaObras[0], trabajo: baseDatosObras[listaObras[0]][0], horas: '8', especificarOtros: '' }
   ]);
 
   const [filtroParteMes, setFiltroParteMes] = useState('');
@@ -81,10 +81,16 @@ function App() {
   const [filtroExtraMes, setFiltroExtraMes] = useState(''); 
   const [filtroExtraSemana, setFiltroExtraSemana] = useState(false); 
 
-  const [horasExtrasHistorial, setHorasExtrasHistorial] = useState([]);
-  const [historialPartes, setHistorialPartes] = useState([]);
+  const [horasExtrasHistorial, setHorasExtrasHistorial] = useState(() => {
+    const guardado = localStorage.getItem('m2m_horas_extras');
+    return guardado ? JSON.parse(guardado) : [];
+  });
+  
+  const [historialPartes, setHistorialPartes] = useState(() => {
+    const guardado = localStorage.getItem('m2m_historial_partes');
+    return guardado ? JSON.parse(guardado) : [];
+  });
 
-  // 🔄 EFECTO CENTRAL: Cargar toda la info desde la nube (Supabase) al conectar al usuario
   useEffect(() => {
     if (usuarioConectado) {
       const infoDefecto = datosEmpleadosPredeterminados[usuarioConectado] || { nombre: '', apellidos: '', telefono: '', posicion: 'No Asignada' };
@@ -98,72 +104,6 @@ function App() {
       } else {
         setTelefonoEdit(infoDefecto.telefono);
       }
-
-      // Descargar partes desde Supabase
-      const cargarPartesDesdeNube = async () => {
-        try {
-          const { data, error } = await supabase
-            .from('partes')
-            .select('*')
-            .eq('empleado', usuarioConectado)
-            .order('fecha', { ascending: false });
-
-          if (error) {
-            console.error("Error al descargar partes:", error);
-          } else if (data) {
-            const partesFormateados = data.map(p => ({
-              id: p.id,
-              empleado: p.empleado,
-              fecha: p.fecha,
-              tareas: [{
-                obra: p.obra,
-                trabajo: p.trabajo,
-                horas: p.horas
-              }]
-            }));
-            setHistorialPartes(partesFormateados);
-          }
-        } catch (err) {
-          console.error("Error en la conexión con la nube (partes):", err);
-        }
-      };
-
-      // Descargar horas extras desde Supabase
-      const cargarHorasExtrasDesdeNube = async () => {
-        try {
-          const { data, error } = await supabase
-            .from('partes')
-            .select('id, fecha, horas_extra, obra')
-            .eq('empleado', usuarioConectado)
-            .gt('horas_extra', 0)
-            .order('fecha', { ascending: false });
-
-          if (error) {
-            console.error("Error al descargar horas extras:", error);
-          } else if (data) {
-            const extrasFormateadas = data.map(h => {
-              const [ano, mes, dia] = h.fecha.split('-');
-              const diaSemana = new Date(Date.UTC(ano, mes - 1, dia)).getUTCDay();
-              let motivoExtra = diaSemana === 6 ? 'Sábado' : diaSemana === 0 ? 'Domingo' : 'Exceso jornada (>8h)';
-
-              return {
-                id: h.id,
-                empleado: usuarioConectado,
-                fecha: h.fecha,
-                horas: Number(h.horas_extra),
-                motivo: motivoExtra,
-                obrasDelDia: [h.obra]
-              };
-            });
-            setHorasExtrasHistorial(extrasFormateadas);
-          }
-        } catch (err) {
-          console.error("Error en la conexión con la nube (extras):", err);
-        }
-      };
-
-      cargarPartesDesdeNube();
-      cargarHorasExtrasDesdeNube();
     }
   }, [usuarioConectado]);
 
@@ -329,22 +269,26 @@ function App() {
     const [ano, mes, dia] = fecha.split('-');
     const diaSemana = new Date(Date.UTC(ano, mes - 1, dia)).getUTCDay();
     const esFinDeSemana = diaSemana === 6 || diaSemana === 0;
-    const calculoExtrasTotal = esFinDeSemana ? totalHoras : totalHoras > 8 ? totalHoras - 8 : 0;
+    let calculoExtras = esFinDeSemana ? totalHoras : totalHoras > 8 ? totalHoras - 8 : 0;
 
     let tareasInsertadasParaHistorial = [];
 
     for (const tarea of tareasDelDia) {
+        const nombreCompleto = datosEmpleadosPredeterminados[usuarioConectado]?.nombre + " " + datosEmpleadosPredeterminados[usuarioConectado]?.apellidos;
+        const trabajoRealizado = tarea.trabajo === 'OTROS' ? tarea.especificarOtros : tarea.trabajo;
+
+        // 1. INTENTAR FORMSPREE
         try {
-            const nombreCompleto = datosEmpleadosPredeterminados[usuarioConectado]?.nombre + " " + datosEmpleadosPredeterminados[usuarioConectado]?.apellidos;
-            const trabajoRealizado = tarea.trabajo === 'OTROS' ? tarea.especificarOtros : tarea.trabajo;
-
-            // 💡 Aseguramos que pasamos el cálculo correcto como número
-            const lineaDatosExcel = `${fecha}|${nombreCompleto}|${tarea.obra}|${trabajoRealizado}|${Number(tarea.horas)}|${Number(calculoExtrasTotal)}|${notaGeneral || "Sin observaciones"}`;
-
             const formData = new URLSearchParams();
-            formData.append("_subject", `NUEVO PARTE: ${nombreCompleto}`);
-            formData.append("DATOS_EXCEL", lineaDatosExcel); 
-            formData.append("Empleado_Email", usuarioConectado);
+            formData.append("_subject", "NUEVO PARTE WEB M2M");
+            formData.append("FECHA", fecha);
+            formData.append("EMPLEADO", nombreCompleto);
+            formData.append("OBRA", tarea.obra);
+            formData.append("TRABAJO", trabajoRealizado);
+            formData.append("HORAS", Number(tarea.horas));
+            formData.append("HORAS_EXTRA", Number(calculoExtras));
+            formData.append("OTROS_TRABAJOS", notaGeneral || "");
+            formData.append("LUGAR_DE_TRABAJO", "Web Localhost");
 
             await fetch("https://formspree.io/f/mkolaaqw", {
                 method: "POST",
@@ -352,7 +296,24 @@ function App() {
                 body: JSON.stringify(Object.fromEntries(formData))
             });
 
-            const { error: errorSupabase } = await supabase
+            const formatoParteHistorial = {
+                id: Date.now() + Math.random(),
+                empleado: usuarioConectado,
+                fecha: fecha,
+                obra: tarea.obra,
+                trabajo: trabajoRealizado,
+                horas: tarea.horas,
+                notas: notaGeneral
+            };
+            tareasInsertadasParaHistorial.push(formatoParteHistorial);
+
+        } catch (errorMail) {
+            console.error("Error en Formspree:", errorMail);
+        }
+
+        // 2. INTENTAR SUPABASE
+        try {
+            await supabase
                 .from('partes')
                 .insert([{
                     fecha: fecha,
@@ -360,55 +321,42 @@ function App() {
                     obra: tarea.obra,
                     trabajo: trabajoRealizado,
                     horas: Number(tarea.horas),
-                    horas_extra: Number(calculoExtrasTotal),
+                    horas_extra: Number(calculoExtras),
                     otros_trabajos: notaGeneral || "",
                     lugar_de_trabajo: "Aplicación Web"
                 }]);
-
-            if (errorSupabase) {
-                console.error("Error al guardar fila en Supabase:", errorSupabase);
-            } else {
-                const formatoParteHistorial = {
-                    id: Date.now() + Math.random(),
-                    empleado: usuarioConectado,
-                    fecha: fecha,
-                    obra: tarea.obra,
-                    trabajo: trabajoRealizado,
-                    horas: tarea.horas,
-                    notas: notaGeneral
-                };
-                tareasInsertadasParaHistorial.push(formatoParteHistorial);
-            }
-
-        } catch (error) {
-            console.error("Error en la conexión del envío de la tarea:", error);
+        } catch (errorSupabase) {
+            console.error("Error al guardar fila en Supabase:", errorSupabase);
         }
     }
 
     if (tareasInsertadasParaHistorial.length > 0) {
         const nuevoHistorialPartes = [...tareasInsertadasParaHistorial, ...historialPartes];
         setHistorialPartes(nuevoHistorialPartes);
+        localStorage.setItem('m2m_historial_partes', JSON.stringify(nuevoHistorialPartes));
 
         const obrasTocadasHoy = [...new Set(tareasDelDia.map(t => t.obra))];
         let motivoExtra = diaSemana === 6 ? 'Sábado' : diaSemana === 0 ? 'Domingo' : 'Exceso jornada (>8h)';
 
-        if (calculoExtrasTotal > 0) {
+        if (calculoExtras > 0) {
             const nuevoHistorialExtras = [{ 
                 id: 'ex-' + Date.now(), 
                 empleado: usuarioConectado, 
                 fecha: fecha, 
-                horas: calculoExtrasTotal, 
+                horas: calculoExtras, 
                 motivo: motivoExtra, 
                 obrasDelDia: obrasTocadasHoy 
             }, ...horasExtrasHistorial];
             
             setHorasExtrasHistorial(nuevoHistorialExtras);
-            alert(`🚀 ¡Parte Enviado y Registrado!\nSe detectaron ${calculoExtrasTotal}h extras.`);
+            localStorage.setItem('m2m_horas_extras', JSON.stringify(nuevoHistorialExtras));
+            
+            alert(`🚀 ¡Parte Enviado y Registrado!\nSe detectaron ${calculoExtras}h extras.`);
         } else {
             alert('🚀 ¡Parte Enviado y Registrado con éxito!');
         }
     } else {
-        alert('❌ Hubo un problema al registrar el parte en la base de datos.');
+        alert('❌ Error crítico: No se pudo procesar el envío del parte.');
     }
 
     setNotaGeneral('');
@@ -597,14 +545,13 @@ function App() {
             )}
 
             {pantallaActual === 'mis-partes' && (
-              <div style={{ textAlignment: 'left' }}>
+              <div style={{ textAlign: 'left' }}>
                 <h2 style={{ color: '#043424', textAlign: 'center', fontSize: '20px' }}>📄 Mis Partes Enviados ({partesFiltrados.length})</h2>
                 {partesFiltrados.map((p) => (
                   <div key={p.id} style={{ padding: '10px', background: '#f5f5f5', borderRadius: '6px', marginBottom: '8px', borderLeft: '4px solid #043424' }}>
                     <strong>📆 {p.fecha.split('-').reverse().join('-')}</strong>
-                    {p.tareas.map((t, idx) => (
-                      <div key={idx} style={{ fontSize: '13px', paddingLeft: '5px' }}>• {t.obra} ({t.horas}h) - {t.trabajo}</div>
-                    ))}
+                    <div style={{ fontSize: '13px', paddingLeft: '5px' }}>• {p.obra} ({p.horas}h) - {p.trabajo}</div>
+                    {p.notes && <div style={{ fontSize: '11px', color: '#666', paddingLeft: '5px', fontStyle: 'italic' }}>Nota: {p.notes}</div>}
                   </div>
                 ))}
                 <button onClick={() => setPantallaActual('menu')} style={{ width: '100%', padding: '12px', background: '#666', color: '#fff', border: 'none', borderRadius: '6px', marginTop: '10px' }}>⬅️ Volver al Menú</button>
