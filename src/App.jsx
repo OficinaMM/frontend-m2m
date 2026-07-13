@@ -587,6 +587,6 @@ const manejarLogin = async (e) => {
       )}
     </div>
   );
-}
+};
 
 export default App;
