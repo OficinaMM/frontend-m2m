@@ -71,7 +71,7 @@ function App() {
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
   const [notaGeneral, setNotaGeneral] = useState('');
   const [tareasDelDia, setTareasDelDia] = useState([
-    { obra: listaObras[0], trabajo: baseDatosObras[listaObras[0]][0], horas: '8', especificarOtros: '' }
+    { obra: listaObras[0], trabajo: baseDatosObras[listaObras[0]][0], horas: '8', especificarOtros: '', lugarTrabajo: '' }
   ]);
 
   const [filtroParteMes, setFiltroParteMes] = useState('');
@@ -231,7 +231,7 @@ function App() {
 
   const añadirFilaTarea = () => {
     const obraPorDefecto = listaObras[0];
-    setTareasDelDia([...tareasDelDia, { obra: obraPorDefecto, trabajo: baseDatosObras[obraPorDefecto][0], horas: '8', especificarOtros: '' }]);
+    setTareasDelDia([...tareasDelDia, { obra: obraPorDefecto, trabajo: baseDatosObras[obraPorDefecto][0], horas: '8', especificarOtros: '', lugarTrabajo: '' }]);
   };
 
   const eliminarFilaTarea = (index) => {
@@ -243,6 +243,7 @@ function App() {
     nuevasTareas[index].obra = nuevaObra;
     nuevasTareas[index].trabajo = baseDatosObras[nuevaObra][0];
     nuevasTareas[index].especificarOtros = '';
+    nuevasTareas[index].lugarTrabajo = '';
     setTareasDelDia(nuevasTareas);
   };
 
@@ -276,10 +277,12 @@ function App() {
     for (const tarea of tareasDelDia) {
         const nombreCompleto = datosEmpleadosPredeterminados[usuarioConectado]?.nombre + " " + datosEmpleadosPredeterminados[usuarioConectado]?.apellidos;
         const trabajoRealizado = tarea.trabajo === 'OTROS' ? tarea.especificarOtros : tarea.trabajo;
+        const infoLugar = tarea.obra === 'TRABAJOS CON RODADO' ? (tarea.lugarTrabajo || "No especificado") : "Aplicación Web";
 
-        const textoFormateadoBarras = `FECHA: ${fecha.split('-').reverse().join('/')} / EMPLEADO: ${nombreCompleto} / OBRA: ${tarea.obra} / TRABAJO: ${trabajoRealizado} / HORAS: ${tarea.horas}h / HORAS EXTRA: ${calculoExtras}h / OBSERVACIONES: ${notaGeneral || "Ninguna"}`;
+        // Incluimos LUGAR en la cadena limpia con barras para Power Automate
+        const textoFormateadoBarras = `FECHA: ${fecha.split('-').reverse().join('/')} / EMPLEADO: ${nombreCompleto} / OBRA: ${tarea.obra} / TRABAJO: ${trabajoRealizado} / HORAS: ${tarea.horas}h / HORAS EXTRA: ${calculoExtras}h / LUGAR: ${infoLugar} / OBSERVACIONES: ${notaGeneral || "Ninguna"}`;
 
-        // 1. ENVÍO GRATUITO CON EMAILJS
+        // 1. ENVÍO CON EMAILJS
         try {
             await fetch("https://api.emailjs.com/api/v1.0/email/send", {
                 method: "POST",
@@ -301,7 +304,8 @@ function App() {
                 obra: tarea.obra,
                 trabajo: trabajoRealizado,
                 horas: tarea.horas,
-                notes: notaGeneral
+                notes: notaGeneral,
+                lugarTrabajo: tarea.obra === 'TRABAJOS CON RODADO' ? tarea.lugarTrabajo : ''
             };
             tareasInsertadasParaHistorial.push(formatoParteHistorial);
 
@@ -309,7 +313,7 @@ function App() {
             console.error("Error en EmailJS:", errorMail);
         }
 
-        // 2. RESPALDO EN SUPABASE (Silenciado)
+        // 2. RESPALDO EN SUPABASE
         try {
             await supabase
                 .from('partes')
@@ -321,7 +325,7 @@ function App() {
                     horas: Number(tarea.horas),
                     horas_extra: Number(calculoExtras),
                     otros_trabajos: notaGeneral || "",
-                    lugar_de_trabajo: "Aplicación Web"
+                    lugar_de_trabajo: infoLugar
                 }]);
         } catch (errorSupabase) {
             console.error("Error en BD:", errorSupabase);
@@ -349,7 +353,7 @@ function App() {
             setHorasExtrasHistorial(nuevoHistorialExtras);
             localStorage.setItem('m2m_horas_extras', JSON.stringify(nuevoHistorialExtras));
             
-            alert(`🚀 ¡Parte Envíado y Registrado!\nSe detectaron ${calculoExtras}h extras.`);
+            alert(`🚀 ¡Parte Enviado y Registrado!\nSe detectaron ${calculoExtras}h extras.`);
         } else {
             alert('🚀 ¡Parte Enviado y Registrado con éxito!');
         }
@@ -358,7 +362,7 @@ function App() {
     }
 
     setNotaGeneral('');
-    setTareasDelDia([{ obra: listaObras[0], trabajo: baseDatosObras[listaObras[0]][0], horas: '8', especificarOtros: '' }]);
+    setTareasDelDia([{ obra: listaObras[0], trabajo: baseDatosObras[listaObras[0]][0], horas: '8', especificarOtros: '', lugarTrabajo: '' }]);
     setPantallaActual('menu');
   };
 
@@ -527,48 +531,130 @@ function App() {
                         </div>
                       </div>
 
-                      {tarea.trabajo === 'OTROS' && <input type="text" placeholder="Especifica el trabajo..." value={tarea.especificarOtros} onChange={(e) => actualizarCampoTarea(index, 'especificarOtros', e.target.value)} required style={{ padding: '10px', borderRadius: '4px', border: '1px solid #b27d14', background: '#ffffe0' }} />}
+                      {tarea.trabajo === 'OTROS' && (
+                        <input type="text" placeholder="Especifica el trabajo..." value={tarea.especificarOtros} onChange={(e) => actualizarCampoTarea(index, 'especificarOtros', e.target.value)} required style={{ padding: '10px', borderRadius: '4px', border: '1px solid #b27d14', background: '#ffffe0' }} />
+                      )}
+
+                      {/* CUADRO AÑADIDO: SOLO APARECE SI SE SELECCIONA TRABAJOS CON RODADO */}
+                      {tarea.obra === 'TRABAJOS CON RODADO' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '5px' }}>
+                          <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#333' }}>Lugar de trabajo:</label>
+                          <input type="text" placeholder="Indica la zona, tramo o PK..." value={tarea.lugarTrabajo || ''} onChange={(e) => actualizarCampoTarea(index, 'lugarTrabajo', e.target.value)} required style={{ padding: '10px', borderRadius: '4px', border: '1px solid #b27d14', background: '#ffffe0' }} />
+                        </div>
+                      )}
                     </div>
                   ))}
 
-                  <button type="button" onClick={añadirFilaTarea} style={{ padding: '10px', background: '#043424', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>➕ Añadir Obra / Trabajo</button>
-                  <textarea placeholder="Observaciones..." rows="2" value={notaGeneral} onChange={(e) => setNotaGeneral(e.target.value)} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }}></textarea>
-                  
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <button type="button" onClick={() => setPantallaActual('menu')} style={{ flex: 1, padding: '12px', background: '#666', color: '#fff', border: 'none', borderRadius: '6px' }}>⬅️ Volver</button>
-                    <button type="submit" style={{ flex: 2, padding: '12px', background: '#043424', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold' }}>🚀 Enviar Parte</button>
+                  <button type="button" onClick={añadirFilaTarea} style={{ padding: '10px', fontWeight: 'bold', color: '#fff', background: '#043424', border: 'none', borderRadius: '6px', cursor: 'pointer', textAlign: 'center' }}>➕ Añadir Obra / Trabajo</button>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '13px', color: '#666' }}>Observaciones generales (Opcional):</label>
+                    <textarea placeholder="Notas u observaciones sobre la jornada de hoy..." value={notaGeneral} onChange={(e) => setNotaGeneral(e.target.value)} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc', minHeight: '70px', resize: 'vertical' }} />
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                    <button type="button" onClick={() => setPantallaActual('menu')} style={{ flex: 1, padding: '12px', background: '#777', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', textAlign: 'center' }}>⬅️ Volver</button>
+                    <button type="submit" style={{ flex: 2, padding: '12px', background: '#043424', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', textAlign: 'center' }}>🚀 Enviar Parte</button>
                   </div>
                 </form>
               </div>
             )}
 
             {pantallaActual === 'mis-partes' && (
-              <div style={{ textAlign: 'left' }}>
-                <h2 style={{ color: '#043424', textAlign: 'center', fontSize: '20px' }}>📄 Mis Partes Enviados ({partesFiltrados.length})</h2>
-                {partesFiltrados.map((p) => (
-                  <div key={p.id} style={{ padding: '10px', background: '#f5f5f5', borderRadius: '6px', marginBottom: '8px', borderLeft: '4px solid #043424' }}>
-                    <strong>📆 {p.fecha.split('-').reverse().join('-')}</strong>
-                    <div style={{ fontSize: '13px', paddingLeft: '5px' }}>• {p.obra} ({p.horas}h) - {p.trabajo}</div>
-                    {p.notas && <div style={{ fontSize: '11px', color: '#666', paddingLeft: '5px', fontStyle: 'italic' }}>Nota: {p.notas}</div>}
+              <div>
+                <h2 style={{ color: '#043424', fontSize: '20px', marginBottom: '15px' }}>📄 Historial de Partes Enviados</h2>
+                
+                <div style={{ background: '#f5f5f5', padding: '12px', borderRadius: '8px', marginBottom: '15px', display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 'bold' }}>Mes:</label>
+                    <input type="month" value={filtroParteMes} onChange={(e) => setFiltroParteMes(e.target.value)} style={{ padding: '4px', borderRadius: '4px', border: '1px solid #ccc' }} />
                   </div>
-                ))}
-                <button onClick={() => setPantallaActual('menu')} style={{ width: '100%', padding: '12px', background: '#666', color: '#fff', border: 'none', borderRadius: '6px', marginTop: '10px' }}>⬅️ Volver al Menú</button>
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                    <input type="checkbox" id="chkSemana" checked={filtroParteSemana} onChange={(e) => setFiltroParteSemana(e.target.checked)} />
+                    <label htmlFor="chkSemana" style={{ fontSize: '12px', cursor: 'pointer' }}>Esta semana</label>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 'bold' }}>Orden:</label>
+                    <select value={ordenPartes} onChange={(e) => setOrdenPartes(e.target.value)} style={{ padding: '4px', borderRadius: '4px', border: '1px solid #ccc' }}>
+                      <option value="desc">Más nuevos primero</option>
+                      <option value="asc">Más viejos primero</option>
+                    </select>
+                  </div>
+                  <button onClick={limpiarFiltrosGeneral} style={{ fontSize: '11px', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer' }}>Limpiar</button>
+                </div>
+
+                <div style={{ maxHeight: '400px', overflowY: 'auto', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {partesFiltrados.length === 0 ? (
+                    <p style={{ textAlign: 'center', color: '#666', fontSize: '14px' }}>No hay partes que coincidan con los filtros seleccionados.</p>
+                  ) : (
+                    partesFiltrados.map((parte) => (
+                      <div key={parte.id} style={{ border: '1px solid #ddd', padding: '12px', borderRadius: '6px', background: '#fff' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '4px', marginBottom: '6px' }}>
+                          <span style={{ fontWeight: 'bold', color: '#043424', fontSize: '13px' }}>📅 {parte.fecha.split('-').reverse().join('/')}</span>
+                          <span style={{ background: '#043424', color: '#fff', padding: '2px 6px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold' }}>{parte.horas} Horas</span>
+                        </div>
+                        <div style={{ fontSize: '13px', color: '#333' }}>
+                          <p style={{ margin: '2px 0' }}><strong>Obra:</strong> {parte.obra}</p>
+                          <p style={{ margin: '2px 0' }}><strong>Trabajo:</strong> {parte.trabajo}</p>
+                          {parte.lugarTrabajo && <p style={{ margin: '2px 0' }}><strong>Lugar:</strong> {parte.lugarTrabajo}</p>}
+                          {parte.notes && <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#666', fontStyle: 'italic', background: '#f9f9f9', padding: '4px', borderRadius: '4px' }}>Obs: {parte.notes}</p>}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
             )}
 
             {pantallaActual === 'horas-extras' && (
-              <div style={{ textAlign: 'left' }}>
-                <h2 style={{ color: '#043424', textAlign: 'center', fontSize: '20px' }}>⏰ Mis Horas Extras</h2>
-                <div style={{ background: '#fffbeb', padding: '12px', borderRadius: '6px', marginBottom: '15px', border: '1px solid #fef3c7' }}>
-                  <div>Horas acumuladas pendientes: <strong>{saldoHorasPendientes}h</strong></div>
-                  <div>Saldo estimado a cobrar: <strong style={{ color: '#b27d14' }}>{saldoDineroPendiente} €</strong></div>
-                </div>
-                {extrasFiltradas.map((h) => (
-                  <div key={h.id} style={{ padding: '10px', background: '#f9f9f9', borderRadius: '6px', marginBottom: '6px' }}>
-                    <strong>{h.fecha.split('-').reverse().join('-')}</strong>: {h.horas}h extras ({h.motivo})
+              <div>
+                <h2 style={{ color: '#043424', fontSize: '20px', marginBottom: '5px' }}>⏰ Control de Horas Extras</h2>
+                <p style={{ margin: '0 0 15px 0', fontSize: '12px', color: '#555' }}>
+                  Las horas extras calculadas son las trabajadas en fines de semana o las que superen las 8h diarias de lunes a viernes.
+                </p>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '20px' }}>
+                  <div style={{ background: '#f2f7f4', padding: '12px', borderRadius: '8px', border: '1px solid #c5d9cc' }}>
+                    <div style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', fontWeight: 'bold' }}>Acumuladas totales</div>
+                    <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#043424' }}>{totalGeneralExtrasProducidas} h</div>
                   </div>
-                ))}
-                <button onClick={() => setPantallaActual('menu')} style={{ width: '100%', padding: '12px', background: '#666', color: '#fff', border: 'none', borderRadius: '6px', marginTop: '10px' }}>⬅️ Volver al Menú</button>
+                  <div style={{ background: '#fdf7ec', padding: '12px', borderRadius: '8px', border: '1px solid #f5e4c4' }}>
+                    <div style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', fontWeight: 'bold' }}>Saldo pendiente</div>
+                    <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#b27d14' }}>{saldoHorasPendientes} h</div>
+                    <div style={{ fontSize: '11px', color: '#777', marginTop: '2px' }}>~ {saldoDineroPendiente} € aprox.</div>
+                  </div>
+                </div>
+
+                <div style={{ background: '#f5f5f5', padding: '12px', borderRadius: '8px', marginBottom: '15px', display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 'bold' }}>Mes:</label>
+                    <input type="month" value={filtroExtraMes} onChange={(e) => setFiltroExtraMes(e.target.value)} style={{ padding: '4px', borderRadius: '4px', border: '1px solid #ccc' }} />
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                    <input type="checkbox" id="chkExSemana" checked={filtroExtraSemana} onChange={(e) => setFiltroExtraSemana(e.target.checked)} />
+                    <label htmlFor="chkExSemana" style={{ fontSize: '12px', cursor: 'pointer' }}>Esta semana</label>
+                  </div>
+                  <button onClick={limpiarFiltrosExtras} style={{ fontSize: '11px', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', marginLeft: 'auto' }}>Limpiar</button>
+                </div>
+
+                <div style={{ maxHeight: '280px', overflowY: 'auto', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {extrasFiltradas.length === 0 ? (
+                    <p style={{ textAlign: 'center', color: '#666', fontSize: '13px', padding: '10px' }}>No hay registros de horas extras en este rango.</p>
+                  ) : (
+                    extrasFiltradas.map((extra) => (
+                      <div key={extra.id} style={{ border: '1px solid #e2e8f0', padding: '10px', borderRadius: '6px', background: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <span style={{ fontWeight: 'bold', fontSize: '13px', color: '#333' }}>📅 {extra.fecha.split('-').reverse().join('/')}</span>
+                          <span style={{ fontSize: '11px', color: '#666', marginLeft: '10px', background: '#edf2f7', padding: '2px 6px', borderRadius: '4px' }}>{extra.motivo}</span>
+                          <div style={{ fontSize: '11px', color: '#777', marginTop: '3px' }}>Obras: {extra.obrasDelDia ? extra.obrasDelDia.join(', ') : 'Desconocida'}</div>
+                        </div>
+                        <div style={{ fontWeight: 'bold', color: '#b27d14', fontSize: '15px', background: '#fffaf0', padding: '6px 10px', borderRadius: '6px', border: '1px dashed #f5e4c4' }}>
+                          +{extra.horas}h
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
             )}
 
