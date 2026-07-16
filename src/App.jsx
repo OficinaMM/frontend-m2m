@@ -198,43 +198,52 @@ useEffect(() => {
 
   const precioHoraActual = tarifasPorCategoria[posicionUser] || 10; // <-- ESTO SERÍA LA LÍNEA 110 ORIGINAL
 
-  const manejarLogin = async (e) => {
-    e.preventDefault();
-    const correoIntroducido = correo.trim().toLowerCase();
-    const passwordIntroducido = password.trim();
+ const manejarLogin = async (e) => {
+  e.preventDefault();
 
-    if (correosAutorizados.includes(correoIntroducido)) {
-      try {
-        const { data: usuarioDb, error } = await supabase
-          .from('empleados')
-          .select('*')
-          .eq('correo', correoIntroducido)
-          .single();
+  const correoIntroducido = correo.trim().toLowerCase();
+  const passwordIntroducido = password.trim();
 
-        if (error && error.code !== 'PGRST116') {
-          console.error("Error al consultar Supabase:", error);
-        }
+  if (correosAutorizados.includes(correoIntroducido)) {
+    try {
+      const { data: usuarioDb, error } = await supabase
+        .from('empleados')
+        .select('*')
+        .eq('correo', correoIntroducido)
+        .single();
 
-        const passwordCorrecta = usuarioDb ? usuarioDb.password : PASSWORD_TEMPORAL;
-
-        if (passwordIntroducido === passwordCorrecta) {
-          setUsuarioConectado(correoIntroducido);
-          if (!usuarioDb) {
-            setPantallaActual('primer-cambio-pass');
-          } else {
-            setPantallaActual('menu');
-          }
-        } else {
-          alert('❌ Contraseña incorrecta.');
-        }
-      } catch (err) {
-        console.error("Error en el login:", err);
-        alert('❌ Error al intentar conectar con la base de datos.');
+      if (error && error.code !== 'PGRST116') {
+        console.error("Error al consultar Supabase:", error);
       }
-    } else {
-      alert('❌ Acceso denegado. Este correo electrónico no está autorizado.');
+
+      const passwordCorrecta = usuarioDb ? usuarioDb.password : PASSWORD_TEMPORAL;
+
+      if (passwordIntroducido === passwordCorrecta) {
+        setUsuarioConectado(correoIntroducido);
+
+        // Si el usuario ya existe en Supabase, cargamos sus datos reales de la nube
+        if (usuarioDb) {
+          setPosicionUser(usuarioDb.posicion || 'No Asignada');
+          setNombreEdit(usuarioDb.nombre || '');
+          setApellidosEdit(usuarioDb.apellidos || '');
+          setTelefonoEdit(usuarioDb.telefono || '');
+          
+          setPantallaActual('menu');
+        } else {
+          // Si no existe en la BD (primera vez con clave temporal), va a cambiarla
+          setPantallaActual('primer-cambio-pass');
+        }
+      } else {
+        alert('❌ Contraseña incorrecta.');
+      }
+    } catch (err) {
+      console.error("Error en el login:", err);
+      alert('❌ Error al intentar conectar con la base de datos.');
     }
-  };
+  } else {
+    alert('❌ Acceso denegado. Este correo electrónico no está autorizado.');
+  }
+};
 
   const manejarChangePassword = async (e) => {
     e.preventDefault();
