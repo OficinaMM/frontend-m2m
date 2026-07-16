@@ -91,7 +91,7 @@ function App() {
     return guardado ? JSON.parse(guardado) : [];
   });
 
-  useEffect(() => {
+ useEffect(() => {
     if (usuarioConectado) {
       const infoDefecto = datosEmpleadosPredeterminados[usuarioConectado] || { nombre: '', apellidos: '', telefono: '', posicion: 'No Asignada' };
       setPosicionUser(infoDefecto.posicion);
@@ -105,9 +105,50 @@ function App() {
         setTelefonoEdit(infoDefecto.telefono);
       }
     }
-  }, [usuarioConectado]);
+  }, [usuarioConectado]); // <-- ESTA ES LA LÍNEA 108 ORIGINAL
 
-  const precioHoraActual = tarifasPorCategoria[posicionUser] || 10;
+  // ==========================================
+  // NUEVO BLOQUE A AÑADIR PARA SINCRONIZAR PARTES DESDE SUPABASE
+  // ==========================================
+  useEffect(() => {
+    const cargarPartesDesdeSupabase = async () => {
+      if (usuarioConectado) {
+        try {
+          const { data, error } = await supabase
+            .from('partes_publicos')
+            .select('*')
+            .eq('empleado', usuarioConectado)
+            .order('fecha', { ascending: false });
+
+          if (error) {
+            console.error("Error al cargar partes de Supabase:", error);
+          } else if (data) {
+            // Adaptamos los datos de Supabase al formato de tu historial local
+            const partesFormateados = data.map(p => ({
+              id: p.id,
+              empleado: p.empleado,
+              fecha: p.fecha,
+              obra: p.obra,
+              trabajo: p.trabajo,
+              horas: p.horas,
+              notes: p.otros_trabajos, 
+              lugarTrabajo: p.lugar_de_trabajo
+            }));
+            
+            setHistorialPartes(partesFormateados);
+            localStorage.setItem('m2m_historial_partes', JSON.stringify(partesFormateados));
+          }
+        } catch (err) {
+          console.error("Error de conexión con Supabase:", err);
+        }
+      }
+    };
+
+    cargarPartesDesdeSupabase();
+  }, [usuarioConectado]);
+  // ==========================================
+
+  const precioHoraActual = tarifasPorCategoria[posicionUser] || 10; // <-- ESTO SERÍA LA LÍNEA 110 ORIGINAL
 
   const manejarLogin = async (e) => {
     e.preventDefault();
