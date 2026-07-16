@@ -312,10 +312,10 @@ function App() {
             console.error("Error en EmailJS:", errorMail);
         }
 
-        // 2. RESPALDO EN SUPABASE
+       // 2. RESPALDO EN SUPABASE
         try {
             await supabase
-                .from('partes')
+                .from('partes_publicos') // <-- Aquí hemos cambiado 'partes' por 'partes_publicos'
                 .insert([{
                     fecha: fecha,
                     empleado: usuarioConectado,
