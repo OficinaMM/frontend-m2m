@@ -91,22 +91,70 @@ function App() {
     return guardado ? JSON.parse(guardado) : [];
   });
 
- useEffect(() => {
-    if (usuarioConectado) {
-      const infoDefecto = datosEmpleadosPredeterminados[usuarioConectado] || { nombre: '', apellidos: '', telefono: '', posicion: 'No Asignada' };
-      setPosicionUser(infoDefecto.posicion);
-      setNombreEdit(infoDefecto.nombre);
-      setApellidosEdit(infoDefecto.apellidos);
+useEffect(() => {
+    const checkUsuarioYActualizarDatos = async () => {
+      if (usuarioConectado) {
+        try {
+          const { data: usuarioDb } = await supabase
+            .from('empleados')
+            .select('*')
+            .eq('correo', usuarioConectado)
+            .single();
 
-      const telGuardado = localStorage.getItem(`tel_${usuarioConectado}`);
-      if (telGuardado) {
-        setTelefonoEdit(telGuardado);
-      } else {
-        setTelefonoEdit(infoDefecto.telefono);
+          if (usuarioDb) {
+            // Sincroniza la categoría y los datos reales desde la nube
+            setPosicionUser(usuarioDb.posicion || 'No Asignada');
+            setNombreEdit(usuarioDb.nombre || '');
+            setApellidosEdit(usuarioDb.apellidos || '');
+            
+            const telGuardado = localStorage.getItem(`tel_${usuarioConectado}`);
+            setTelefonoEdit(telGuardado || usuarioDb.telefono || '');
+          }
+        } catch (err) {
+          console.error("Error al refrescar datos de usuario:", err);
+        }
       }
-    }
-  }, [usuarioConectado]); // <-- ESTA ES LA LÍNEA 108 ORIGINAL
+    };
 
+    checkUsuarioYActualizarDatos();
+  }, [usuarioConectado]);
+
+  // Sincronizador para cargar automáticamente el historial de partes desde Supabase
+  useEffect(() => {
+    const cargarPartesDesdeSupabase = async () => {
+      if (usuarioConectado) {
+        try {
+          const { data, error } = await supabase
+            .from('partes_publicos')
+            .select('*')
+            .eq('empleado', usuarioConectado)
+            .order('fecha', { ascending: false });
+
+          if (error) {
+            console.error("Error al cargar partes de Supabase:", error);
+          } else if (data) {
+            const partesFormateados = data.map(p => ({
+              id: p.id,
+              empleado: p.empleado,
+              fecha: p.fecha,
+              obra: p.obra,
+              trabajo: p.trabajo,
+              horas: p.horas,
+              notes: p.otros_trabajos, 
+              lugarTrabajo: p.lugar_de_trabajo
+            }));
+            
+            setHistorialPartes(partesFormateados);
+            localStorage.setItem('m2m_historial_partes', JSON.stringify(partesFormateados));
+          }
+        } catch (err) {
+          console.error("Error de conexión con Supabase:", err);
+        }
+      }
+    };
+
+    cargarPartesDesdeSupabase();
+  }, [usuarioConectado]);
   // ==========================================
   // NUEVO BLOQUE A AÑADIR PARA SINCRONIZAR PARTES DESDE SUPABASE
   // ==========================================
