@@ -34,16 +34,8 @@ function App() {
 
   const correosAutorizados = Object.keys(datosEmpleadosPredeterminados);
   const PASSWORD_TEMPORAL = 'M2M2026*';
-
-  const baseDatosObras = {
-    'ÁTICO TEZENIS, CALLE SAN MIGUEL': ['DEMOLICIONES', 'SOLADO DE BALDOSAS CERÁMICAS', 'PLADUR', 'PINTURA', 'OTROS'],
-    'SON VERÍ': ['MAMPARAS (MONTAJE Y DESMONTAJE)', 'ARMARIOS (PINTURA)', 'PLADUR', 'OTROS'],
-    'SANTANYÍ': ['PINTURA', 'OTROS'],
-    'TRABAJOS CON RODADO': ['OTROS']
-  };
-
-  const listaObras = Object.keys(baseDatosObras);
-
+const [baseDatosObras, setBaseDatosObras] = useState({});
+  const [listaObras, setListaObras] = useState([]);
   const historialPagosM2M = [
     { empleado: 'domingorodriguezguerrero1@gmail.com', mes: '2026-05', horasPagadas: 10, importe: 150, detalle: 'Plus de Productividad (Nómina Mayo)' },
     { empleado: 'domingorodriguezguerrero1@gmail.com', mes: '2026-06', horasPagadas: 8, importe: 120, detalle: 'Plus de Productividad (Nómina Junio)' },
