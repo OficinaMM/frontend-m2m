@@ -21,7 +21,6 @@ function App() {
     'exon.saa0707@gmail.com': { nombre: 'Edson', apellidos: 'Sabino Alvarez Argote', telefono: '600000013', posicion: 'Oficial de 1ª', dni: '54631451B' }
   };
 
-  // TARIFAS DE HORA EXTRA
   const tarifasPorCategoria = {
     'Encargado General': 18,
     'Oficial de 1ª': 15,
@@ -65,7 +64,6 @@ function App() {
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
   const [notaGeneral, setNotaGeneral] = useState('');
   
-  // SOLUCIÓN AL ERROR: Inicialización segura de tareasDelDia
   const [tareasDelDia, setTareasDelDia] = useState([
     { obra: '', trabajo: '', horas: '8', especificarOtros: '', lugarTrabajo: '' }
   ]);
@@ -74,6 +72,11 @@ function App() {
   const [filtroParteSemana, setFiltroParteSemana] = useState(false);
   const [ordenPartes, setOrdenPartes] = useState('desc'); 
   
+  // ESTADOS DEL PANEL DE ADMINISTRACIÓN
+  const [todosLosPartesAdmin, setTodosLosPartesAdmin] = useState([]);
+  const [filtroAdminEmpleado, setFiltroAdminEmpleado] = useState('');
+  const [filtroAdminFecha, setFiltroAdminFecha] = useState('');
+
   const [filtroExtraMes, setFiltroExtraMes] = useState(''); 
   const [filtroExtraSemana, setFiltroExtraSemana] = useState(false); 
 
@@ -91,9 +94,7 @@ function App() {
   useEffect(() => {
     const cargarObrasYTrabajos = async () => {
       try {
-        // Cargar Obras
         const { data: dataObras } = await supabase.from('OBRAS').select('*');
-        // Cargar Trabajos
         const { data: dataTrabajos } = await supabase.from('TRABAJOS A REALIZAR').select('*');
 
         if (dataObras && dataObras.length > 0) {
@@ -113,7 +114,6 @@ function App() {
             });
           }
 
-          // Asegurar que siempre hay la opción OTROS
           Object.keys(mapaObrasTrabajos).forEach(o => {
             if (!mapaObrasTrabajos[o].includes('OTROS')) {
               mapaObrasTrabajos[o].push('OTROS');
@@ -122,7 +122,6 @@ function App() {
 
           setBaseDatosObras(mapaObrasTrabajos);
 
-          // Establecer la primera obra por defecto en la primera tarea
           const obraInicial = nombresObras[0];
           const trabajoInicial = (mapaObrasTrabajos[obraInicial] && mapaObrasTrabajos[obraInicial][0]) || 'OTROS';
           setTareasDelDia([
@@ -164,7 +163,7 @@ function App() {
     checkUsuarioYActualizarDatos();
   }, [usuarioConectado]);
 
-  // Sincronizador para cargar automáticamente el historial de partes desde Supabase
+  // Cargar partes personales del usuario
   useEffect(() => {
     const cargarPartesDesdeSupabase = async () => {
       if (usuarioConectado) {
@@ -200,6 +199,50 @@ function App() {
 
     cargarPartesDesdeSupabase();
   }, [usuarioConectado]);
+
+  // CARGAR TODOS LOS PARTES SI ES ADMINISTRACIÓN
+  const cargarTodosLosPartesAdmin = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('partes_publicos')
+        .select('*')
+        .order('fecha', { ascending: false });
+
+      if (error) {
+        console.error("Error al cargar partes globales:", error);
+      } else if (data) {
+        setTodosLosPartesAdmin(data);
+      }
+    } catch (err) {
+      console.error("Error consultando administración:", err);
+    }
+  };
+
+  // ELIMINAR PARTE DESDE EL PANEL DE ADMINISTRACIÓN
+  const eliminarParteAdmin = async (idParte, correoEmpleado, fechaParte) => {
+    const confirmar = window.confirm(`⚠️ ¿Seguro que quieres eliminar este parte de ${correoEmpleado} del día ${fechaParte}? Esta acción es irreversible.`);
+    if (!confirmar) return;
+
+    try {
+      const { error } = await supabase
+        .from('partes_publicos')
+        .delete()
+        .eq('id', idParte);
+
+      if (error) throw error;
+
+      alert('✅ Parte eliminado correctamente.');
+      
+      // Actualizamos la lista de administración
+      setTodosLosPartesAdmin(prev => prev.filter(p => p.id !== idParte));
+      // Actualizamos la lista local por si fuera del mismo usuario
+      setHistorialPartes(prev => prev.filter(p => p.id !== idParte));
+
+    } catch (err) {
+      console.error("Error al borrar parte:", err);
+      alert('❌ No se pudo borrar el parte.');
+    }
+  };
 
   const precioHoraActual = tarifasPorCategoria[posicionUser] || 10;
 
@@ -537,6 +580,13 @@ function App() {
   const saldoHorasPendientes = totalGeneralExtrasProducidas - totalHorasPagadas;
   const saldoDineroPendiente = saldoHorasPendientes * precioHoraActual;
 
+  // Filtrado de partes en panel Admin
+  const partesAdminFiltrados = todosLosPartesAdmin.filter(p => {
+    if (filtroAdminEmpleado && p.empleado !== filtroAdminEmpleado) return false;
+    if (filtroAdminFecha && p.fecha !== filtroAdminFecha) return false;
+    return true;
+  });
+
   return (
     <div style={{ 
       fontFamily: 'sans-serif', margin: 0, padding: '15px', minHeight: '100vh', boxSizing: 'border-box',
@@ -622,7 +672,77 @@ function App() {
                   <button onClick={() => setPantallaActual('nuevo-parte')} style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '1px solid #ccc', background: '#f0f0f0' }}>📋 Enviar Nuevo Parte</button>
                   <button onClick={() => { setPantallaActual('mis-partes'); limpiarFiltrosGeneral(); }} style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '1px solid #ccc', background: '#f0f0f0' }}>📄 Ver Partes Enviados</button>
                   <button onClick={() => { setPantallaActual('horas-extras'); limpiarFiltrosExtras(); }} style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '1px solid #ccc', background: '#f0f0f0' }}>⏰ Mis Horas Extras</button>
+
+                  {/* BOTÓN EXCLUSIVO MÁSTER ADMINISTRACIÓN */}
+                  {usuarioConectado === 'administracion@grupom2m.com' && (
+                    <button 
+                      onClick={() => { setPantallaActual('panel-admin'); cargarTodosLosPartesAdmin(); }} 
+                      style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '2px solid #b27d14', background: '#fffaf0', color: '#b27d14', marginTop: '10px' }}
+                    >
+                      🛡️ Panel de Administración / Gestionar Partes
+                    </button>
+                  )}
+
                   <button onClick={cerrarSesion} style={{ padding: '8px', fontSize: '13px', color: '#888', cursor: 'pointer', border: 'none', background: 'none', textDecoration: 'underline', marginTop: '15px' }}>Cerrar Sesión</button>
+                </div>
+              </div>
+            )}
+
+            {/* PANEL DE ADMINISTRACIÓN MÁSTER */}
+            {pantallaActual === 'panel-admin' && (
+              <div>
+                <h2 style={{ color: '#043424', fontSize: '20px', marginBottom: '5px' }}>🛡️ Gestor de Partes de Administración</h2>
+                <p style={{ margin: '0 0 15px 0', fontSize: '12px', color: '#555' }}>Desde aquí puedes revisar y eliminar partes de cualquier empleado en tiempo real.</p>
+
+                <div style={{ background: '#f5f5f5', padding: '12px', borderRadius: '8px', marginBottom: '15px', display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flex: '1 1 200px' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 'bold' }}>Empleado:</label>
+                    <select value={filtroAdminEmpleado} onChange={(e) => setFiltroAdminEmpleado(e.target.value)} style={{ padding: '6px', borderRadius: '4px', border: '1px solid #ccc', width: '100%' }}>
+                      <option value="">-- Todos los Empleados --</option>
+                      {correosAutorizados.map(c => (
+                        <option key={c} value={c}>{datosEmpleadosPredeterminados[c]?.nombre} {datosEmpleadosPredeterminados[c]?.apellidos}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 'bold' }}>Fecha:</label>
+                    <input type="date" value={filtroAdminFecha} onChange={(e) => setFiltroAdminFecha(e.target.value)} style={{ padding: '5px', borderRadius: '4px', border: '1px solid #ccc' }} />
+                  </div>
+                  <button onClick={() => { setFiltroAdminEmpleado(''); setFiltroAdminFecha(''); }} style={{ fontSize: '11px', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer' }}>Limpiar Filtros</button>
+                </div>
+
+                <div style={{ maxHeight: '450px', overflowY: 'auto', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {partesAdminFiltrados.length === 0 ? (
+                    <p style={{ textAlign: 'center', color: '#666', fontSize: '14px', padding: '20px' }}>No hay partes que coincidan con los filtros.</p>
+                  ) : (
+                    partesAdminFiltrados.map((p) => {
+                      const empData = datosEmpleadosPredeterminados[p.empleado];
+                      const nombreEmp = empData ? `${empData.nombre} ${empData.apellidos}` : p.empleado;
+
+                      return (
+                        <div key={p.id} style={{ border: '1px solid #dcdcdc', padding: '12px', borderRadius: '8px', background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', borderBottom: '1px solid #eee', paddingBottom: '6px' }}>
+                            <div>
+                              <strong style={{ color: '#043424', fontSize: '14px' }}>👤 {nombreEmp}</strong>
+                              <div style={{ fontSize: '11px', color: '#777' }}>📅 {p.fecha.split('-').reverse().join('/')}</div>
+                            </div>
+                            <button 
+                              onClick={() => eliminarParteAdmin(p.id, p.empleado, p.fecha)}
+                              style={{ background: '#d9534f', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}
+                            >
+                              🗑️ Eliminar
+                            </button>
+                          </div>
+                          <div style={{ fontSize: '13px', color: '#333' }}>
+                            <p style={{ margin: '3px 0' }}><strong>Obra:</strong> {p.obra}</p>
+                            <p style={{ margin: '3px 0' }}><strong>Trabajo:</strong> {p.trabajo} ({p.horas}h)</p>
+                            {p.lugar_de_trabajo && <p style={{ margin: '3px 0' }}><strong>Lugar:</strong> {p.lugar_de_trabajo}</p>}
+                            {p.otros_trabajos && <p style={{ margin: '3px 0', fontSize: '11px', color: '#666', fontStyle: 'italic' }}>Obs: {p.otros_trabajos}</p>}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               </div>
             )}
