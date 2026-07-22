@@ -91,7 +91,7 @@ function App() {
             .from('empleados')
             .select('*')
             .eq('correo', usuarioConectado)
-            .maybeSingle();
+            .single();
 
           if (usuarioDb) {
             setPosicionUser(usuarioDb.posicion || 'No Asignada');
@@ -161,26 +161,30 @@ function App() {
           .from('empleados')
           .select('*')
           .eq('correo', correoIntroducido)
-          .maybeSingle();
+          .single();
 
-        if (error) {
+        if (error && error.code !== 'PGRST116') {
           console.error("Error al consultar Supabase:", error);
         }
 
-        const passwordCorrecta = usuarioDb ? usuarioDb.password : PASSWORD_TEMPORAL;
+        // Si la clave en Supabase no existe o está vacía (NULL), aceptamos la clave temporal
+        const passwordCorrecta = (usuarioDb && usuarioDb.password) ? usuarioDb.password : PASSWORD_TEMPORAL;
 
         if (passwordIntroducido === passwordCorrecta) {
           setUsuarioConectado(correoIntroducido);
 
-          if (usuarioDb && usuarioDb.password) {
+          if (usuarioDb) {
             setPosicionUser(usuarioDb.posicion || 'No Asignada');
             setNombreEdit(usuarioDb.nombre || '');
             setApellidosEdit(usuarioDb.apellidos || '');
             setTelefonoEdit(usuarioDb.telefono || '');
-            
-            setPantallaActual('menu');
-          } else {
+          }
+
+          // Si en Supabase no tiene clave o está vacía, le exigimos crearla
+          if (!usuarioDb || !usuarioDb.password) {
             setPantallaActual('primer-cambio-pass');
+          } else {
+            setPantallaActual('menu');
           }
         } else {
           alert('❌ Contraseña incorrecta.');
@@ -194,36 +198,34 @@ function App() {
     }
   };
 
-  // CAMBIO 1: Modificado para usar .update() en lugar de .upsert()
   const manejarChangePassword = async (e) => {
     e.preventDefault();
-    if (nuevaPassword.trim().length < 4) {
+    const passLimpia = nuevaPassword.trim();
+
+    if (passLimpia.length < 4) {
       alert('⚠️ La contraseña debe tener al menos 4 caracteres.');
       return;
     }
-    if (nuevaPassword.trim() === PASSWORD_TEMPORAL) {
+    if (passLimpia === PASSWORD_TEMPORAL) {
       alert('⚠️ No puedes usar la contraseña temporal. Elige una nueva.');
       return;
     }
 
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('empleados')
-        .update({ password: nuevaPassword.trim() })
-        .eq('correo', usuarioConectado);
+        .update({ password: passLimpia })
+        .eq('correo', usuarioConectado)
+        .select();
 
-      if (error) {
-        console.error("Error de Supabase:", error);
-        alert('❌ Error de Supabase al actualizar: ' + error.message);
-        return;
-      }
+      if (error) throw error;
 
-      alert('✅ Contraseña guardada en la base de datos correctamente.');
+      alert('✅ Contraseña guardada en Supabase correctamente.');
       setNuevaPassword('');
       setPantallaActual('menu');
     } catch (err) {
       console.error("Error al guardar contraseña:", err);
-      alert('❌ No se pudo guardar la contraseña en la base de datos.');
+      alert('❌ No se pudo guardar la contraseña en Supabase: ' + (err.message || 'Error desconocido'));
     }
   };
 
@@ -247,7 +249,6 @@ function App() {
     setPantallaActual('recovery-escribir-pass');
   };
 
-  // CAMBIO 2: Modificado para usar .update() en lugar de .upsert()
   const manejarGuardarNuevaPasswordRecovery = async (e) => {
     e.preventDefault();
     const pass1 = passRecoveryNueva.trim();
@@ -264,18 +265,15 @@ function App() {
     }
 
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('empleados')
         .update({ password: pass1 })
-        .eq('correo', correoValidadoRecovery);
+        .eq('correo', correoValidadoRecovery)
+        .select();
 
-      if (error) {
-        console.error("Error de Supabase:", error);
-        alert('❌ Error de Supabase al actualizar: ' + error.message);
-        return;
-      }
+      if (error) throw error;
 
-      alert('✅ Contraseña restablecida con éxito. Ya puedes iniciar sesión con tu nueva contraseña.');
+      alert('✅ Contraseña restablecida con éxito en Supabase. Ya puedes iniciar sesión.');
       
       setCorreoRecovery('');
       setDniRecovery('');
@@ -285,7 +283,7 @@ function App() {
       setPantallaActual('menu');
     } catch (err) {
       console.error("Error al guardar la nueva contraseña:", err);
-      alert('❌ No se pudo guardar la nueva contraseña en la base de datos.');
+      alert('❌ No se pudo guardar la nueva contraseña en Supabase: ' + (err.message || 'Error desconocido'));
     }
   };
 
