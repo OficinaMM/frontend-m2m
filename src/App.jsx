@@ -21,6 +21,7 @@ function App() {
     'exon.saa0707@gmail.com': { nombre: 'Edson', apellidos: 'Sabino Alvarez Argote', telefono: '600000013', posicion: 'Oficial de 1ª', dni: '54631451B' }
   };
 
+  // TARIFAS DE HORA EXTRA
   const tarifasPorCategoria = {
     'Encargado General': 18,
     'Oficial de 1ª': 15,
@@ -33,10 +34,8 @@ function App() {
 
   const correosAutorizados = Object.keys(datosEmpleadosPredeterminados);
   const PASSWORD_TEMPORAL = 'M2M2026*';
-
   const [baseDatosObras, setBaseDatosObras] = useState({});
   const [listaObras, setListaObras] = useState([]);
-
   const historialPagosM2M = [
     { empleado: 'domingorodriguezguerrero1@gmail.com', mes: '2026-05', horasPagadas: 10, importe: 150, detalle: 'Plus de Productividad (Nómina Mayo)' },
     { empleado: 'domingorodriguezguerrero1@gmail.com', mes: '2026-06', horasPagadas: 8, importe: 120, detalle: 'Plus de Productividad (Nómina Junio)' },
@@ -63,20 +62,14 @@ function App() {
 
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
   const [notaGeneral, setNotaGeneral] = useState('');
-  
   const [tareasDelDia, setTareasDelDia] = useState([
-    { obra: '', trabajo: '', horas: '8', especificarOtros: '', lugarTrabajo: '' }
+    { obra: listaObras[0], trabajo: baseDatosObras[listaObras[0]]?.[0] || '', horas: '8', especificarOtros: '', lugarTrabajo: '' }
   ]);
 
   const [filtroParteMes, setFiltroParteMes] = useState('');
   const [filtroParteSemana, setFiltroParteSemana] = useState(false);
   const [ordenPartes, setOrdenPartes] = useState('desc'); 
   
-  // ESTADOS DEL PANEL DE ADMINISTRACIÓN
-  const [todosLosPartesAdmin, setTodosLosPartesAdmin] = useState([]);
-  const [filtroAdminEmpleado, setFiltroAdminEmpleado] = useState('');
-  const [filtroAdminFecha, setFiltroAdminFecha] = useState('');
-
   const [filtroExtraMes, setFiltroExtraMes] = useState(''); 
   const [filtroExtraSemana, setFiltroExtraSemana] = useState(false); 
 
@@ -89,52 +82,6 @@ function App() {
     const guardado = localStorage.getItem('m2m_historial_partes');
     return guardado ? JSON.parse(guardado) : [];
   });
-
-  // CARGAR OBRAS Y TRABAJOS DESDE SUPABASE
-  useEffect(() => {
-    const cargarObrasYTrabajos = async () => {
-      try {
-        const { data: dataObras } = await supabase.from('OBRAS').select('*');
-        const { data: dataTrabajos } = await supabase.from('TRABAJOS A REALIZAR').select('*');
-
-        if (dataObras && dataObras.length > 0) {
-          const nombresObras = dataObras.map(o => o.OBRA);
-          setListaObras(nombresObras);
-
-          const mapaObrasTrabajos = {};
-          nombresObras.forEach(obra => {
-            mapaObrasTrabajos[obra] = [];
-          });
-
-          if (dataTrabajos) {
-            dataTrabajos.forEach(t => {
-              if (mapaObrasTrabajos[t.OBRA]) {
-                mapaObrasTrabajos[t.OBRA].push(t.TRABAJOS);
-              }
-            });
-          }
-
-          Object.keys(mapaObrasTrabajos).forEach(o => {
-            if (!mapaObrasTrabajos[o].includes('OTROS')) {
-              mapaObrasTrabajos[o].push('OTROS');
-            }
-          });
-
-          setBaseDatosObras(mapaObrasTrabajos);
-
-          const obraInicial = nombresObras[0];
-          const trabajoInicial = (mapaObrasTrabajos[obraInicial] && mapaObrasTrabajos[obraInicial][0]) || 'OTROS';
-          setTareasDelDia([
-            { obra: obraInicial, trabajo: trabajoInicial, horas: '8', especificarOtros: '', lugarTrabajo: '' }
-          ]);
-        }
-      } catch (err) {
-        console.error("Error al cargar Obras y Trabajos de Supabase:", err);
-      }
-    };
-
-    cargarObrasYTrabajos();
-  }, []);
 
   useEffect(() => {
     const checkUsuarioYActualizarDatos = async () => {
@@ -163,7 +110,7 @@ function App() {
     checkUsuarioYActualizarDatos();
   }, [usuarioConectado]);
 
-  // Cargar partes personales del usuario
+  // Sincronizador para cargar automáticamente el historial de partes desde Supabase
   useEffect(() => {
     const cargarPartesDesdeSupabase = async () => {
       if (usuarioConectado) {
@@ -199,48 +146,6 @@ function App() {
 
     cargarPartesDesdeSupabase();
   }, [usuarioConectado]);
-
-  // CARGAR TODOS LOS PARTES SI ES ADMINISTRACIÓN
-  const cargarTodosLosPartesAdmin = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('partes_publicos')
-        .select('*')
-        .order('fecha', { ascending: false });
-
-      if (error) {
-        console.error("Error al cargar partes globales:", error);
-      } else if (data) {
-        setTodosLosPartesAdmin(data);
-      }
-    } catch (err) {
-      console.error("Error consultando administración:", err);
-    }
-  };
-
-  // ELIMINAR PARTE DESDE EL PANEL DE ADMINISTRACIÓN
-  const eliminarParteAdmin = async (idParte, correoEmpleado, fechaParte) => {
-    const confirmar = window.confirm(`⚠️ ¿Seguro que quieres eliminar este parte de ${correoEmpleado} del día ${fechaParte}? Esta acción es irreversible.`);
-    if (!confirmar) return;
-
-    try {
-      const { error } = await supabase
-        .from('partes_publicos')
-        .delete()
-        .eq('id', idParte);
-
-      if (error) throw error;
-
-      alert('✅ Parte eliminado correctamente.');
-      
-      setTodosLosPartesAdmin(prev => prev.filter(p => p.id !== idParte));
-      setHistorialPartes(prev => prev.filter(p => p.id !== idParte));
-
-    } catch (err) {
-      console.error("Error al borrar parte:", err);
-      alert('❌ No se pudo borrar el parte.');
-    }
-  };
 
   const precioHoraActual = tarifasPorCategoria[posicionUser] || 10;
 
@@ -301,16 +206,11 @@ function App() {
     }
 
     try {
-      const empInfo = datosEmpleadosPredeterminados[usuarioConectado] || {};
       const { error } = await supabase
         .from('empleados')
         .upsert({ 
           correo: usuarioConectado, 
-          password: nuevaPassword.trim(),
-          nombre: empInfo.nombre || '',
-          apellidos: empInfo.apellidos || '',
-          posicion: empInfo.posicion || 'No Asignada',
-          telefono: empInfo.telefono || ''
+          password: nuevaPassword.trim() 
         }, { onConflict: 'correo' });
 
       if (error) throw error;
@@ -344,6 +244,7 @@ function App() {
     setPantallaActual('recovery-escribir-pass');
   };
 
+  // ACTUALIZADO: Guarda la nueva contraseña directamente en Supabase
   const manejarGuardarNuevaPasswordRecovery = async (e) => {
     e.preventDefault();
     const pass1 = passRecoveryNueva.trim();
@@ -360,31 +261,26 @@ function App() {
     }
 
     try {
-      const empInfo = datosEmpleadosPredeterminados[correoValidadoRecovery] || {};
       const { error } = await supabase
         .from('empleados')
         .upsert({ 
           correo: correoValidadoRecovery, 
-          password: pass1,
-          nombre: empInfo.nombre || '',
-          apellidos: empInfo.apellidos || '',
-          posicion: empInfo.posicion || 'No Asignada',
-          telefono: empInfo.telefono || ''
+          password: pass1 
         }, { onConflict: 'correo' });
 
       if (error) throw error;
 
-      alert('✅ Contraseña restablecida con éxito en Supabase. Ya puedes iniciar sesión con tu nueva contraseña.');
+      alert('✅ Contraseña restablecida con éxito. Ya puedes iniciar sesión con tu nueva contraseña.');
       
       setCorreoRecovery('');
       setDniRecovery('');
       setCorreoValidadoRecovery('');
       setPassRecoveryNueva('');
       setPassRecoveryConfirmar('');
-      setPantallaActual('login');
+      setPantallaActual('menu');
     } catch (err) {
-      console.error("Error al guardar la contraseña de recuperación:", err);
-      alert('❌ Error guardando contraseña en la base de datos.');
+      console.error("Error al guardar la nueva contraseña:", err);
+      alert('❌ No se pudo guardar la nueva contraseña en la base de datos.');
     }
   };
 
@@ -395,9 +291,8 @@ function App() {
   };
 
   const añadirFilaTarea = () => {
-    const obraPorDefecto = listaObras[0] || '';
-    const trabajoPorDefecto = (baseDatosObras[obraPorDefecto] && baseDatosObras[obraPorDefecto][0]) || '';
-    setTareasDelDia([...tareasDelDia, { obra: obraPorDefecto, trabajo: trabajoPorDefecto, horas: '8', especificarOtros: '', lugarTrabajo: '' }]);
+    const obraPorDefecto = listaObras[0];
+    setTareasDelDia([...tareasDelDia, { obra: obraPorDefecto, trabajo: baseDatosObras[obraPorDefecto]?.[0] || '', horas: '8', especificarOtros: '', lugarTrabajo: '' }]);
   };
 
   const eliminarFilaTarea = (index) => {
@@ -407,7 +302,7 @@ function App() {
   const actualizarObraEnTarea = (index, nuevaObra) => {
     const nuevasTareas = [...tareasDelDia];
     nuevasTareas[index].obra = nuevaObra;
-    nuevasTareas[index].trabajo = (baseDatosObras[nuevaObra] && baseDatosObras[nuevaObra][0]) || '';
+    nuevasTareas[index].trabajo = baseDatosObras[nuevaObra]?.[0] || '';
     nuevasTareas[index].especificarOtros = '';
     nuevasTareas[index].lugarTrabajo = '';
     setTareasDelDia(nuevasTareas);
@@ -447,6 +342,7 @@ function App() {
 
         const textoFormateadoBarras = `FECHA: ${fecha.split('-').reverse().join('/')} / EMPLEADO: ${nombreCompleto} / OBRA: ${tarea.obra} / TRABAJO: ${trabajoRealizado} / HORAS: ${tarea.horas}h / HORAS EXTRA: ${calculoExtras}h / LUGAR: ${infoLugar} / OBSERVACIONES: ${notaGeneral || "Ninguna"}`;
 
+        // 1. ENVÍO CON EMAILJS
         try {
             await fetch("https://api.emailjs.com/api/v1.0/email/send", {
                 method: "POST",
@@ -477,6 +373,7 @@ function App() {
             console.error("Error en EmailJS:", errorMail);
         }
 
+       // 2. RESPALDO EN SUPABASE
         try {
             await supabase
                 .from('partes_publicos')
@@ -525,9 +422,7 @@ function App() {
     }
 
     setNotaGeneral('');
-    const obraInicial = listaObras[0] || '';
-    const trabajoInicial = (baseDatosObras[obraInicial] && baseDatosObras[obraInicial][0]) || '';
-    setTareasDelDia([{ obra: obraInicial, trabajo: trabajoInicial, horas: '8', especificarOtros: '', lugarTrabajo: '' }]);
+    setTareasDelDia([{ obra: listaObras[0], trabajo: baseDatosObras[listaObras[0]]?.[0] || '', horas: '8', especificarOtros: '', lugarTrabajo: '' }]);
     setPantallaActual('menu');
   };
 
@@ -549,6 +444,7 @@ function App() {
     return fechaParte >= lunesSemana && fechaParte <= domingoSemana;
   };
 
+  // --- LÓGICA DE HISTORIAL ---
   const partesFiltradosBase = historialPartes.filter(p => {
     if (p.empleado !== usuarioConectado) return false;
     if (filtroParteMes && p.fecha.substring(0, 7) !== filtroParteMes) return false;
@@ -600,12 +496,6 @@ function App() {
   const totalHorasPagadas = pagosDelUsuario.reduce((sum, p) => sum + p.horasPagadas, 0);
   const saldoHorasPendientes = totalGeneralExtrasProducidas - totalHorasPagadas;
   const saldoDineroPendiente = saldoHorasPendientes * precioHoraActual;
-
-  const partesAdminFiltrados = todosLosPartesAdmin.filter(p => {
-    if (filtroAdminEmpleado && p.empleado !== filtroAdminEmpleado) return false;
-    if (filtroAdminFecha && p.fecha !== filtroAdminFecha) return false;
-    return true;
-  });
 
   return (
     <div style={{ 
@@ -692,75 +582,7 @@ function App() {
                   <button onClick={() => setPantallaActual('nuevo-parte')} style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '1px solid #ccc', background: '#f0f0f0' }}>📋 Enviar Nuevo Parte</button>
                   <button onClick={() => { setPantallaActual('mis-partes'); limpiarFiltrosGeneral(); }} style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '1px solid #ccc', background: '#f0f0f0' }}>📄 Ver Partes Enviados</button>
                   <button onClick={() => { setPantallaActual('horas-extras'); limpiarFiltrosExtras(); }} style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '1px solid #ccc', background: '#f0f0f0' }}>⏰ Mis Horas Extras</button>
-
-                  {usuarioConectado === 'administracion@grupom2m.com' && (
-                    <button 
-                      onClick={() => { setPantallaActual('panel-admin'); cargarTodosLosPartesAdmin(); }} 
-                      style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '2px solid #b27d14', background: '#fffaf0', color: '#b27d14', marginTop: '10px' }}
-                    >
-                      🛡️ Panel de Administración / Gestionar Partes
-                    </button>
-                  )}
-
                   <button onClick={cerrarSesion} style={{ padding: '8px', fontSize: '13px', color: '#888', cursor: 'pointer', border: 'none', background: 'none', textDecoration: 'underline', marginTop: '15px' }}>Cerrar Sesión</button>
-                </div>
-              </div>
-            )}
-
-            {pantallaActual === 'panel-admin' && (
-              <div>
-                <h2 style={{ color: '#043424', fontSize: '20px', marginBottom: '5px' }}>🛡️ Gestor de Partes de Administración</h2>
-                <p style={{ margin: '0 0 15px 0', fontSize: '12px', color: '#555' }}>Desde aquí puedes revisar y eliminar partes de cualquier empleado en tiempo real.</p>
-
-                <div style={{ background: '#f5f5f5', padding: '12px', borderRadius: '8px', marginBottom: '15px', display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flex: '1 1 200px' }}>
-                    <label style={{ fontSize: '12px', fontWeight: 'bold' }}>Empleado:</label>
-                    <select value={filtroAdminEmpleado} onChange={(e) => setFiltroAdminEmpleado(e.target.value)} style={{ padding: '6px', borderRadius: '4px', border: '1px solid #ccc', width: '100%' }}>
-                      <option value="">-- Todos los Empleados --</option>
-                      {correosAutorizados.map(c => (
-                        <option key={c} value={c}>{datosEmpleadosPredeterminados[c]?.nombre} {datosEmpleadosPredeterminados[c]?.apellidos}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <label style={{ fontSize: '12px', fontWeight: 'bold' }}>Fecha:</label>
-                    <input type="date" value={filtroAdminFecha} onChange={(e) => setFiltroAdminFecha(e.target.value)} style={{ padding: '5px', borderRadius: '4px', border: '1px solid #ccc' }} />
-                  </div>
-                  <button onClick={() => { setFiltroAdminEmpleado(''); setFiltroAdminFecha(''); }} style={{ fontSize: '11px', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer' }}>Limpiar Filtros</button>
-                </div>
-
-                <div style={{ maxHeight: '450px', overflowY: 'auto', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {partesAdminFiltrados.length === 0 ? (
-                    <p style={{ textAlign: 'center', color: '#666', fontSize: '14px', padding: '20px' }}>No hay partes que coincidan con los filtros.</p>
-                  ) : (
-                    partesAdminFiltrados.map((p) => {
-                      const empData = datosEmpleadosPredeterminados[p.empleado];
-                      const nombreEmp = empData ? `${empData.nombre} ${empData.apellidos}` : p.empleado;
-
-                      return (
-                        <div key={p.id} style={{ border: '1px solid #dcdcdc', padding: '12px', borderRadius: '8px', background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', borderBottom: '1px solid #eee', paddingBottom: '6px' }}>
-                            <div>
-                              <strong style={{ color: '#043424', fontSize: '14px' }}>👤 {nombreEmp}</strong>
-                              <div style={{ fontSize: '11px', color: '#777' }}>📅 {p.fecha.split('-').reverse().join('/')}</div>
-                            </div>
-                            <button 
-                              onClick={() => eliminarParteAdmin(p.id, p.empleado, p.fecha)}
-                              style={{ background: '#d9534f', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}
-                            >
-                              🗑️ Eliminar
-                            </button>
-                          </div>
-                          <div style={{ fontSize: '13px', color: '#333' }}>
-                            <p style={{ margin: '3px 0' }}><strong>Obra:</strong> {p.obra}</p>
-                            <p style={{ margin: '3px 0' }}><strong>Trabajo:</strong> {p.trabajo} ({p.horas}h)</p>
-                            {p.lugar_de_trabajo && <p style={{ margin: '3px 0' }}><strong>Lugar:</strong> {p.lugar_de_trabajo}</p>}
-                            {p.otros_trabajos && <p style={{ margin: '3px 0', fontSize: '11px', color: '#666', fontStyle: 'italic' }}>Obs: {p.otros_trabajos}</p>}
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
                 </div>
               </div>
             )}
@@ -793,17 +615,13 @@ function App() {
                       
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#333' }}>Obra:</label>
-                        <select value={tarea.obra} onChange={(e) => actualizarObraEnTarea(index, e.target.value)} style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }}>
-                          {listaObras.map((o, i) => <option key={i} value={o}>{o}</option>)}
-                        </select>
+                        <select value={tarea.obra} onChange={(e) => actualizarObraEnTarea(index, e.target.value)} style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }}>{listaObras.map((o, i) => <option key={i} value={o}>{o}</option>)}</select>
                       </div>
 
                       <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                         <div style={{ flex: '1 1 200px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                           <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#333' }}>Trabajos:</label>
-                          <select value={tarea.trabajo} onChange={(e) => actualizarCampoTarea(index, 'trabajo', e.target.value)} style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }}>
-                            {(baseDatosObras[tarea.obra] || ['OTROS']).map((t, i) => <option key={i} value={t}>{t}</option>)}
-                          </select>
+                          <select value={tarea.trabajo} onChange={(e) => actualizarCampoTarea(index, 'trabajo', e.target.value)} style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }}>{(baseDatosObras[tarea.obra] || []).map((t, i) => <option key={i} value={t}>{t}</option>)}</select>
                         </div>
                         <div style={{ flex: '1 1 80px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                           <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#333' }}>Horas:</label>
