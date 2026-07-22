@@ -233,9 +233,7 @@ function App() {
 
       alert('✅ Parte eliminado correctamente.');
       
-      // Actualizamos la lista de administración
       setTodosLosPartesAdmin(prev => prev.filter(p => p.id !== idParte));
-      // Actualizamos la lista local por si fuera del mismo usuario
       setHistorialPartes(prev => prev.filter(p => p.id !== idParte));
 
     } catch (err) {
@@ -303,11 +301,16 @@ function App() {
     }
 
     try {
+      const empInfo = datosEmpleadosPredeterminados[usuarioConectado] || {};
       const { error } = await supabase
         .from('empleados')
         .upsert({ 
           correo: usuarioConectado, 
-          password: nuevaPassword.trim() 
+          password: nuevaPassword.trim(),
+          nombre: empInfo.nombre || '',
+          apellidos: empInfo.apellidos || '',
+          posicion: empInfo.posicion || 'No Asignada',
+          telefono: empInfo.telefono || ''
         }, { onConflict: 'correo' });
 
       if (error) throw error;
@@ -341,7 +344,7 @@ function App() {
     setPantallaActual('recovery-escribir-pass');
   };
 
-  const manejarGuardarNuevaPasswordRecovery = (e) => {
+  const manejarGuardarNuevaPasswordRecovery = async (e) => {
     e.preventDefault();
     const pass1 = passRecoveryNueva.trim();
     const pass2 = passRecoveryConfirmar.trim();
@@ -356,15 +359,33 @@ function App() {
       return;
     }
 
-    localStorage.setItem(`pass_${correoValidadoRecovery}`, pass1);
-    alert('✅ Contraseña restablecida con éxito. Ya puedes iniciar sesión con tu nueva contraseña.');
-    
-    setCorreoRecovery('');
-    setDniRecovery('');
-    setCorreoValidadoRecovery('');
-    setPassRecoveryNueva('');
-    setPassRecoveryConfirmar('');
-    setPantallaActual('login');
+    try {
+      const empInfo = datosEmpleadosPredeterminados[correoValidadoRecovery] || {};
+      const { error } = await supabase
+        .from('empleados')
+        .upsert({ 
+          correo: correoValidadoRecovery, 
+          password: pass1,
+          nombre: empInfo.nombre || '',
+          apellidos: empInfo.apellidos || '',
+          posicion: empInfo.posicion || 'No Asignada',
+          telefono: empInfo.telefono || ''
+        }, { onConflict: 'correo' });
+
+      if (error) throw error;
+
+      alert('✅ Contraseña restablecida con éxito en Supabase. Ya puedes iniciar sesión con tu nueva contraseña.');
+      
+      setCorreoRecovery('');
+      setDniRecovery('');
+      setCorreoValidadoRecovery('');
+      setPassRecoveryNueva('');
+      setPassRecoveryConfirmar('');
+      setPantallaActual('login');
+    } catch (err) {
+      console.error("Error al guardar la contraseña de recuperación:", err);
+      alert('❌ Error guardando contraseña en la base de datos.');
+    }
   };
 
   const manejarGuardarTelefono = (e) => {
@@ -580,7 +601,6 @@ function App() {
   const saldoHorasPendientes = totalGeneralExtrasProducidas - totalHorasPagadas;
   const saldoDineroPendiente = saldoHorasPendientes * precioHoraActual;
 
-  // Filtrado de partes en panel Admin
   const partesAdminFiltrados = todosLosPartesAdmin.filter(p => {
     if (filtroAdminEmpleado && p.empleado !== filtroAdminEmpleado) return false;
     if (filtroAdminFecha && p.fecha !== filtroAdminFecha) return false;
@@ -673,7 +693,6 @@ function App() {
                   <button onClick={() => { setPantallaActual('mis-partes'); limpiarFiltrosGeneral(); }} style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '1px solid #ccc', background: '#f0f0f0' }}>📄 Ver Partes Enviados</button>
                   <button onClick={() => { setPantallaActual('horas-extras'); limpiarFiltrosExtras(); }} style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '1px solid #ccc', background: '#f0f0f0' }}>⏰ Mis Horas Extras</button>
 
-                  {/* BOTÓN EXCLUSIVO MÁSTER ADMINISTRACIÓN */}
                   {usuarioConectado === 'administracion@grupom2m.com' && (
                     <button 
                       onClick={() => { setPantallaActual('panel-admin'); cargarTodosLosPartesAdmin(); }} 
@@ -688,7 +707,6 @@ function App() {
               </div>
             )}
 
-            {/* PANEL DE ADMINISTRACIÓN MÁSTER */}
             {pantallaActual === 'panel-admin' && (
               <div>
                 <h2 style={{ color: '#043424', fontSize: '20px', marginBottom: '5px' }}>🛡️ Gestor de Partes de Administración</h2>
