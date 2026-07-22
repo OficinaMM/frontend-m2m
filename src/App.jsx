@@ -43,6 +43,7 @@ function App() {
   const correosAutorizados = Object.keys(datosEmpleadosPredeterminados);
   const PASSWORD_TEMPORAL = 'M2M2026*';
   const EMAIL_ADMIN_MASTER = 'administracion@grupom2m.com';
+  const EMAIL_PROYECTOS = 'proyectos@grupom2m.com';
 
   // ESTADOS DE OBRAS Y TRABAJOS
   const [baseDatosObras, setBaseDatosObras] = useState({});
@@ -83,6 +84,16 @@ function App() {
   const [filtroAdminMes, setFiltroAdminMes] = useState('');
   const [busquedaAdmin, setBusquedaAdmin] = useState('');
 
+  // ESTADOS EXCLUSIVOS DE GESTIÓN DE EFECTIVO (ADMIN / PROYECTOS)
+  const [movimientosEfectivo, setMovimientosEfectivo] = useState(() => {
+    const guardado = localStorage.getItem('m2m_efectivo');
+    return guardado ? JSON.parse(guardado) : [];
+  });
+  const [fechaEfectivo, setFechaEfectivo] = useState(new Date().toISOString().split('T')[0]);
+  const [conceptoEfectivo, setConceptoEfectivo] = useState('');
+  const [montoEfectivo, setMontoEfectivo] = useState('');
+  const [tipoEfectivo, setTipoEfectivo] = useState('salida'); // 'entrada' o 'salida'
+
   const [horasExtrasHistorial, setHorasExtrasHistorial] = useState(() => {
     const guardado = localStorage.getItem('m2m_horas_extras');
     return guardado ? JSON.parse(guardado) : [];
@@ -114,12 +125,11 @@ function App() {
           const nombresObras = datosObras.map(item => item.OBRA);
           const mapaTrabajos = {};
 
-          // Mapeamos los trabajos correspondientes a cada obra desde la columna TRABAJOS
           nombresObras.forEach(obra => {
             const trabajosDeEstaObra = datosTrabajos
               ? datosTrabajos
                   .filter(t => t.OBRA === obra)
-                  .map(t => t.TRABAJOS) // Columna exacta de Supabase (TRABAJOS)
+                  .map(t => t.TRABAJOS)
                   .filter(Boolean)
               : [];
 
@@ -239,6 +249,29 @@ function App() {
     cargarPartesDesdeSupabase();
   }, [usuarioConectado, posicionUser]);
 
+  // CARGAR EFECTIVO DESDE SUPABASE (SOLO SI TIENE PERMISO)
+  useEffect(() => {
+    const cargarEfectivoSupabase = async () => {
+      if (usuarioConectado === EMAIL_ADMIN_MASTER || usuarioConectado === EMAIL_PROYECTOS) {
+        try {
+          const { data, error } = await supabase
+            .from('efectivo')
+            .select('*')
+            .order('fecha', { ascending: false });
+
+          if (!error && data) {
+            setMovimientosEfectivo(data);
+            localStorage.setItem('m2m_efectivo', JSON.stringify(data));
+          }
+        } catch (err) {
+          console.error("Error al cargar efectivo desde Supabase:", err);
+        }
+      }
+    };
+
+    cargarEfectivoSupabase();
+  }, [usuarioConectado]);
+
   const precioHoraActual = tarifasPorCategoria[posicionUser] || 10;
 
   // LOGIN CON ENCRIPTACIÓN DE CONTRASEÑA
@@ -305,7 +338,6 @@ function App() {
 
       if (error) throw error;
 
-      // Eliminar de los estados en vivo de la aplicación
       setTodosLosPartesAdmin(prev => prev.filter(p => p.id !== idParte));
       setHistorialPartes(prev => prev.filter(p => p.id !== idParte));
 
@@ -313,6 +345,62 @@ function App() {
     } catch (err) {
       console.error("Error al eliminar el parte:", err);
       alert('❌ Ocurrió un error al intentar eliminar el parte.');
+    }
+  };
+
+  // FUNCIONES PARA GESTIÓN DE EFECTIVO
+  const manejarAgregarEfectivo = async (e) => {
+    e.preventDefault();
+    if (!conceptoEfectivo.trim() || !montoEfectivo || Number(montoEfectivo) <= 0) {
+      alert('⚠️ Por favor introduce un concepto y un monto válido.');
+      return;
+    }
+
+    const nuevoMovimiento = {
+      fecha: fechaEfectivo,
+      concepto: conceptoEfectivo.trim(),
+      monto: parseFloat(montoEfectivo),
+      tipo: tipoEfectivo,
+      registrado_por: usuarioConectado
+    };
+
+    try {
+      const { data, error } = await supabase
+        .from('efectivo')
+        .insert([nuevoMovimiento])
+        .select();
+
+      let elementoGuardar = data && data[0] ? data[0] : { ...nuevoMovimiento, id: 'ef-' + Date.now() };
+
+      if (error) console.error("Error al guardar efectivo en Supabase:", error);
+
+      const listaActualizada = [elementoGuardar, ...movimientosEfectivo];
+      setMovimientosEfectivo(listaActualizada);
+      localStorage.setItem('m2m_efectivo', JSON.stringify(listaActualizada));
+
+      setConceptoEfectivo('');
+      setMontoEfectivo('');
+      alert('💶 Movimiento registrado correctamente.');
+    } catch (err) {
+      console.error("Error registrando caja chica:", err);
+    }
+  };
+
+  const manejarEliminarEfectivo = async (idMovimiento) => {
+    if (!window.confirm('⚠️ ¿Deseas borrar este movimiento de caja chica?')) return;
+
+    try {
+      if (typeof idMovimiento === 'number' || !idMovimiento.toString().startsWith('ef-')) {
+        await supabase.from('efectivo').delete().eq('id', idMovimiento);
+      }
+
+      const listaActualizada = movimientosEfectivo.filter(m => m.id !== idMovimiento);
+      setMovimientosEfectivo(listaActualizada);
+      localStorage.setItem('m2m_efectivo', JSON.stringify(listaActualizada));
+
+      alert('🗑️ Movimiento de efectivo eliminado.');
+    } catch (err) {
+      console.error("Error al eliminar efectivo:", err);
     }
   };
 
@@ -647,6 +735,11 @@ function App() {
     return true;
   });
 
+  // CÁLCULO DE SALDO TOTAL DE EFECTIVO
+  const saldoEfectivoTotal = movimientosEfectivo.reduce((acc, mov) => {
+    return mov.tipo === 'entrada' ? acc + Number(mov.monto) : acc - Number(mov.monto);
+  }, 0);
+
   return (
     <div style={{ 
       fontFamily: 'sans-serif', margin: 0, padding: '15px', minHeight: '100vh', boxSizing: 'border-box',
@@ -733,6 +826,16 @@ function App() {
                   <button onClick={() => { setPantallaActual('mis-partes'); limpiarFiltrosGeneral(); }} style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '1px solid #ccc', background: '#f0f0f0' }}>📄 Ver Partes Enviados</button>
                   <button onClick={() => { setPantallaActual('horas-extras'); limpiarFiltrosExtras(); }} style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '1px solid #ccc', background: '#f0f0f0' }}>⏰ Mis Horas Extras</button>
                   
+                  {/* BOTÓN EXCLUSIVO DE GESTIÓN DE EFECTIVO (SOLO ADMIN Y PROYECTOS) */}
+                  {(usuarioConectado === EMAIL_ADMIN_MASTER || usuarioConectado === EMAIL_PROYECTOS) && (
+                    <button 
+                      onClick={() => setPantallaActual('gestion-efectivo')} 
+                      style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '2px solid #b27d14', background: '#fffbeb', color: '#b27d14', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                    >
+                      💶 Gestión de Efectivo / Caja Chica
+                    </button>
+                  )}
+
                   {/* BOTÓN EXCLUSIVO DE ADMINISTRACIÓN MÁSTER */}
                   {usuarioConectado === EMAIL_ADMIN_MASTER && (
                     <button 
@@ -936,6 +1039,88 @@ function App() {
               </div>
             )}
 
+            {/* PANTALLA GESTIÓN DE EFECTIVO / CAJA CHICA */}
+            {pantallaActual === 'gestion-efectivo' && (usuarioConectado === EMAIL_ADMIN_MASTER || usuarioConectado === EMAIL_PROYECTOS) && (
+              <div style={{ textAlign: 'left' }}>
+                <h2 style={{ color: '#b27d14', textAlign: 'center', fontSize: '20px', marginBottom: '5px' }}>💶 Gestión de Efectivo (Caja Chica)</h2>
+                <p style={{ fontSize: '12px', color: '#555', textAlign: 'center', marginBottom: '15px' }}>
+                  Módulo reservado exclusivamente para Administración y Proyectos.
+                </p>
+
+                {/* RESUMEN SALDO TOTAL */}
+                <div style={{ background: saldoEfectivoTotal >= 0 ? '#e2f0d9' : '#fce8e6', padding: '15px', borderRadius: '10px', textAlign: 'center', marginBottom: '20px', border: `2px solid ${saldoEfectivoTotal >= 0 ? '#043424' : '#cc0000'}` }}>
+                  <div style={{ fontSize: '12px', textTransform: 'uppercase', fontWeight: 'bold', color: '#555' }}>Saldo Total en Caja</div>
+                  <div style={{ fontSize: '28px', fontWeight: 'bold', color: saldoEfectivoTotal >= 0 ? '#043424' : '#cc0000' }}>
+                    {saldoEfectivoTotal.toFixed(2)} €
+                  </div>
+                </div>
+
+                {/* FORMULARIO PARA REGISTRAR ENTRADA/SALIDA */}
+                <form onSubmit={manejarAgregarEfectivo} style={{ background: '#f9f9f9', padding: '15px', borderRadius: '8px', border: '1px solid #ddd', display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+                  <h4 style={{ margin: '0 0 5px 0', color: '#043424', fontSize: '14px' }}>➕ Registrar Nuevo Movimiento:</h4>
+                  
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                    <div style={{ flex: '1 1 130px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                      <label style={{ fontSize: '11px', fontWeight: 'bold', color: '#555' }}>Fecha:</label>
+                      <input type="date" value={fechaEfectivo} onChange={(e) => setFechaEfectivo(e.target.value)} required style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }} />
+                    </div>
+
+                    <div style={{ flex: '1 1 120px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                      <label style={{ fontSize: '11px', fontWeight: 'bold', color: '#555' }}>Tipo Movimiento:</label>
+                      <select value={tipoEfectivo} onChange={(e) => setTipoEfectivo(e.target.value)} style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}>
+                        <option value="salida">🔻 Salida (Gasto)</option>
+                        <option value="entrada">🟢 Entrada (Ingreso)</option>
+                      </select>
+                    </div>
+
+                    <div style={{ flex: '1 1 100px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                      <label style={{ fontSize: '11px', fontWeight: 'bold', color: '#555' }}>Importe (€):</label>
+                      <input type="number" step="0.01" min="0.01" placeholder="0.00" value={montoEfectivo} onChange={(e) => setMontoEfectivo(e.target.value)} required style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }} />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <label style={{ fontSize: '11px', fontWeight: 'bold', color: '#555' }}>Concepto / Detalle:</label>
+                    <input type="text" placeholder="Ej: Pago material impagado, gasolina, provisión..." value={conceptoEfectivo} onChange={(e) => setConceptoEfectivo(e.target.value)} required style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }} />
+                  </div>
+
+                  <button type="submit" style={{ padding: '10px', background: '#b27d14', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', marginTop: '5px' }}>
+                    💾 Registrar Movimiento
+                  </button>
+                </form>
+
+                {/* HISTORIAL DE MOVIMIENTOS */}
+                <h4 style={{ margin: '0 0 10px 0', color: '#043424', fontSize: '14px' }}>📋 Historial de Caja Chica</h4>
+                <div style={{ maxHeight: '280px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {movimientosEfectivo.length === 0 ? (
+                    <p style={{ textAlign: 'center', color: '#888', fontSize: '13px' }}>No hay registros de movimientos en la caja.</p>
+                  ) : (
+                    movimientosEfectivo.map((mov) => (
+                      <div key={mov.id} style={{ padding: '10px', borderRadius: '6px', background: '#fff', border: `1px solid ${mov.tipo === 'entrada' ? '#2e7d32' : '#c62828'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#333' }}>
+                            {mov.tipo === 'entrada' ? '🟢 ENTRADA' : '🔻 SALIDA'}: {mov.concepto}
+                          </div>
+                          <div style={{ fontSize: '11px', color: '#777' }}>
+                            📅 {mov.fecha ? mov.fecha.split('-').reverse().join('/') : ''} {mov.registrado_por ? `| 👤 ${mov.registrado_por.split('@')[0]}` : ''}
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span style={{ fontWeight: 'bold', fontSize: '15px', color: mov.tipo === 'entrada' ? '#2e7d32' : '#c62828' }}>
+                            {mov.tipo === 'entrada' ? '+' : '-'}{Number(mov.monto).toFixed(2)} €
+                          </span>
+                          <button onClick={() => manejarEliminarEfectivo(mov.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px' }} title="Borrar movimiento">
+                            🗑️
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* PANTALLA GESTIÓN ADMINISTRACIÓN MÁSTER */}
             {pantallaActual === 'gestion-administracion' && (
               <div style={{ textAlign: 'left' }}>
@@ -996,7 +1181,6 @@ function App() {
                               <div style={{ fontSize: '11px', color: '#666' }}>📅 {p.fecha.split('-').reverse().join('/')} | 📩 {p.empleado}</div>
                             </div>
                             
-                            {/* BOTÓN DE BORRADO MÁSTER */}
                             <button 
                               onClick={() => manejarEliminarParteAdmin(p.id)} 
                               style={{ background: '#ff4d4d', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '5px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
