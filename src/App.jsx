@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import logoEmpresa from './assets/logo.png';
 import { supabase } from './supabaseClient';
 
-// Encriptación SHA-256 para contraseñas
+// Función para encriptar la contraseña (SHA-256) antes de enviar a Supabase
 async function hashPassword(str) {
   const encoder = new TextEncoder();
   const data = encoder.encode(str);
@@ -12,19 +12,21 @@ async function hashPassword(str) {
 }
 
 function App() {
+  // 1. BASE DE DATOS DE EMPLEADOS PREDETERMINADOS
   const datosEmpleadosPredeterminados = {
-    'administracion@grupom2m.com': { nombre: 'Estefania', apellidos: 'Rodríguez', telefono: '600000001', posicion: 'Administración', dni: '43220225M' },
+    'administracion@grupom2m.com': { nombre: 'Fanny', apellidos: 'Rodríguez', telefono: '600000001', posicion: 'Administración', dni: '43220225M' },
     'proyectos@grupom2m.com': { nombre: 'Paco', apellidos: 'Lopez Moreno', telefono: '600000002', posicion: 'Técnico de Proyectos', dni: '44325886X' },
     'info@grupom2m.com': { nombre: 'Dani', apellidos: 'Moreno Lucas', telefono: '600000003', posicion: 'Encargado General', dni: '43078641D' },
     'domingorodriguezguerrero1@gmail.com': { nombre: 'Domingo Rafael', apellidos: 'Rodríguez Guerrero', telefono: '600000004', posicion: 'Oficial de 1ª', dni: '08855929D' },
     'jjleonp1891@gmail.com': { nombre: 'Juan José', apellidos: 'León Pérez', telefono: '600000005', posicion: 'Oficial de 1ª', dni: '74862778D' },
     'miguelangellmoreno@gmail.com': { nombre: 'Miguel Ángel', apellidos: 'Moreno López', telefono: '600000006', posicion: 'Oficial de 1ª', dni: '43033001R' },
-    'lorenzopereztortosa@gmx.es': { nombre: 'Lorenzo', apellidos: 'Pérez Tortosa', telefono: '600000007', posicion: 'Oficial de 1ª', dni: '26741630J' },
+    'lorenzopereztortosa@gmx.es': { nombre: 'Lorenzo', apellidos: 'Pérez Tortosa', telefono: '26741630J', posicion: 'Oficial de 1ª', dni: '26741630J' },
     'florenuritole@gmail.com': { nombre: 'Florencio', apellidos: 'Condori Toledo', telefono: '600000008', posicion: 'Oficial de 1ª', dni: '55085454V' },
     'jodaespana1209@gmail.com': { nombre: 'Jose David', apellidos: 'Arvelaez Villegas', telefono: '600000009', posicion: 'Oficial de 1ª', dni: 'Z2637683W' },
     'jajuanito.barcelo81@gmail.com': { nombre: 'Juan Antonio', apellidos: 'Barceló Contestí', telefono: '43130415X', posicion: 'Oficial de 2ª', dni: '43130415X' },
     'marcelo09vargas90@gmail.com': { nombre: 'Marcelo José', apellidos: 'Vargas López', telefono: '600000011', posicion: 'Oficial de 2ª', dni: 'E28631832' },
     'rojasquinterosrodrigo0@gmail.com': { nombre: 'Rodrigo', apellidos: 'Rojas Quinteros', telefono: '600000012', posicion: 'Peón Especializado', dni: 'Z2561343E' },   
+    'rimercamacho48@gmail.com': { nombre: 'Rimer', apellidos: 'Camacho', telefono: '600000012', posicion: 'Oficial de 1ª', dni: 'Z3236151X' },
     'exon.saa0707@gmail.com': { nombre: 'Edson', apellidos: 'Sabino Alvarez Argote', telefono: '600000013', posicion: 'Oficial de 1ª', dni: '54631451B' }
   };
 
@@ -41,9 +43,11 @@ function App() {
   const correosAutorizados = Object.keys(datosEmpleadosPredeterminados);
   const PASSWORD_TEMPORAL = 'M2M2026*';
 
+  // ESTADOS DE OBRAS Y TRABAJOS
   const [baseDatosObras, setBaseDatosObras] = useState({});
   const [listaObras, setListaObras] = useState([]);
 
+  // ESTADOS DE LA APLICACIÓN
   const [usuarioConectado, setUsuarioConectado] = useState(null);
   const [correo, setCorreo] = useState('');
   const [password, setPassword] = useState('');
@@ -168,7 +172,7 @@ function App() {
     checkUsuarioYActualizarDatos();
   }, [usuarioConectado]);
 
-  // CARGAR HISTORIAL DE PARTES
+  // CARGAR HISTORIAL DE PARTES SEGÚN ROL
   useEffect(() => {
     const cargarPartesDesdeSupabase = async () => {
       if (usuarioConectado) {
@@ -183,7 +187,7 @@ function App() {
           const { data, error } = await query.order('fecha', { ascending: false });
 
           if (error) {
-            console.error("Error al cargar partes:", error);
+            console.error("Error al cargar partes de Supabase:", error);
           } else if (data) {
             const partesFormateados = data.map(p => ({
               id: p.id,
@@ -205,7 +209,7 @@ function App() {
             localStorage.setItem('m2m_historial_partes', JSON.stringify(misPartes));
           }
         } catch (err) {
-          console.error("Error de conexión:", err);
+          console.error("Error de conexión con Supabase:", err);
         }
       }
     };
@@ -215,6 +219,7 @@ function App() {
 
   const precioHoraActual = tarifasPorCategoria[posicionUser] || 10;
 
+  // LOGIN SOLO CON HASH SHA-256
   const manejarLogin = async (e) => {
     e.preventDefault();
 
@@ -234,10 +239,10 @@ function App() {
         }
 
         const passHashIntroducida = await hashPassword(passwordIntroducida);
-        const passHashTemp = await hashPassword(PASSWORD_TEMPORAL);
 
         if (usuarioDb && usuarioDb.password) {
-          if (usuarioDb.password === passHashIntroducida || usuarioDb.password === passwordIntroducida) {
+          // Solo se valida mediante la comparación del hash encriptado
+          if (usuarioDb.password === passHashIntroducida) {
             setUsuarioConectado(correoIntroducido);
             setPosicionUser(usuarioDb.posicion || datosEmpleadosPredeterminados[correoIntroducido]?.posicion || 'No Asignada');
             setNombreEdit(usuarioDb.nombre || datosEmpleadosPredeterminados[correoIntroducido]?.nombre || '');
@@ -248,7 +253,8 @@ function App() {
             alert('❌ Contraseña incorrecta.');
           }
         } else {
-          if (passwordIntroducida === PASSWORD_TEMPORAL || passHashIntroducida === passHashTemp) {
+          // Si el usuario aún no existe en Supabase, se valida contra la contraseña temporal predeterminada
+          if (passwordIntroducida === PASSWORD_TEMPORAL) {
             setUsuarioConectado(correoIntroducido);
             setPantallaActual('primer-cambio-pass');
           } else {
@@ -264,6 +270,7 @@ function App() {
     }
   };
 
+  // PRIMER CAMBIO DE CONTRASEÑA (GUARDA EL HASH SOBREESCRIBIENDO EN SUPABASE)
   const manejarChangePassword = async (e) => {
     e.preventDefault();
     if (nuevaPassword.trim().length < 4) {
@@ -279,6 +286,7 @@ function App() {
       const passEncriptada = await hashPassword(nuevaPassword.trim());
       const infoEmp = datosEmpleadosPredeterminados[usuarioConectado] || {};
 
+      // Al hacer upsert sobre el campo correo, reemplaza cualquier registro previo por el hash cifrado
       const { error } = await supabase
         .from('empleados')
         .upsert({ 
@@ -291,12 +299,12 @@ function App() {
 
       if (error) throw error;
 
-      alert('✅ Contraseña guardada correctamente.');
+      alert('✅ Contraseña encriptada y guardada en la nube con éxito.');
       setNuevaPassword('');
       setPantallaActual('menu');
     } catch (err) {
       console.error("Error al guardar contraseña:", err);
-      alert('❌ No se pudo guardar la contraseña.');
+      alert('❌ No se pudo guardar la contraseña en la base de datos.');
     }
   };
 
@@ -320,6 +328,7 @@ function App() {
     setPantallaActual('recovery-escribir-pass');
   };
 
+  // RECUPERACIÓN DE CONTRASEÑA (GUARDA EL NUEVO HASH Y SOBREESCRIBE EL ANTERIOR)
   const manejarGuardarNuevaPasswordRecovery = async (e) => {
     e.preventDefault();
     const pass1 = passRecoveryNueva.trim();
@@ -339,6 +348,7 @@ function App() {
       const passEncriptada = await hashPassword(pass1);
       const infoEmp = datosEmpleadosPredeterminados[correoValidadoRecovery] || {};
 
+      // Sobreescribe directamente el hash almacenado previamente en la base de datos
       const { error } = await supabase
         .from('empleados')
         .upsert({ 
@@ -351,7 +361,8 @@ function App() {
 
       if (error) throw error;
 
-      alert('✅ Contraseña restablecida con éxito.');
+      alert('✅ Contraseña restablecida de forma segura. Ya puedes iniciar sesión.');
+      
       setCorreoRecovery('');
       setDniRecovery('');
       setCorreoValidadoRecovery('');
@@ -359,15 +370,15 @@ function App() {
       setPassRecoveryConfirmar('');
       setPantallaActual('menu');
     } catch (err) {
-      console.error("Error al guardar la contraseña:", err);
-      alert('❌ Error al guardar la nueva contraseña.');
+      console.error("Error al guardar la nueva contraseña:", err);
+      alert('❌ No se pudo guardar la nueva contraseña en la base de datos.');
     }
   };
 
   const manejarGuardarTelefono = (e) => {
     e.preventDefault();
     localStorage.setItem(`tel_${usuarioConectado}`, telefonoEdit.trim());
-    alert('✅ Teléfono de contacto actualizado.');
+    alert('✅ Teléfono de contacto actualizado correctamente.');
   };
 
   const añadirFilaTarea = () => {
@@ -494,9 +505,9 @@ function App() {
         setHorasExtrasHistorial(nuevoHistorialExtras);
         localStorage.setItem('m2m_horas_extras', JSON.stringify(nuevoHistorialExtras));
         
-        alert(`🚀 ¡Parte Enviado!\nSe detectaron ${calculoExtras}h extras.`);
+        alert(`🚀 ¡Parte Enviado y Registrado!\nSe detectaron ${calculoExtras}h extras.`);
       } else {
-        alert('🚀 ¡Parte Enviado con éxito!');
+        alert('🚀 ¡Parte Enviado y Registrado con éxito!');
       }
     } else {
       alert('❌ Error al procesar el envío del parte.');
@@ -526,6 +537,7 @@ function App() {
     return fechaParte >= lunesSemana && fechaParte <= domingoSemana;
   };
 
+  // FILTRADO HISTORIAL
   const partesFiltradosBase = historialPartes.filter(p => {
     if (p.empleado !== usuarioConectado) return false;
     if (filtroParteMes && p.fecha.substring(0, 7) !== filtroParteMes) return false;
@@ -659,7 +671,6 @@ function App() {
                   <button onClick={() => { setPantallaActual('mis-partes'); limpiarFiltrosGeneral(); }} style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '1px solid #ccc', background: '#f0f0f0' }}>📄 Ver Partes Enviados</button>
                   <button onClick={() => { setPantallaActual('horas-extras'); limpiarFiltrosExtras(); }} style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '1px solid #ccc', background: '#f0f0f0' }}>⏰ Mis Horas Extras</button>
                   
-                  {/* BOTÓN ADMINISTRACIÓN */}
                   {posicionUser === 'Administración' && (
                     <button 
                       onClick={() => setPantallaActual('gestion-administracion')} 
@@ -669,7 +680,6 @@ function App() {
                     </button>
                   )}
 
-                  {/* BOTÓN TÉCNICO DE PROYECTOS */}
                   {posicionUser === 'Técnico de Proyectos' && (
                     <button 
                       onClick={() => setPantallaActual('gestion-proyectos')} 
@@ -862,7 +872,6 @@ function App() {
               </div>
             )}
 
-            {/* PANTALLA GESTIÓN ADMINISTRACIÓN */}
             {pantallaActual === 'gestion-administracion' && (
               <div style={{ textAlign: 'left' }}>
                 <h2 style={{ color: '#043424', textAlign: 'center', fontSize: '20px', marginBottom: '15px' }}>💼 Panel de Administración</h2>
@@ -882,7 +891,6 @@ function App() {
               </div>
             )}
 
-            {/* PANTALLA GESTIÓN PROYECTOS */}
             {pantallaActual === 'gestion-proyectos' && (
               <div style={{ textAlign: 'left' }}>
                 <h2 style={{ color: '#b27d14', textAlign: 'center', fontSize: '20px', marginBottom: '15px' }}>📐 Panel de Proyectos</h2>
