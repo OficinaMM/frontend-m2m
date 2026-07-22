@@ -43,7 +43,6 @@ function App() {
   const correosAutorizados = Object.keys(datosEmpleadosPredeterminados);
   const PASSWORD_TEMPORAL = 'M2M2026*';
   const EMAIL_ADMIN_MASTER = 'administracion@grupom2m.com';
-  const EMAIL_PROYECTOS = 'proyectos@grupom2m.com';
 
   // ESTADOS DE OBRAS Y TRABAJOS
   const [baseDatosObras, setBaseDatosObras] = useState({});
@@ -84,15 +83,68 @@ function App() {
   const [filtroAdminMes, setFiltroAdminMes] = useState('');
   const [busquedaAdmin, setBusquedaAdmin] = useState('');
 
-  // ESTADOS EXCLUSIVOS DE GESTIÓN DE EFECTIVO (ADMIN / PROYECTOS)
-  const [movimientosEfectivo, setMovimientosEfectivo] = useState(() => {
-    const guardado = localStorage.getItem('m2m_efectivo');
-    return guardado ? JSON.parse(guardado) : [];
-  });
+  // ESTADOS DE GESTIÓN DE EFECTIVO
+  const [movimientosEfectivo, setMovimientosEfectivo] = useState([]);
   const [fechaEfectivo, setFechaEfectivo] = useState(new Date().toISOString().split('T')[0]);
-  const [conceptoEfectivo, setConceptoEfectivo] = useState('');
+  const [tipoMovimiento, setTipoMovimiento] = useState('entrada');
   const [montoEfectivo, setMontoEfectivo] = useState('');
-  const [tipoEfectivo, setTipoEfectivo] = useState('salida'); // 'entrada' o 'salida'
+  const [conceptoEfectivo, setConceptoEfectivo] = useState('');
+
+  // CARGAR MOVTOS DE EFECTIVO
+  const cargarMovimientosEfectivo = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('efectivo')
+        .select('*')
+        .order('fecha', { ascending: false });
+
+      if (!error && data) {
+        setMovimientosEfectivo(data);
+      }
+    } catch (err) {
+      console.error("Error al cargar efectivo:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (usuarioConectado && (usuarioConectado === EMAIL_ADMIN_MASTER || posicionUser === 'Técnico de Proyectos')) {
+      cargarMovimientosEfectivo();
+    }
+  }, [usuarioConectado, posicionUser]);
+
+  const manejarRegistrarEfectivo = async (e) => {
+    e.preventDefault();
+    if (!montoEfectivo || parseFloat(montoEfectivo) <= 0) {
+      alert("⚠️ Por favor introduce un importe válido.");
+      return;
+    }
+
+    try {
+      const nuevoRegistro = {
+        fecha: fechaEfectivo,
+        tipo: tipoMovimiento,
+        monto: parseFloat(montoEfectivo),
+        concepto: conceptoEfectivo || "Sin detalle",
+        registrado_por: usuarioConectado
+      };
+
+      const { error } = await supabase.from('efectivo').insert([nuevoRegistro]);
+
+      if (error) throw error;
+
+      alert("✅ Movimiento registrado con éxito.");
+      setMontoEfectivo('');
+      setConceptoEfectivo('');
+      cargarMovimientosEfectivo();
+    } catch (err) {
+      console.error("Error al registrar movimiento:", err);
+      alert("❌ No se pudo guardar el movimiento.");
+    }
+  };
+
+  const saldoTotalEfectivo = movimientosEfectivo.reduce((acc, mov) => {
+    return mov.tipo === 'entrada' ? acc + parseFloat(mov.monto) : acc - parseFloat(mov.monto);
+  }, 0);
 
   const [horasExtrasHistorial, setHorasExtrasHistorial] = useState(() => {
     const guardado = localStorage.getItem('m2m_horas_extras');
@@ -249,29 +301,6 @@ function App() {
     cargarPartesDesdeSupabase();
   }, [usuarioConectado, posicionUser]);
 
-  // CARGAR EFECTIVO DESDE SUPABASE (SOLO SI TIENE PERMISO)
-  useEffect(() => {
-    const cargarEfectivoSupabase = async () => {
-      if (usuarioConectado === EMAIL_ADMIN_MASTER || usuarioConectado === EMAIL_PROYECTOS) {
-        try {
-          const { data, error } = await supabase
-            .from('efectivo')
-            .select('*')
-            .order('fecha', { ascending: false });
-
-          if (!error && data) {
-            setMovimientosEfectivo(data);
-            localStorage.setItem('m2m_efectivo', JSON.stringify(data));
-          }
-        } catch (err) {
-          console.error("Error al cargar efectivo desde Supabase:", err);
-        }
-      }
-    };
-
-    cargarEfectivoSupabase();
-  }, [usuarioConectado]);
-
   const precioHoraActual = tarifasPorCategoria[posicionUser] || 10;
 
   // LOGIN CON ENCRIPTACIÓN DE CONTRASEÑA
@@ -345,62 +374,6 @@ function App() {
     } catch (err) {
       console.error("Error al eliminar el parte:", err);
       alert('❌ Ocurrió un error al intentar eliminar el parte.');
-    }
-  };
-
-  // FUNCIONES PARA GESTIÓN DE EFECTIVO
-  const manejarAgregarEfectivo = async (e) => {
-    e.preventDefault();
-    if (!conceptoEfectivo.trim() || !montoEfectivo || Number(montoEfectivo) <= 0) {
-      alert('⚠️ Por favor introduce un concepto y un monto válido.');
-      return;
-    }
-
-    const nuevoMovimiento = {
-      fecha: fechaEfectivo,
-      concepto: conceptoEfectivo.trim(),
-      monto: parseFloat(montoEfectivo),
-      tipo: tipoEfectivo,
-      registrado_por: usuarioConectado
-    };
-
-    try {
-      const { data, error } = await supabase
-        .from('efectivo')
-        .insert([nuevoMovimiento])
-        .select();
-
-      let elementoGuardar = data && data[0] ? data[0] : { ...nuevoMovimiento, id: 'ef-' + Date.now() };
-
-      if (error) console.error("Error al guardar efectivo en Supabase:", error);
-
-      const listaActualizada = [elementoGuardar, ...movimientosEfectivo];
-      setMovimientosEfectivo(listaActualizada);
-      localStorage.setItem('m2m_efectivo', JSON.stringify(listaActualizada));
-
-      setConceptoEfectivo('');
-      setMontoEfectivo('');
-      alert('💶 Movimiento registrado correctamente.');
-    } catch (err) {
-      console.error("Error registrando caja chica:", err);
-    }
-  };
-
-  const manejarEliminarEfectivo = async (idMovimiento) => {
-    if (!window.confirm('⚠️ ¿Deseas borrar este movimiento de caja chica?')) return;
-
-    try {
-      if (typeof idMovimiento === 'number' || !idMovimiento.toString().startsWith('ef-')) {
-        await supabase.from('efectivo').delete().eq('id', idMovimiento);
-      }
-
-      const listaActualizada = movimientosEfectivo.filter(m => m.id !== idMovimiento);
-      setMovimientosEfectivo(listaActualizada);
-      localStorage.setItem('m2m_efectivo', JSON.stringify(listaActualizada));
-
-      alert('🗑️ Movimiento de efectivo eliminado.');
-    } catch (err) {
-      console.error("Error al eliminar efectivo:", err);
     }
   };
 
@@ -735,11 +708,6 @@ function App() {
     return true;
   });
 
-  // CÁLCULO DE SALDO TOTAL DE EFECTIVO
-  const saldoEfectivoTotal = movimientosEfectivo.reduce((acc, mov) => {
-    return mov.tipo === 'entrada' ? acc + Number(mov.monto) : acc - Number(mov.monto);
-  }, 0);
-
   return (
     <div style={{ 
       fontFamily: 'sans-serif', margin: 0, padding: '15px', minHeight: '100vh', boxSizing: 'border-box',
@@ -826,13 +794,13 @@ function App() {
                   <button onClick={() => { setPantallaActual('mis-partes'); limpiarFiltrosGeneral(); }} style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '1px solid #ccc', background: '#f0f0f0' }}>📄 Ver Partes Enviados</button>
                   <button onClick={() => { setPantallaActual('horas-extras'); limpiarFiltrosExtras(); }} style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '1px solid #ccc', background: '#f0f0f0' }}>⏰ Mis Horas Extras</button>
                   
-                  {/* BOTÓN EXCLUSIVO DE GESTIÓN DE EFECTIVO (SOLO ADMIN Y PROYECTOS) */}
-                  {(usuarioConectado === EMAIL_ADMIN_MASTER || usuarioConectado === EMAIL_PROYECTOS) && (
+                  {/* BOTÓN GESTIÓN DE EFECTIVO PARA ADMIN Y PROYECTOS */}
+                  {(usuarioConectado === EMAIL_ADMIN_MASTER || posicionUser === 'Técnico de Proyectos') && (
                     <button 
                       onClick={() => setPantallaActual('gestion-efectivo')} 
-                      style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '2px solid #b27d14', background: '#fffbeb', color: '#b27d14', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                      style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '2px solid #b27d14', background: '#fdf7ec', color: '#b27d14', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                     >
-                      💶 Gestión de Efectivo / Caja Chica
+                      💶 Gestión de Efectivo
                     </button>
                   )}
 
@@ -857,6 +825,77 @@ function App() {
                   )}
 
                   <button onClick={cerrarSesion} style={{ padding: '8px', fontSize: '13px', color: '#888', cursor: 'pointer', border: 'none', background: 'none', textDecoration: 'underline', marginTop: '15px' }}>Cerrar Sesión</button>
+                </div>
+              </div>
+            )}
+
+            {/* PANTALLA GESTIÓN DE EFECTIVO */}
+            {pantallaActual === 'gestion-efectivo' && (
+              <div style={{ textAlign: 'left' }}>
+                <h2 style={{ color: '#b27d14', textAlign: 'center', fontSize: '20px', marginBottom: '5px' }}>💵 Gestión de Efectivo</h2>
+                <p style={{ fontSize: '12px', color: '#555', textAlign: 'center', marginBottom: '20px' }}>
+                  Módulo reservado exclusivamente para Administración y Proyectos.
+                </p>
+
+                {/* RESUMEN DEL SALDO */}
+                <div style={{ background: '#e2f0d9', padding: '15px', borderRadius: '10px', textAlign: 'center', marginBottom: '20px', border: '1px solid #043424' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#043424', textTransform: 'uppercase' }}>Saldo Total</span>
+                  <div style={{ fontSize: '28px', fontWeight: 'bold', color: saldoTotalEfectivo >= 0 ? '#043424' : '#cc0000' }}>
+                    {saldoTotalEfectivo.toFixed(2)} €
+                  </div>
+                </div>
+
+                {/* FORMULARIO DE REGISTRO */}
+                <form onSubmit={manejarRegistrarEfectivo} style={{ background: '#f9f9f9', padding: '15px', borderRadius: '10px', border: '1px solid #ddd', marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <h4 style={{ margin: 0, color: '#043424' }}>➕ Registrar Nuevo Movimiento:</h4>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div>
+                      <label style={{ fontSize: '11px', fontWeight: 'bold', color: '#555' }}>Fecha:</label>
+                      <input type="date" value={fechaEfectivo} onChange={(e) => setFechaEfectivo(e.target.value)} required style={{ width: '100%', padding: '8px', borderRadius: '5px', border: '1px solid #ccc', boxSizing: 'border-box' }} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '11px', fontWeight: 'bold', color: '#555' }}>Tipo Movimiento:</label>
+                      <select value={tipoMovimiento} onChange={(e) => setTipoMovimiento(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '5px', border: '1px solid #ccc', boxSizing: 'border-box' }}>
+                        <option value="entrada">🟢 Entrada (Ingreso)</option>
+                        <option value="salida">🔴 Salida (Gasto)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '11px', fontWeight: 'bold', color: '#555' }}>Importe (€):</label>
+                    <input type="number" step="0.01" min="0.01" placeholder="0.00" value={montoEfectivo} onChange={(e) => setMontoEfectivo(e.target.value)} required style={{ width: '100%', padding: '8px', borderRadius: '5px', border: '1px solid #ccc', boxSizing: 'border-box' }} />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '11px', fontWeight: 'bold', color: '#555' }}>Concepto / Detalle:</label>
+                    <input type="text" placeholder="Ej: Pago material impagado, gasolina, provisión..." value={conceptoEfectivo} onChange={(e) => setConceptoEfectivo(e.target.value)} required style={{ width: '100%', padding: '8px', borderRadius: '5px', border: '1px solid #ccc', boxSizing: 'border-box' }} />
+                  </div>
+
+                  <button type="submit" style={{ padding: '12px', background: '#b27d14', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', textAlign: 'center' }}>
+                    💾 Registrar Movimiento
+                  </button>
+                </form>
+
+                {/* HISTORIAL */}
+                <h4 style={{ margin: '0 0 10px 0', color: '#043424' }}>📋 Historial de Efectivo</h4>
+                <div style={{ maxHeight: '250px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {movimientosEfectivo.length === 0 ? (
+                    <p style={{ textAlign: 'center', color: '#888', fontSize: '13px' }}>No hay registros de movimientos en efectivo.</p>
+                  ) : (
+                    movimientosEfectivo.map((mov) => (
+                      <div key={mov.id} style={{ padding: '10px', borderRadius: '6px', borderLeft: `4px solid ${mov.tipo === 'entrada' ? '#2e7d32' : '#c62828'}`, background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#333' }}>{mov.concepto}</div>
+                          <div style={{ fontSize: '10px', color: '#777' }}>📅 {mov.fecha.split('-').reverse().join('/')} | Por: {mov.registrado_por}</div>
+                        </div>
+                        <div style={{ fontSize: '14px', fontWeight: 'bold', color: mov.tipo === 'entrada' ? '#2e7d32' : '#c62828' }}>
+                          {mov.tipo === 'entrada' ? '+' : '-'}{parseFloat(mov.monto).toFixed(2)} €
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             )}
@@ -1031,88 +1070,6 @@ function App() {
                         </div>
                         <div style={{ fontWeight: 'bold', color: '#b27d14', fontSize: '15px' }}>
                           +{extra.horas}h
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* PANTALLA GESTIÓN DE EFECTIVO / CAJA CHICA */}
-            {pantallaActual === 'gestion-efectivo' && (usuarioConectado === EMAIL_ADMIN_MASTER || usuarioConectado === EMAIL_PROYECTOS) && (
-              <div style={{ textAlign: 'left' }}>
-                <h2 style={{ color: '#b27d14', textAlign: 'center', fontSize: '20px', marginBottom: '5px' }}>💶 Gestión de Efectivo (Caja Chica)</h2>
-                <p style={{ fontSize: '12px', color: '#555', textAlign: 'center', marginBottom: '15px' }}>
-                  Módulo reservado exclusivamente para Administración y Proyectos.
-                </p>
-
-                {/* RESUMEN SALDO TOTAL */}
-                <div style={{ background: saldoEfectivoTotal >= 0 ? '#e2f0d9' : '#fce8e6', padding: '15px', borderRadius: '10px', textAlign: 'center', marginBottom: '20px', border: `2px solid ${saldoEfectivoTotal >= 0 ? '#043424' : '#cc0000'}` }}>
-                  <div style={{ fontSize: '12px', textTransform: 'uppercase', fontWeight: 'bold', color: '#555' }}>Saldo Total en Caja</div>
-                  <div style={{ fontSize: '28px', fontWeight: 'bold', color: saldoEfectivoTotal >= 0 ? '#043424' : '#cc0000' }}>
-                    {saldoEfectivoTotal.toFixed(2)} €
-                  </div>
-                </div>
-
-                {/* FORMULARIO PARA REGISTRAR ENTRADA/SALIDA */}
-                <form onSubmit={manejarAgregarEfectivo} style={{ background: '#f9f9f9', padding: '15px', borderRadius: '8px', border: '1px solid #ddd', display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
-                  <h4 style={{ margin: '0 0 5px 0', color: '#043424', fontSize: '14px' }}>➕ Registrar Nuevo Movimiento:</h4>
-                  
-                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                    <div style={{ flex: '1 1 130px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                      <label style={{ fontSize: '11px', fontWeight: 'bold', color: '#555' }}>Fecha:</label>
-                      <input type="date" value={fechaEfectivo} onChange={(e) => setFechaEfectivo(e.target.value)} required style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }} />
-                    </div>
-
-                    <div style={{ flex: '1 1 120px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                      <label style={{ fontSize: '11px', fontWeight: 'bold', color: '#555' }}>Tipo Movimiento:</label>
-                      <select value={tipoEfectivo} onChange={(e) => setTipoEfectivo(e.target.value)} style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}>
-                        <option value="salida">🔻 Salida (Gasto)</option>
-                        <option value="entrada">🟢 Entrada (Ingreso)</option>
-                      </select>
-                    </div>
-
-                    <div style={{ flex: '1 1 100px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                      <label style={{ fontSize: '11px', fontWeight: 'bold', color: '#555' }}>Importe (€):</label>
-                      <input type="number" step="0.01" min="0.01" placeholder="0.00" value={montoEfectivo} onChange={(e) => setMontoEfectivo(e.target.value)} required style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }} />
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <label style={{ fontSize: '11px', fontWeight: 'bold', color: '#555' }}>Concepto / Detalle:</label>
-                    <input type="text" placeholder="Ej: Pago material impagado, gasolina, provisión..." value={conceptoEfectivo} onChange={(e) => setConceptoEfectivo(e.target.value)} required style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }} />
-                  </div>
-
-                  <button type="submit" style={{ padding: '10px', background: '#b27d14', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', marginTop: '5px' }}>
-                    💾 Registrar Movimiento
-                  </button>
-                </form>
-
-                {/* HISTORIAL DE MOVIMIENTOS */}
-                <h4 style={{ margin: '0 0 10px 0', color: '#043424', fontSize: '14px' }}>📋 Historial de Caja Chica</h4>
-                <div style={{ maxHeight: '280px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {movimientosEfectivo.length === 0 ? (
-                    <p style={{ textAlign: 'center', color: '#888', fontSize: '13px' }}>No hay registros de movimientos en la caja.</p>
-                  ) : (
-                    movimientosEfectivo.map((mov) => (
-                      <div key={mov.id} style={{ padding: '10px', borderRadius: '6px', background: '#fff', border: `1px solid ${mov.tipo === 'entrada' ? '#2e7d32' : '#c62828'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                          <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#333' }}>
-                            {mov.tipo === 'entrada' ? '🟢 ENTRADA' : '🔻 SALIDA'}: {mov.concepto}
-                          </div>
-                          <div style={{ fontSize: '11px', color: '#777' }}>
-                            📅 {mov.fecha ? mov.fecha.split('-').reverse().join('/') : ''} {mov.registrado_por ? `| 👤 ${mov.registrado_por.split('@')[0]}` : ''}
-                          </div>
-                        </div>
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <span style={{ fontWeight: 'bold', fontSize: '15px', color: mov.tipo === 'entrada' ? '#2e7d32' : '#c62828' }}>
-                            {mov.tipo === 'entrada' ? '+' : '-'}{Number(mov.monto).toFixed(2)} €
-                          </span>
-                          <button onClick={() => manejarEliminarEfectivo(mov.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px' }} title="Borrar movimiento">
-                            🗑️
-                          </button>
                         </div>
                       </div>
                     ))
