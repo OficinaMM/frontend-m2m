@@ -244,7 +244,7 @@ function App() {
     setPantallaActual('recovery-escribir-pass');
   };
 
-  // ACTUALIZADO: Guarda la nueva contraseña directamente en Supabase
+  // MÉTODOS CORREGIDOS: Guarda la nueva contraseña directamente en Supabase
   const manejarGuardarNuevaPasswordRecovery = async (e) => {
     e.preventDefault();
     const pass1 = passRecoveryNueva.trim();
