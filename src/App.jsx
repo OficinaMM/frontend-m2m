@@ -90,6 +90,16 @@ function App() {
   const [conceptoEfectivo, setConceptoEfectivo] = useState('');
   const [fechaEfectivo, setFechaEfectivo] = useState(new Date().toISOString().split('T')[0]);
 
+  // ESTADOS DE PLUS DE PRODUCTIVIDAD
+  const [historialPlusProductividad, setHistorialPlusProductividad] = useState(() => {
+    const guardado = localStorage.getItem('m2m_plus_productividad');
+    return guardado ? JSON.parse(guardado) : [];
+  });
+  const [empleadoSeleccionadoPlus, setEmpleadoSeleccionadoPlus] = useState(correosAutorizados[0] || '');
+  const [montoPlus, setMontoPlus] = useState('');
+  const [conceptoPlus, setConceptoPlus] = useState('');
+  const [fechaPlus, setFechaPlus] = useState(new Date().toISOString().split('T')[0]);
+
   const [horasExtrasHistorial, setHorasExtrasHistorial] = useState(() => {
     const guardado = localStorage.getItem('m2m_horas_extras');
     return guardado ? JSON.parse(guardado) : [];
@@ -99,6 +109,29 @@ function App() {
     const guardado = localStorage.getItem('m2m_historial_partes');
     return guardado ? JSON.parse(guardado) : [];
   });
+
+  // CARGAR PLUSES DESDE SUPABASE
+  const cargarPlusProductividad = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('plus_productividad')
+        .select('*')
+        .order('fecha', { ascending: false });
+
+      if (data && !error) {
+        setHistorialPlusProductividad(data);
+        localStorage.setItem('m2m_plus_productividad', JSON.stringify(data));
+      }
+    } catch (err) {
+      console.log("Tabla 'plus_productividad' no activa en Supabase, utilizando modo local.");
+    }
+  };
+
+  useEffect(() => {
+    if (usuarioConectado) {
+      cargarPlusProductividad();
+    }
+  }, [usuarioConectado]);
 
   // CARGAR OBRAS Y TRABAJOS DESDE SUPABASE
   useEffect(() => {
@@ -316,6 +349,44 @@ function App() {
     } else {
       alert('❌ Acceso denegado. Este correo electrónico no está autorizado.');
     }
+  };
+
+  // REGISTRAR PLUS DE PRODUCTIVIDAD (ADMINISTRACIÓN)
+  const manejarRegistrarPlus = async (e) => {
+    e.preventDefault();
+    if (!montoPlus || isNaN(montoPlus) || Number(montoPlus) <= 0) {
+      alert('⚠️ Introduce un importe válido para el plus.');
+      return;
+    }
+
+    const nuevoRegistro = {
+      id: 'plus-' + Date.now(),
+      empleado: empleadoSeleccionadoPlus,
+      fecha: fechaPlus,
+      monto: parseFloat(montoPlus),
+      concepto: conceptoPlus || 'Plus de Productividad',
+      registrado_por: usuarioConectado
+    };
+
+    try {
+      await supabase.from('plus_productividad').insert([{
+        fecha: fechaPlus,
+        empleado: empleadoSeleccionadoPlus,
+        monto: parseFloat(montoPlus),
+        concepto: conceptoPlus || 'Plus de Productividad',
+        registrado_por: usuarioConectado
+      }]);
+    } catch (err) {
+      console.log("Guardado en estado local (Plus de Productividad).");
+    }
+
+    const nuevoHistorial = [nuevoRegistro, ...historialPlusProductividad];
+    setHistorialPlusProductividad(nuevoHistorial);
+    localStorage.setItem('m2m_plus_productividad', JSON.stringify(nuevoHistorial));
+
+    alert(`✅ Plus de ${montoPlus} € asignado correctamente a ${empleadoSeleccionadoPlus}`);
+    setMontoPlus('');
+    setConceptoPlus('');
   };
 
   // ELIMINACIÓN MÁSTER DE PARTES (EXCLUSIVO ADMINISTRACIÓN)
@@ -694,6 +765,13 @@ function App() {
     .filter(h => h.empleado === usuarioConectado)
     .reduce((sum, h) => sum + h.horas, 0);
 
+  // CÁLCULO DE PLUS DE PRODUCTIVIDAD Y HORAS DESCONTADAS
+  const misPlusesProductividad = historialPlusProductividad.filter(p => p.empleado === usuarioConectado);
+  const totalPlusPagadoEuros = misPlusesProductividad.reduce((sum, p) => sum + Number(p.monto || 0), 0);
+  const horasExtrasDescontadas = precioHoraActual > 0 ? (totalPlusPagadoEuros / precioHoraActual) : 0;
+  const horasExtrasPendientes = Math.max(0, totalGeneralExtrasProducidas - horasExtrasDescontadas);
+  const saldoEurosPendiente = horasExtrasPendientes * precioHoraActual;
+
   // FILTRADO MÁSTER PARA ADMINISTRACIÓN
   const partesAdminFiltrados = todosLosPartesAdmin.filter(p => {
     if (filtroAdminEmpleado && p.empleado !== filtroAdminEmpleado) return false;
@@ -708,7 +786,7 @@ function App() {
     return true;
   });
 
-  // CÁLCULO DE SALDO DE EFECTIVO (CORREGIDO A mov.importe)
+  // CÁLCULO DE SALDO DE EFECTIVO
   const saldoEfectivoCalculado = movimientosEfectivo.reduce((acc, mov) => {
     const monto = Number(mov.importe || 0);
     return mov.tipo === 'entrada' ? acc + monto : acc - monto;
@@ -798,8 +876,18 @@ function App() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   <button onClick={() => setPantallaActual('nuevo-parte')} style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '1px solid #ccc', background: '#f0f0f0' }}>📋 Enviar Nuevo Parte</button>
                   <button onClick={() => { setPantallaActual('mis-partes'); limpiarFiltrosGeneral(); }} style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '1px solid #ccc', background: '#f0f0f0' }}>📄 Ver Partes Enviados</button>
-                  <button onClick={() => { setPantallaActual('horas-extras'); limpiarFiltrosExtras(); }} style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '1px solid #ccc', background: '#f0f0f0' }}>⏰ Mis Horas Extras</button>
+                  <button onClick={() => { setPantallaActual('horas-extras'); limpiarFiltrosExtras(); }} style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '1px solid #ccc', background: '#f0f0f0' }}>⏰ Mis Horas Extras / Pluses</button>
                   
+                  {/* BOTÓN PLUS DE PRODUCTIVIDAD (EXCLUSIVO PARA ADMINISTRACIÓN MÁSTER) */}
+                  {usuarioConectado === EMAIL_ADMIN_MASTER && (
+                    <button 
+                      onClick={() => setPantallaActual('gestion-plus-productividad')} 
+                      style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '2px solid #28a745', background: '#eafaf1', color: '#1e7e34', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                    >
+                      💰 Plus de Productividad (Administración)
+                    </button>
+                  )}
+
                   {/* BOTÓN CONTROL DE EFECTIVO (EXCLUSIVO PARA ADMINISTRACIÓN Y TÉCNICO DE PROYECTOS) */}
                   {(usuarioConectado === EMAIL_ADMIN_MASTER || posicionUser === 'Técnico de Proyectos') && (
                     <button 
@@ -965,27 +1053,66 @@ function App() {
               </div>
             )}
 
+            {/* PANTALLA HORAS EXTRAS Y PLUSES PAGADOS */}
             {pantallaActual === 'horas-extras' && (
               <div>
-                <h2 style={{ color: '#043424', fontSize: '20px', marginBottom: '5px' }}>⏰ Control de Horas Extras</h2>
+                <h2 style={{ color: '#043424', fontSize: '20px', marginBottom: '5px' }}>⏰ Horas Extras y Plus de Productividad</h2>
                 <p style={{ margin: '0 0 15px 0', fontSize: '12px', color: '#555' }}>
-                  Las horas extras calculadas son las trabajadas en fines de semana o las que superen las 8h diarias de lunes a viernes.
+                  Resumen de tus horas extras trabajadas y abonadas mediante Plus de Productividad ({precioHoraActual} €/h).
                 </p>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '20px' }}>
-                  <div style={{ background: '#f2f7f4', padding: '12px', borderRadius: '8px', border: '1px solid #c5d9cc' }}>
-                    <div style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', fontWeight: 'bold' }}>Acumuladas totales</div>
-                    <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#043424' }}>{totalGeneralExtrasProducidas} h</div>
+                {/* TARJETAS DE RESUMEN SINTÉTICO */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
+                  <div style={{ background: '#f2f7f4', padding: '10px', borderRadius: '8px', border: '1px solid #c5d9cc', textAlign: 'center' }}>
+                    <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', fontWeight: 'bold' }}>Total Producido</div>
+                    <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#043424' }}>{totalGeneralExtrasProducidas} h</div>
+                    <div style={{ fontSize: '11px', color: '#666' }}>({totalGeneralExtrasProducidas * precioHoraActual} €)</div>
                   </div>
-                  <div style={{ background: '#fdf7ec', padding: '12px', borderRadius: '8px', border: '1px solid #f5e4c4' }}>
-                    <div style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', fontWeight: 'bold' }}>Saldo estimado</div>
-                    <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#b27d14' }}>{totalGeneralExtrasProducidas * precioHoraActual} €</div>
+
+                  <div style={{ background: '#eafaf1', padding: '10px', borderRadius: '8px', border: '1px solid #28a745', textAlign: 'center' }}>
+                    <div style={{ fontSize: '10px', color: '#1e7e34', textTransform: 'uppercase', fontWeight: 'bold' }}>Plus Pagado (€)</div>
+                    <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#28a745' }}>{totalPlusPagadoEuros.toFixed(2)} €</div>
+                    <div style={{ fontSize: '11px', color: '#28a745' }}>({horasExtrasDescontadas.toFixed(1)} h liq.)</div>
                   </div>
                 </div>
 
-                <div style={{ maxHeight: '280px', overflowY: 'auto', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {/* SALDO PENDIENTES */}
+                <div style={{ background: '#fdf7ec', padding: '12px', borderRadius: '8px', border: '1px solid #f5e4c4', marginBottom: '20px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '11px', color: '#856404', textTransform: 'uppercase', fontWeight: 'bold' }}>Saldo Pendiente por Cobrar</div>
+                  <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#b27d14' }}>
+                    {horasExtrasPendientes.toFixed(1)} h / {saldoEurosPendiente.toFixed(2)} €
+                  </div>
+                </div>
+
+                {/* DESGLOSE HISTORIAL DE PLUSES RECIBIDOS */}
+                <h4 style={{ textAlign: 'left', margin: '0 0 8px 0', color: '#1e7e34', fontSize: '14px' }}>💵 Pluses de Productividad Cobrados:</h4>
+                <div style={{ maxHeight: '150px', overflowY: 'auto', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '20px' }}>
+                  {misPlusesProductividad.length === 0 ? (
+                    <p style={{ color: '#777', fontSize: '12px', fontStyle: 'italic' }}>No has recibido pluses de productividad registrados aún.</p>
+                  ) : (
+                    misPlusesProductividad.map((p) => {
+                      const hEquiv = precioHoraActual > 0 ? (p.monto / precioHoraActual).toFixed(1) : 0;
+                      return (
+                        <div key={p.id} style={{ padding: '8px 10px', background: '#eafaf1', borderLeft: '4px solid #28a745', borderRadius: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <span style={{ fontWeight: 'bold', fontSize: '12px', color: '#1e7e34' }}>📅 {p.fecha.split('-').reverse().join('/')}</span>
+                            <div style={{ fontSize: '11px', color: '#555' }}>{p.concepto}</div>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <span style={{ fontWeight: 'bold', fontSize: '14px', color: '#28a745' }}>+{p.monto} €</span>
+                            <div style={{ fontSize: '10px', color: '#666' }}>(-{hEquiv} hrs extra)</div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* REGISTRO DE JORNADAS DE HORAS EXTRAS */}
+                <h4 style={{ textAlign: 'left', margin: '0 0 8px 0', color: '#043424', fontSize: '14px' }}>📋 Historial de Horas Extras Generadas:</h4>
+                <div style={{ maxHeight: '200px', overflowY: 'auto', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {extrasFiltradas.length === 0 ? (
-                    <p style={{ textAlign: 'center', color: '#666', fontSize: '13px', padding: '10px' }}>No hay registros de horas extras en este rango.</p>
+                    <p style={{ textAlign: 'center', color: '#666', fontSize: '13px', padding: '10px' }}>No hay registros de horas extras generadas.</p>
                   ) : (
                     extrasFiltradas.map((extra) => (
                       <div key={extra.id} style={{ border: '1px solid #e2e8f0', padding: '10px', borderRadius: '6px', background: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -998,6 +1125,74 @@ function App() {
                         </div>
                       </div>
                     ))
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* PANTALLA GESTIÓN PLUS DE PRODUCTIVIDAD (ADMINISTRACIÓN) */}
+            {pantallaActual === 'gestion-plus-productividad' && usuarioConectado === EMAIL_ADMIN_MASTER && (
+              <div style={{ textAlign: 'left' }}>
+                <h2 style={{ color: '#1e7e34', textAlign: 'center', fontSize: '20px', marginBottom: '5px' }}>💰 Asignar Plus de Productividad</h2>
+                <p style={{ fontSize: '12px', color: '#555', textAlign: 'center', marginBottom: '15px' }}>
+                  Registra abonados de pluses a los empleados. Se descontarán automáticamente de sus horas extras según la tarifa por hora de cada uno.
+                </p>
+
+                <form onSubmit={manejarRegistrarPlus} style={{ background: '#eafaf1', padding: '15px', borderRadius: '8px', border: '1px solid #28a745', display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#1e7e34' }}>Seleccionar Empleado:</label>
+                    <select value={empleadoSeleccionadoPlus} onChange={(e) => setEmpleadoSeleccionadoPlus(e.target.value)} style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}>
+                      {correosAutorizados.map((c, i) => (
+                        <option key={i} value={c}>
+                          {datosEmpleadosPredeterminados[c]?.nombre} {datosEmpleadosPredeterminados[c]?.apellidos} ({c})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                      <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#1e7e34' }}>Fecha de Pago:</label>
+                      <input type="date" value={fechaPlus} onChange={(e) => setFechaPlus(e.target.value)} required style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }} />
+                    </div>
+
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                      <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#1e7e34' }}>Importe Pagado (€):</label>
+                      <input type="number" step="0.01" min="0.01" placeholder="Ej: 150.00" value={montoPlus} onChange={(e) => setMontoPlus(e.target.value)} required style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }} />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#1e7e34' }}>Concepto / Nota:</label>
+                    <input type="text" placeholder="Ej: Plus de productividad del mes / Adelanto" value={conceptoPlus} onChange={(e) => setConceptoPlus(e.target.value)} style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }} />
+                  </div>
+
+                  <button type="submit" style={{ padding: '12px', background: '#28a745', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', marginTop: '5px' }}>
+                    💾 Guardar Plus de Productividad
+                  </button>
+                </form>
+
+                {/* HISTORIAL GENERAL DE PLUSES */}
+                <h4 style={{ color: '#043424', margin: '0 0 10px 0' }}>📋 Registro Global de Pluses Emitidos:</h4>
+                <div style={{ maxHeight: '220px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {historialPlusProductividad.length === 0 ? (
+                    <p style={{ color: '#888', fontSize: '12px', textAlign: 'center' }}>No se han emitido pluses aún.</p>
+                  ) : (
+                    historialPlusProductividad.map((p) => {
+                      const empInfo = datosEmpleadosPredeterminados[p.empleado];
+                      const nombreMostrar = empInfo ? `${empInfo.nombre} ${empInfo.apellidos}` : p.empleado;
+                      return (
+                        <div key={p.id} style={{ padding: '10px', borderRadius: '6px', background: '#fff', borderLeft: '4px solid #28a745', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#043424' }}>👤 {nombreMostrar}</div>
+                            <div style={{ fontSize: '11px', color: '#666' }}>📅 {p.fecha ? p.fecha.split('-').reverse().join('/') : ''} | Concepto: {p.concepto}</div>
+                          </div>
+                          <div style={{ fontWeight: 'bold', fontSize: '15px', color: '#28a745' }}>
+                            +{Number(p.monto || 0).toFixed(2)} €
+                          </div>
+                        </div>
+                      );
+                    })
                   )}
                 </div>
               </div>
