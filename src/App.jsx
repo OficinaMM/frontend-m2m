@@ -93,7 +93,7 @@ function App() {
     return guardado ? JSON.parse(guardado) : [];
   });
 
-  // CARGAR OBRAS Y TRABAJOS DESDE SUPABASE
+  // CARGAR OBRAS Y TRABAJOS DESDE SUPABASE (FILTRADO POR OBRA)
   useEffect(() => {
     const cargarObrasYTrabajos = async () => {
       try {
@@ -112,22 +112,28 @@ function App() {
 
         if (datosObras && datosObras.length > 0) {
           const nombresObras = datosObras.map(item => item.OBRA);
-          const listaTrabajosGenerales = datosTrabajos && datosTrabajos.length > 0 
-            ? datosTrabajos.map(t => t.TRABAJO || t.nombre || t.trabajo).filter(Boolean)
-            : ['MANTENIMIENTO GENERAL', 'OTROS'];
-
           const mapaTrabajos = {};
-          nombresObras.forEach(obra => {
-            mapaTrabajos[obra] = listaTrabajosGenerales;
+
+          // Filtrar cada trabajo asignándolo solo a su obra correspondiente
+          nombresObras.forEach(nombreObra => {
+            const trabajosDeEstaObra = (datosTrabajos || [])
+              .filter(t => (t.OBRA || t.obra) === nombreObra)
+              .map(t => t.TRABAJO || t.trabajo || t.nombre)
+              .filter(Boolean);
+
+            mapaTrabajos[nombreObra] = trabajosDeEstaObra.length > 0 
+              ? [...trabajosDeEstaObra, 'OTROS'] 
+              : ['MANTENIMIENTO GENERAL', 'OTROS'];
           });
 
           setListaObras(nombresObras);
           setBaseDatosObras(mapaTrabajos);
 
+          const primeraObra = nombresObras[0];
           setTareasDelDia([
             { 
-              obra: nombresObras[0], 
-              trabajo: mapaTrabajos[nombresObras[0]]?.[0] || 'OTROS', 
+              obra: primeraObra, 
+              trabajo: mapaTrabajos[primeraObra]?.[0] || 'OTROS', 
               horas: '8', 
               especificarOtros: '', 
               lugarTrabajo: '' 
@@ -289,7 +295,6 @@ function App() {
 
       if (error) throw error;
 
-      // Eliminar de los estados en vivo de la aplicación
       setTodosLosPartesAdmin(prev => prev.filter(p => p.id !== idParte));
       setHistorialPartes(prev => prev.filter(p => p.id !== idParte));
 
@@ -717,7 +722,6 @@ function App() {
                   <button onClick={() => { setPantallaActual('mis-partes'); limpiarFiltrosGeneral(); }} style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '1px solid #ccc', background: '#f0f0f0' }}>📄 Ver Partes Enviados</button>
                   <button onClick={() => { setPantallaActual('horas-extras'); limpiarFiltrosExtras(); }} style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '1px solid #ccc', background: '#f0f0f0' }}>⏰ Mis Horas Extras</button>
                   
-                  {/* BOTÓN EXCLUSIVO DE ADMINISTRACIÓN MÁSTER */}
                   {usuarioConectado === EMAIL_ADMIN_MASTER && (
                     <button 
                       onClick={() => { setPantallaActual('gestion-administracion'); limpiarFiltrosAdmin(); }} 
@@ -727,7 +731,6 @@ function App() {
                     </button>
                   )}
 
-                  {/* BOTÓN TÉCNICO DE PROYECTOS */}
                   {posicionUser === 'Técnico de Proyectos' && (
                     <button 
                       onClick={() => setPantallaActual('gestion-proyectos')} 
@@ -920,7 +923,6 @@ function App() {
               </div>
             )}
 
-            {/* PANTALLA GESTIÓN ADMINISTRACIÓN MÁSTER */}
             {pantallaActual === 'gestion-administracion' && (
               <div style={{ textAlign: 'left' }}>
                 <h2 style={{ color: '#043424', textAlign: 'center', fontSize: '20px', marginBottom: '5px' }}>🛡️ Panel de Administración Máster</h2>
@@ -928,7 +930,6 @@ function App() {
                   Gestión global de partes registrados. Puedes filtrar por empleado, mes o borrar registros directamente.
                 </p>
 
-                {/* FILTROS PANEL DE ADMINISTRACIÓN */}
                 <div style={{ background: '#e2f0d9', padding: '12px', borderRadius: '8px', marginBottom: '15px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                     <div style={{ flex: '1 1 180px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
@@ -963,7 +964,6 @@ function App() {
                   </div>
                 </div>
 
-                {/* LISTADO GLOBAL DE PARTES CON OPCIÓN DE BORRADO */}
                 <div style={{ maxHeight: '380px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {partesAdminFiltrados.length === 0 ? (
                     <p style={{ textAlign: 'center', color: '#888', fontSize: '13px' }}>No hay partes registrados con los criterios seleccionados.</p>
@@ -980,7 +980,6 @@ function App() {
                               <div style={{ fontSize: '11px', color: '#666' }}>📅 {p.fecha.split('-').reverse().join('/')} | 📩 {p.empleado}</div>
                             </div>
                             
-                            {/* BOTÓN DE BORRADO MÁSTER */}
                             <button 
                               onClick={() => manejarEliminarParteAdmin(p.id)} 
                               style={{ background: '#ff4d4d', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '5px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
@@ -1005,7 +1004,6 @@ function App() {
               </div>
             )}
 
-            {/* PANTALLA GESTIÓN PROYECTOS */}
             {pantallaActual === 'gestion-proyectos' && (
               <div style={{ textAlign: 'left' }}>
                 <h2 style={{ color: '#b27d14', textAlign: 'center', fontSize: '20px', marginBottom: '15px' }}>📐 Panel de Proyectos</h2>
