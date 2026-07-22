@@ -342,11 +342,11 @@ function App() {
     }
   };
 
-  // REGISTRAR MOVIMIENTO DE EFECTIVO
+  // REGISTRAR MOVIMIENTO DE EFECTIVO (CORREGIDO A "importe")
   const manejarRegistrarEfectivo = async (e) => {
     e.preventDefault();
     if (!montoEfectivo || isNaN(montoEfectivo) || Number(montoEfectivo) <= 0) {
-      alert('⚠️ Por favor, introduce un monto válido.');
+      alert('⚠️ Por favor, introduce un importe válido.');
       return;
     }
 
@@ -356,12 +356,16 @@ function App() {
         .insert([{
           fecha: fechaEfectivo,
           tipo: tipoMovEfectivo,
-          monto: parseFloat(montoEfectivo),
+          importe: parseFloat(montoEfectivo),
           concepto: conceptoEfectivo,
           registrado_por: usuarioConectado
         }]);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error de Supabase:", error);
+        alert(`❌ Error al guardar: ${error.message}`);
+        return;
+      }
 
       alert('✅ Movimiento registrado con éxito.');
       setMontoEfectivo('');
@@ -704,9 +708,10 @@ function App() {
     return true;
   });
 
-  // CÁLCULO DE SALDO DE EFECTIVO
+  // CÁLCULO DE SALDO DE EFECTIVO (CORREGIDO A mov.importe)
   const saldoEfectivoCalculado = movimientosEfectivo.reduce((acc, mov) => {
-    return mov.tipo === 'entrada' ? acc + Number(mov.monto) : acc - Number(mov.monto);
+    const monto = Number(mov.importe || 0);
+    return mov.tipo === 'entrada' ? acc + monto : acc - monto;
   }, 0);
 
   return (
@@ -1007,7 +1012,7 @@ function App() {
                 </p>
 
                 {/* TARJETA CON SALDO EN VIVO */}
-                <div style={{ background: saldoEfectivoCalculado >= 0 ? '#e2f0d9' : '#f8d7da', padding: '15px', borderRadius: '10px', textCenter: 'center', marginBottom: '20px', border: '1px solid #ccc', textAlign: 'center' }}>
+                <div style={{ background: saldoEfectivoCalculado >= 0 ? '#e2f0d9' : '#f8d7da', padding: '15px', borderRadius: '10px', marginBottom: '20px', border: '1px solid #ccc', textAlign: 'center' }}>
                   <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#333' }}>SALDO ACTUAL EN EFECTIVO:</span>
                   <div style={{ fontSize: '28px', fontWeight: 'bold', color: saldoEfectivoCalculado >= 0 ? '#043424' : '#721c24', marginTop: '5px' }}>
                     {saldoEfectivoCalculado.toFixed(2)} €
@@ -1057,10 +1062,10 @@ function App() {
                       <div key={mov.id} style={{ padding: '10px', borderRadius: '6px', background: '#fff', borderLeft: `5px solid ${mov.tipo === 'entrada' ? '#28a745' : '#dc3545'}`, boxShadow: '0 1px 3px rgba(0,0,0,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
                           <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#333' }}>{mov.concepto}</div>
-                          <div style={{ fontSize: '11px', color: '#666' }}>📅 {mov.fecha.split('-').reverse().join('/')} | 👤 {mov.registrado_por}</div>
+                          <div style={{ fontSize: '11px', color: '#666' }}>📅 {mov.fecha ? mov.fecha.split('-').reverse().join('/') : ''} | 👤 {mov.registrado_por}</div>
                         </div>
                         <div style={{ fontWeight: 'bold', fontSize: '15px', color: mov.tipo === 'entrada' ? '#28a745' : '#dc3545' }}>
-                          {mov.tipo === 'entrada' ? '+' : '-'}{Number(mov.monto).toFixed(2)} €
+                          {mov.tipo === 'entrada' ? '+' : '-'}{Number(mov.importe || 0).toFixed(2)} €
                         </div>
                       </div>
                     ))
