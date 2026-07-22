@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import logoEmpresa from './assets/logo.png';
 import { supabase } from './supabaseClient';
 
-// Función para encriptar la contraseña (SHA-256) antes de enviar a Supabase
+// Encriptación SHA-256 para contraseñas
 async function hashPassword(str) {
   const encoder = new TextEncoder();
   const data = encoder.encode(str);
@@ -12,9 +12,8 @@ async function hashPassword(str) {
 }
 
 function App() {
-  // 1. BASE DE DATOS DE EMPLEADOS PREDETERMINADOS
   const datosEmpleadosPredeterminados = {
-    'administracion@grupom2m.com': { nombre: 'Fanny', apellidos: 'Rodríguez', telefono: '600000001', posicion: 'Administración', dni: '43220225M' },
+    'administracion@grupom2m.com': { nombre: 'Estefania', apellidos: 'Rodríguez', telefono: '600000001', posicion: 'Administración', dni: '43220225M' },
     'proyectos@grupom2m.com': { nombre: 'Paco', apellidos: 'Lopez Moreno', telefono: '600000002', posicion: 'Técnico de Proyectos', dni: '44325886X' },
     'info@grupom2m.com': { nombre: 'Dani', apellidos: 'Moreno Lucas', telefono: '600000003', posicion: 'Encargado General', dni: '43078641D' },
     'domingorodriguezguerrero1@gmail.com': { nombre: 'Domingo Rafael', apellidos: 'Rodríguez Guerrero', telefono: '600000004', posicion: 'Oficial de 1ª', dni: '08855929D' },
@@ -26,7 +25,6 @@ function App() {
     'jajuanito.barcelo81@gmail.com': { nombre: 'Juan Antonio', apellidos: 'Barceló Contestí', telefono: '43130415X', posicion: 'Oficial de 2ª', dni: '43130415X' },
     'marcelo09vargas90@gmail.com': { nombre: 'Marcelo José', apellidos: 'Vargas López', telefono: '600000011', posicion: 'Oficial de 2ª', dni: 'E28631832' },
     'rojasquinterosrodrigo0@gmail.com': { nombre: 'Rodrigo', apellidos: 'Rojas Quinteros', telefono: '600000012', posicion: 'Peón Especializado', dni: 'Z2561343E' },   
-    'rimercamacho48@gmail.com': { nombre: 'Rimer', apellidos: 'Camacho', telefono: '600000012', posicion: 'Oficial de 1ª', dni: 'Z3236151X' },
     'exon.saa0707@gmail.com': { nombre: 'Edson', apellidos: 'Sabino Alvarez Argote', telefono: '600000013', posicion: 'Oficial de 1ª', dni: '54631451B' }
   };
 
@@ -43,11 +41,9 @@ function App() {
   const correosAutorizados = Object.keys(datosEmpleadosPredeterminados);
   const PASSWORD_TEMPORAL = 'M2M2026*';
 
-  // ESTADOS DE OBRAS Y TRABAJOS
   const [baseDatosObras, setBaseDatosObras] = useState({});
   const [listaObras, setListaObras] = useState([]);
 
-  // ESTADOS DE LA APLICACIÓN
   const [usuarioConectado, setUsuarioConectado] = useState(null);
   const [correo, setCorreo] = useState('');
   const [password, setPassword] = useState('');
@@ -172,14 +168,13 @@ function App() {
     checkUsuarioYActualizarDatos();
   }, [usuarioConectado]);
 
-  // CARGAR HISTORIAL DE PARTES SEGÚN ROL
+  // CARGAR HISTORIAL DE PARTES
   useEffect(() => {
     const cargarPartesDesdeSupabase = async () => {
       if (usuarioConectado) {
         try {
           let query = supabase.from('partes_publicos').select('*');
           
-          // Si no es Administración ni Proyectos, solo carga los propios
           const esAdminOProyectos = posicionUser === 'Administración' || posicionUser === 'Técnico de Proyectos';
           if (!esAdminOProyectos) {
             query = query.eq('empleado', usuarioConectado);
@@ -188,7 +183,7 @@ function App() {
           const { data, error } = await query.order('fecha', { ascending: false });
 
           if (error) {
-            console.error("Error al cargar partes de Supabase:", error);
+            console.error("Error al cargar partes:", error);
           } else if (data) {
             const partesFormateados = data.map(p => ({
               id: p.id,
@@ -210,7 +205,7 @@ function App() {
             localStorage.setItem('m2m_historial_partes', JSON.stringify(misPartes));
           }
         } catch (err) {
-          console.error("Error de conexión con Supabase:", err);
+          console.error("Error de conexión:", err);
         }
       }
     };
@@ -220,7 +215,6 @@ function App() {
 
   const precioHoraActual = tarifasPorCategoria[posicionUser] || 10;
 
-  // LOGIN CON ENCRIPTACIÓN DE CONTRASEÑA
   const manejarLogin = async (e) => {
     e.preventDefault();
 
@@ -243,7 +237,6 @@ function App() {
         const passHashTemp = await hashPassword(PASSWORD_TEMPORAL);
 
         if (usuarioDb && usuarioDb.password) {
-          // Si la contraseña almacenada coincide con el hash o texto plano anterior
           if (usuarioDb.password === passHashIntroducida || usuarioDb.password === passwordIntroducida) {
             setUsuarioConectado(correoIntroducido);
             setPosicionUser(usuarioDb.posicion || datosEmpleadosPredeterminados[correoIntroducido]?.posicion || 'No Asignada');
@@ -271,7 +264,6 @@ function App() {
     }
   };
 
-  // CAMBIO DE CONTRASEÑA CON ENCRIPTACIÓN
   const manejarChangePassword = async (e) => {
     e.preventDefault();
     if (nuevaPassword.trim().length < 4) {
@@ -299,12 +291,12 @@ function App() {
 
       if (error) throw error;
 
-      alert('✅ Contraseña encriptada y guardada en la nube con éxito.');
+      alert('✅ Contraseña guardada correctamente.');
       setNuevaPassword('');
       setPantallaActual('menu');
     } catch (err) {
       console.error("Error al guardar contraseña:", err);
-      alert('❌ No se pudo guardar la contraseña en la base de datos.');
+      alert('❌ No se pudo guardar la contraseña.');
     }
   };
 
@@ -359,8 +351,7 @@ function App() {
 
       if (error) throw error;
 
-      alert('✅ Contraseña restablecida de forma segura. Ya puedes iniciar sesión.');
-      
+      alert('✅ Contraseña restablecida con éxito.');
       setCorreoRecovery('');
       setDniRecovery('');
       setCorreoValidadoRecovery('');
@@ -368,15 +359,15 @@ function App() {
       setPassRecoveryConfirmar('');
       setPantallaActual('menu');
     } catch (err) {
-      console.error("Error al guardar la nueva contraseña:", err);
-      alert('❌ No se pudo guardar la nueva contraseña en la base de datos.');
+      console.error("Error al guardar la contraseña:", err);
+      alert('❌ Error al guardar la nueva contraseña.');
     }
   };
 
   const manejarGuardarTelefono = (e) => {
     e.preventDefault();
     localStorage.setItem(`tel_${usuarioConectado}`, telefonoEdit.trim());
-    alert('✅ Teléfono de contacto actualizado correctamente.');
+    alert('✅ Teléfono de contacto actualizado.');
   };
 
   const añadirFilaTarea = () => {
@@ -503,9 +494,9 @@ function App() {
         setHorasExtrasHistorial(nuevoHistorialExtras);
         localStorage.setItem('m2m_horas_extras', JSON.stringify(nuevoHistorialExtras));
         
-        alert(`🚀 ¡Parte Enviado y Registrado!\nSe detectaron ${calculoExtras}h extras.`);
+        alert(`🚀 ¡Parte Enviado!\nSe detectaron ${calculoExtras}h extras.`);
       } else {
-        alert('🚀 ¡Parte Enviado y Registrado con éxito!');
+        alert('🚀 ¡Parte Enviado con éxito!');
       }
     } else {
       alert('❌ Error al procesar el envío del parte.');
@@ -535,7 +526,6 @@ function App() {
     return fechaParte >= lunesSemana && fechaParte <= domingoSemana;
   };
 
-  // FILTRADO HISTORIAL
   const partesFiltradosBase = historialPartes.filter(p => {
     if (p.empleado !== usuarioConectado) return false;
     if (filtroParteMes && p.fecha.substring(0, 7) !== filtroParteMes) return false;
