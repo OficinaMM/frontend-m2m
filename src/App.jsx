@@ -34,8 +34,10 @@ function App() {
 
   const correosAutorizados = Object.keys(datosEmpleadosPredeterminados);
   const PASSWORD_TEMPORAL = 'M2M2026*';
-const [baseDatosObras, setBaseDatosObras] = useState({});
+
+  const [baseDatosObras, setBaseDatosObras] = useState({});
   const [listaObras, setListaObras] = useState([]);
+
   const historialPagosM2M = [
     { empleado: 'domingorodriguezguerrero1@gmail.com', mes: '2026-05', horasPagadas: 10, importe: 150, detalle: 'Plus de Productividad (Nómina Mayo)' },
     { empleado: 'domingorodriguezguerrero1@gmail.com', mes: '2026-06', horasPagadas: 8, importe: 120, detalle: 'Plus de Productividad (Nómina Junio)' },
@@ -62,8 +64,10 @@ const [baseDatosObras, setBaseDatosObras] = useState({});
 
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
   const [notaGeneral, setNotaGeneral] = useState('');
+  
+  // SOLUCIÓN AL ERROR: Inicialización segura de tareasDelDia
   const [tareasDelDia, setTareasDelDia] = useState([
-    { obra: listaObras[0], trabajo: baseDatosObras[listaObras[0]][0], horas: '8', especificarOtros: '', lugarTrabajo: '' }
+    { obra: '', trabajo: '', horas: '8', especificarOtros: '', lugarTrabajo: '' }
   ]);
 
   const [filtroParteMes, setFiltroParteMes] = useState('');
@@ -83,7 +87,57 @@ const [baseDatosObras, setBaseDatosObras] = useState({});
     return guardado ? JSON.parse(guardado) : [];
   });
 
-useEffect(() => {
+  // CARGAR OBRAS Y TRABAJOS DESDE SUPABASE
+  useEffect(() => {
+    const cargarObrasYTrabajos = async () => {
+      try {
+        // Cargar Obras
+        const { data: dataObras } = await supabase.from('OBRAS').select('*');
+        // Cargar Trabajos
+        const { data: dataTrabajos } = await supabase.from('TRABAJOS A REALIZAR').select('*');
+
+        if (dataObras && dataObras.length > 0) {
+          const nombresObras = dataObras.map(o => o.OBRA);
+          setListaObras(nombresObras);
+
+          const mapaObrasTrabajos = {};
+          nombresObras.forEach(obra => {
+            mapaObrasTrabajos[obra] = [];
+          });
+
+          if (dataTrabajos) {
+            dataTrabajos.forEach(t => {
+              if (mapaObrasTrabajos[t.OBRA]) {
+                mapaObrasTrabajos[t.OBRA].push(t.TRABAJOS);
+              }
+            });
+          }
+
+          // Asegurar que siempre hay la opción OTROS
+          Object.keys(mapaObrasTrabajos).forEach(o => {
+            if (!mapaObrasTrabajos[o].includes('OTROS')) {
+              mapaObrasTrabajos[o].push('OTROS');
+            }
+          });
+
+          setBaseDatosObras(mapaObrasTrabajos);
+
+          // Establecer la primera obra por defecto en la primera tarea
+          const obraInicial = nombresObras[0];
+          const trabajoInicial = (mapaObrasTrabajos[obraInicial] && mapaObrasTrabajos[obraInicial][0]) || 'OTROS';
+          setTareasDelDia([
+            { obra: obraInicial, trabajo: trabajoInicial, horas: '8', especificarOtros: '', lugarTrabajo: '' }
+          ]);
+        }
+      } catch (err) {
+        console.error("Error al cargar Obras y Trabajos de Supabase:", err);
+      }
+    };
+
+    cargarObrasYTrabajos();
+  }, []);
+
+  useEffect(() => {
     const checkUsuarioYActualizarDatos = async () => {
       if (usuarioConectado) {
         try {
@@ -94,7 +148,6 @@ useEffect(() => {
             .single();
 
           if (usuarioDb) {
-            // Sincroniza la categoría y los datos reales desde la nube
             setPosicionUser(usuarioDb.posicion || 'No Asignada');
             setNombreEdit(usuarioDb.nombre || '');
             setApellidosEdit(usuarioDb.apellidos || '');
@@ -147,95 +200,53 @@ useEffect(() => {
 
     cargarPartesDesdeSupabase();
   }, [usuarioConectado]);
-  // ==========================================
-  // NUEVO BLOQUE A AÑADIR PARA SINCRONIZAR PARTES DESDE SUPABASE
-  // ==========================================
-  useEffect(() => {
-    const cargarPartesDesdeSupabase = async () => {
-      if (usuarioConectado) {
-        try {
-          const { data, error } = await supabase
-            .from('partes_publicos')
-            .select('*')
-            .eq('empleado', usuarioConectado)
-            .order('fecha', { ascending: false });
 
-          if (error) {
-            console.error("Error al cargar partes de Supabase:", error);
-          } else if (data) {
-            // Adaptamos los datos de Supabase al formato de tu historial local
-            const partesFormateados = data.map(p => ({
-              id: p.id,
-              empleado: p.empleado,
-              fecha: p.fecha,
-              obra: p.obra,
-              trabajo: p.trabajo,
-              horas: p.horas,
-              notes: p.otros_trabajos, 
-              lugarTrabajo: p.lugar_de_trabajo
-            }));
+  const precioHoraActual = tarifasPorCategoria[posicionUser] || 10;
+
+  const manejarLogin = async (e) => {
+    e.preventDefault();
+
+    const correoIntroducido = correo.trim().toLowerCase();
+    const passwordIntroducido = password.trim();
+
+    if (correosAutorizados.includes(correoIntroducido)) {
+      try {
+        const { data: usuarioDb, error } = await supabase
+          .from('empleados')
+          .select('*')
+          .eq('correo', correoIntroducido)
+          .single();
+
+        if (error && error.code !== 'PGRST116') {
+          console.error("Error al consultar Supabase:", error);
+        }
+
+        const passwordCorrecta = usuarioDb ? usuarioDb.password : PASSWORD_TEMPORAL;
+
+        if (passwordIntroducido === passwordCorrecta) {
+          setUsuarioConectado(correoIntroducido);
+
+          if (usuarioDb) {
+            setPosicionUser(usuarioDb.posicion || 'No Asignada');
+            setNombreEdit(usuarioDb.nombre || '');
+            setApellidosEdit(usuarioDb.apellidos || '');
+            setTelefonoEdit(usuarioDb.telefono || '');
             
-            setHistorialPartes(partesFormateados);
-            localStorage.setItem('m2m_historial_partes', JSON.stringify(partesFormateados));
+            setPantallaActual('menu');
+          } else {
+            setPantallaActual('primer-cambio-pass');
           }
-        } catch (err) {
-          console.error("Error de conexión con Supabase:", err);
-        }
-      }
-    };
-
-    cargarPartesDesdeSupabase();
-  }, [usuarioConectado]);
-  // ==========================================
-
-  const precioHoraActual = tarifasPorCategoria[posicionUser] || 10; // <-- ESTO SERÍA LA LÍNEA 110 ORIGINAL
-
- const manejarLogin = async (e) => {
-  e.preventDefault();
-
-  const correoIntroducido = correo.trim().toLowerCase();
-  const passwordIntroducido = password.trim();
-
-  if (correosAutorizados.includes(correoIntroducido)) {
-    try {
-      const { data: usuarioDb, error } = await supabase
-        .from('empleados')
-        .select('*')
-        .eq('correo', correoIntroducido)
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        console.error("Error al consultar Supabase:", error);
-      }
-
-      const passwordCorrecta = usuarioDb ? usuarioDb.password : PASSWORD_TEMPORAL;
-
-      if (passwordIntroducido === passwordCorrecta) {
-        setUsuarioConectado(correoIntroducido);
-
-        // Si el usuario ya existe en Supabase, cargamos sus datos reales de la nube
-        if (usuarioDb) {
-          setPosicionUser(usuarioDb.posicion || 'No Asignada');
-          setNombreEdit(usuarioDb.nombre || '');
-          setApellidosEdit(usuarioDb.apellidos || '');
-          setTelefonoEdit(usuarioDb.telefono || '');
-          
-          setPantallaActual('menu');
         } else {
-          // Si no existe en la BD (primera vez con clave temporal), va a cambiarla
-          setPantallaActual('primer-cambio-pass');
+          alert('❌ Contraseña incorrecta.');
         }
-      } else {
-        alert('❌ Contraseña incorrecta.');
+      } catch (err) {
+        console.error("Error en el login:", err);
+        alert('❌ Error al intentar conectar con la base de datos.');
       }
-    } catch (err) {
-      console.error("Error en el login:", err);
-      alert('❌ Error al intentar conectar con la base de datos.');
+    } else {
+      alert('❌ Acceso denegado. Este correo electrónico no está autorizado.');
     }
-  } else {
-    alert('❌ Acceso denegado. Este correo electrónico no está autorizado.');
-  }
-};
+  };
 
   const manejarChangePassword = async (e) => {
     e.preventDefault();
@@ -320,8 +331,9 @@ useEffect(() => {
   };
 
   const añadirFilaTarea = () => {
-    const obraPorDefecto = listaObras[0];
-    setTareasDelDia([...tareasDelDia, { obra: obraPorDefecto, trabajo: baseDatosObras[obraPorDefecto][0], horas: '8', especificarOtros: '', lugarTrabajo: '' }]);
+    const obraPorDefecto = listaObras[0] || '';
+    const trabajoPorDefecto = (baseDatosObras[obraPorDefecto] && baseDatosObras[obraPorDefecto][0]) || '';
+    setTareasDelDia([...tareasDelDia, { obra: obraPorDefecto, trabajo: trabajoPorDefecto, horas: '8', especificarOtros: '', lugarTrabajo: '' }]);
   };
 
   const eliminarFilaTarea = (index) => {
@@ -331,7 +343,7 @@ useEffect(() => {
   const actualizarObraEnTarea = (index, nuevaObra) => {
     const nuevasTareas = [...tareasDelDia];
     nuevasTareas[index].obra = nuevaObra;
-    nuevasTareas[index].trabajo = baseDatosObras[nuevaObra][0];
+    nuevasTareas[index].trabajo = (baseDatosObras[nuevaObra] && baseDatosObras[nuevaObra][0]) || '';
     nuevasTareas[index].especificarOtros = '';
     nuevasTareas[index].lugarTrabajo = '';
     setTareasDelDia(nuevasTareas);
@@ -371,7 +383,6 @@ useEffect(() => {
 
         const textoFormateadoBarras = `FECHA: ${fecha.split('-').reverse().join('/')} / EMPLEADO: ${nombreCompleto} / OBRA: ${tarea.obra} / TRABAJO: ${trabajoRealizado} / HORAS: ${tarea.horas}h / HORAS EXTRA: ${calculoExtras}h / LUGAR: ${infoLugar} / OBSERVACIONES: ${notaGeneral || "Ninguna"}`;
 
-        // 1. ENVÍO CON EMAILJS
         try {
             await fetch("https://api.emailjs.com/api/v1.0/email/send", {
                 method: "POST",
@@ -402,10 +413,9 @@ useEffect(() => {
             console.error("Error en EmailJS:", errorMail);
         }
 
-       // 2. RESPALDO EN SUPABASE
         try {
             await supabase
-                .from('partes_publicos') // <-- Aquí hemos cambiado 'partes' por 'partes_publicos'
+                .from('partes_publicos')
                 .insert([{
                     fecha: fecha,
                     empleado: usuarioConectado,
@@ -451,7 +461,9 @@ useEffect(() => {
     }
 
     setNotaGeneral('');
-    setTareasDelDia([{ obra: listaObras[0], trabajo: baseDatosObras[listaObras[0]][0], horas: '8', especificarOtros: '', lugarTrabajo: '' }]);
+    const obraInicial = listaObras[0] || '';
+    const trabajoInicial = (baseDatosObras[obraInicial] && baseDatosObras[obraInicial][0]) || '';
+    setTareasDelDia([{ obra: obraInicial, trabajo: trabajoInicial, horas: '8', especificarOtros: '', lugarTrabajo: '' }]);
     setPantallaActual('menu');
   };
 
@@ -473,7 +485,6 @@ useEffect(() => {
     return fechaParte >= lunesSemana && fechaParte <= domingoSemana;
   };
 
-  // --- LÓGICA DE HISTORIAL ---
   const partesFiltradosBase = historialPartes.filter(p => {
     if (p.empleado !== usuarioConectado) return false;
     if (filtroParteMes && p.fecha.substring(0, 7) !== filtroParteMes) return false;
@@ -644,13 +655,17 @@ useEffect(() => {
                       
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#333' }}>Obra:</label>
-                        <select value={tarea.obra} onChange={(e) => actualizarObraEnTarea(index, e.target.value)} style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }}>{listaObras.map((o, i) => <option key={i} value={o}>{o}</option>)}</select>
+                        <select value={tarea.obra} onChange={(e) => actualizarObraEnTarea(index, e.target.value)} style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }}>
+                          {listaObras.map((o, i) => <option key={i} value={o}>{o}</option>)}
+                        </select>
                       </div>
 
                       <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                         <div style={{ flex: '1 1 200px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                           <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#333' }}>Trabajos:</label>
-                          <select value={tarea.trabajo} onChange={(e) => actualizarCampoTarea(index, 'trabajo', e.target.value)} style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }}>{baseDatosObras[tarea.obra].map((t, i) => <option key={i} value={t}>{t}</option>)}</select>
+                          <select value={tarea.trabajo} onChange={(e) => actualizarCampoTarea(index, 'trabajo', e.target.value)} style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }}>
+                            {(baseDatosObras[tarea.obra] || ['OTROS']).map((t, i) => <option key={i} value={t}>{t}</option>)}
+                          </select>
                         </div>
                         <div style={{ flex: '1 1 80px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                           <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#333' }}>Horas:</label>
