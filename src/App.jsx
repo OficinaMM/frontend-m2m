@@ -91,7 +91,7 @@ function App() {
             .from('empleados')
             .select('*')
             .eq('correo', usuarioConectado)
-            .single();
+            .maybeSingle();
 
           if (usuarioDb) {
             setPosicionUser(usuarioDb.posicion || 'No Asignada');
@@ -161,9 +161,9 @@ function App() {
           .from('empleados')
           .select('*')
           .eq('correo', correoIntroducido)
-          .single();
+          .maybeSingle();
 
-        if (error && error.code !== 'PGRST116') {
+        if (error) {
           console.error("Error al consultar Supabase:", error);
         }
 
@@ -172,7 +172,7 @@ function App() {
         if (passwordIntroducido === passwordCorrecta) {
           setUsuarioConectado(correoIntroducido);
 
-          if (usuarioDb) {
+          if (usuarioDb && usuarioDb.password) {
             setPosicionUser(usuarioDb.posicion || 'No Asignada');
             setNombreEdit(usuarioDb.nombre || '');
             setApellidosEdit(usuarioDb.apellidos || '');
@@ -194,6 +194,7 @@ function App() {
     }
   };
 
+  // CAMBIO 1: Modificado para usar .update() en lugar de .upsert()
   const manejarChangePassword = async (e) => {
     e.preventDefault();
     if (nuevaPassword.trim().length < 4) {
@@ -208,14 +209,16 @@ function App() {
     try {
       const { error } = await supabase
         .from('empleados')
-        .upsert({ 
-          correo: usuarioConectado, 
-          password: nuevaPassword.trim() 
-        }, { onConflict: 'correo' });
+        .update({ password: nuevaPassword.trim() })
+        .eq('correo', usuarioConectado);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error de Supabase:", error);
+        alert('❌ Error de Supabase al actualizar: ' + error.message);
+        return;
+      }
 
-      alert('✅ Contraseña guardada en la nube correctamente.');
+      alert('✅ Contraseña guardada en la base de datos correctamente.');
       setNuevaPassword('');
       setPantallaActual('menu');
     } catch (err) {
@@ -244,7 +247,7 @@ function App() {
     setPantallaActual('recovery-escribir-pass');
   };
 
-  // MÉTODOS CORREGIDOS: Guarda la nueva contraseña directamente en Supabase
+  // CAMBIO 2: Modificado para usar .update() en lugar de .upsert()
   const manejarGuardarNuevaPasswordRecovery = async (e) => {
     e.preventDefault();
     const pass1 = passRecoveryNueva.trim();
@@ -263,12 +266,14 @@ function App() {
     try {
       const { error } = await supabase
         .from('empleados')
-        .upsert({ 
-          correo: correoValidadoRecovery, 
-          password: pass1 
-        }, { onConflict: 'correo' });
+        .update({ password: pass1 })
+        .eq('correo', correoValidadoRecovery);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error de Supabase:", error);
+        alert('❌ Error de Supabase al actualizar: ' + error.message);
+        return;
+      }
 
       alert('✅ Contraseña restablecida con éxito. Ya puedes iniciar sesión con tu nueva contraseña.');
       
