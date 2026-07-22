@@ -2,8 +2,17 @@ import React, { useState, useEffect } from 'react';
 import logoEmpresa from './assets/logo.png';
 import { supabase } from './supabaseClient';
 
+// Función para encriptar la contraseña (SHA-256) antes de enviar a Supabase
+async function hashPassword(str) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(str);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 function App() {
-  // 1. BASE DE DATOS DE EMPLEADOS
+  // 1. BASE DE DATOS DE EMPLEADOS PREDETERMINADOS
   const datosEmpleadosPredeterminados = {
     'administracion@grupom2m.com': { nombre: 'Fanny', apellidos: 'Rodríguez', telefono: '600000001', posicion: 'Administración', dni: '43220225M' },
     'proyectos@grupom2m.com': { nombre: 'Paco', apellidos: 'Lopez Moreno', telefono: '600000002', posicion: 'Técnico de Proyectos', dni: '44325886X' },
@@ -21,7 +30,6 @@ function App() {
     'exon.saa0707@gmail.com': { nombre: 'Edson', apellidos: 'Sabino Alvarez Argote', telefono: '600000013', posicion: 'Oficial de 1ª', dni: '54631451B' }
   };
 
-  // TARIFAS DE HORA EXTRA
   const tarifasPorCategoria = {
     'Encargado General': 18,
     'Oficial de 1ª': 15,
@@ -34,15 +42,12 @@ function App() {
 
   const correosAutorizados = Object.keys(datosEmpleadosPredeterminados);
   const PASSWORD_TEMPORAL = 'M2M2026*';
+
+  // ESTADOS DE OBRAS Y TRABAJOS
   const [baseDatosObras, setBaseDatosObras] = useState({});
   const [listaObras, setListaObras] = useState([]);
-  const historialPagosM2M = [
-    { empleado: 'domingorodriguezguerrero1@gmail.com', mes: '2026-05', horasPagadas: 10, importe: 150, detalle: 'Plus de Productividad (Nómina Mayo)' },
-    { empleado: 'domingorodriguezguerrero1@gmail.com', mes: '2026-06', horasPagadas: 8, importe: 120, detalle: 'Plus de Productividad (Nómina Junio)' },
-    { empleado: 'jjleonp1891@gmail.com', mes: '2026-06', horasPagadas: 12, importe: 180, detalle: 'Plus de Productividad (Nómina Junio)' }
-  ];
 
-  // 2. ESTADOS DE LA APLICACIÓN
+  // ESTADOS DE LA APLICACIÓN
   const [usuarioConectado, setUsuarioConectado] = useState(null);
   const [correo, setCorreo] = useState('');
   const [password, setPassword] = useState('');
@@ -62,9 +67,7 @@ function App() {
 
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
   const [notaGeneral, setNotaGeneral] = useState('');
-  const [tareasDelDia, setTareasDelDia] = useState([
-    { obra: listaObras[0], trabajo: baseDatosObras[listaObras[0]]?.[0] || '', horas: '8', especificarOtros: '', lugarTrabajo: '' }
-  ]);
+  const [tareasDelDia, setTareasDelDia] = useState([]);
 
   const [filtroParteMes, setFiltroParteMes] = useState('');
   const [filtroParteSemana, setFiltroParteSemana] = useState(false);
@@ -72,6 +75,8 @@ function App() {
   
   const [filtroExtraMes, setFiltroExtraMes] = useState(''); 
   const [filtroExtraSemana, setFiltroExtraSemana] = useState(false); 
+
+  const [todosLosPartesAdmin, setTodosLosPartesAdmin] = useState([]);
 
   const [horasExtrasHistorial, setHorasExtrasHistorial] = useState(() => {
     const guardado = localStorage.getItem('m2m_horas_extras');
@@ -83,6 +88,56 @@ function App() {
     return guardado ? JSON.parse(guardado) : [];
   });
 
+  // CARGAR OBRAS Y TRABAJOS DESDE SUPABASE
+  useEffect(() => {
+    const cargarObrasYTrabajos = async () => {
+      try {
+        const { data: datosObras, error: errorObras } = await supabase
+          .from('OBRAS')
+          .select('OBRA')
+          .eq('ESTADO', 'ACTIVA');
+
+        if (errorObras) throw errorObras;
+
+        const { data: datosTrabajos, error: errorTrabajos } = await supabase
+          .from('TRABAJOS A REALIZAR')
+          .select('*');
+
+        if (errorTrabajos) throw errorTrabajos;
+
+        if (datosObras && datosObras.length > 0) {
+          const nombresObras = datosObras.map(item => item.OBRA);
+          const listaTrabajosGenerales = datosTrabajos && datosTrabajos.length > 0 
+            ? datosTrabajos.map(t => t.TRABAJO || t.nombre || t.trabajo).filter(Boolean)
+            : ['MANTENIMIENTO GENERAL', 'OTROS'];
+
+          const mapaTrabajos = {};
+          nombresObras.forEach(obra => {
+            mapaTrabajos[obra] = listaTrabajosGenerales;
+          });
+
+          setListaObras(nombresObras);
+          setBaseDatosObras(mapaTrabajos);
+
+          setTareasDelDia([
+            { 
+              obra: nombresObras[0], 
+              trabajo: mapaTrabajos[nombresObras[0]]?.[0] || 'OTROS', 
+              horas: '8', 
+              especificarOtros: '', 
+              lugarTrabajo: '' 
+            }
+          ]);
+        }
+      } catch (err) {
+        console.error("Error al cargar obras desde Supabase:", err);
+      }
+    };
+
+    cargarObrasYTrabajos();
+  }, []);
+
+  // REFRESCAR DATOS DE USUARIO AL CONECTAR
   useEffect(() => {
     const checkUsuarioYActualizarDatos = async () => {
       if (usuarioConectado) {
@@ -93,13 +148,20 @@ function App() {
             .eq('correo', usuarioConectado)
             .single();
 
+          const infoPredeterminada = datosEmpleadosPredeterminados[usuarioConectado] || {};
+
           if (usuarioDb) {
-            setPosicionUser(usuarioDb.posicion || 'No Asignada');
-            setNombreEdit(usuarioDb.nombre || '');
-            setApellidosEdit(usuarioDb.apellidos || '');
+            setPosicionUser(usuarioDb.posicion || infoPredeterminada.posicion || 'No Asignada');
+            setNombreEdit(usuarioDb.nombre || infoPredeterminada.nombre || '');
+            setApellidosEdit(usuarioDb.apellidos || infoPredeterminada.apellidos || '');
             
             const telGuardado = localStorage.getItem(`tel_${usuarioConectado}`);
-            setTelefonoEdit(telGuardado || usuarioDb.telefono || '');
+            setTelefonoEdit(telGuardado || usuarioDb.telefono || infoPredeterminada.telefono || '');
+          } else {
+            setPosicionUser(infoPredeterminada.posicion || 'No Asignada');
+            setNombreEdit(infoPredeterminada.nombre || '');
+            setApellidosEdit(infoPredeterminada.apellidos || '');
+            setTelefonoEdit(infoPredeterminada.telefono || '');
           }
         } catch (err) {
           console.error("Error al refrescar datos de usuario:", err);
@@ -110,16 +172,20 @@ function App() {
     checkUsuarioYActualizarDatos();
   }, [usuarioConectado]);
 
-  // Sincronizador para cargar automáticamente el historial de partes desde Supabase
+  // CARGAR HISTORIAL DE PARTES SEGÚN ROL
   useEffect(() => {
     const cargarPartesDesdeSupabase = async () => {
       if (usuarioConectado) {
         try {
-          const { data, error } = await supabase
-            .from('partes_publicos')
-            .select('*')
-            .eq('empleado', usuarioConectado)
-            .order('fecha', { ascending: false });
+          let query = supabase.from('partes_publicos').select('*');
+          
+          // Si no es Administración ni Proyectos, solo carga los propios
+          const esAdminOProyectos = posicionUser === 'Administración' || posicionUser === 'Técnico de Proyectos';
+          if (!esAdminOProyectos) {
+            query = query.eq('empleado', usuarioConectado);
+          }
+
+          const { data, error } = await query.order('fecha', { ascending: false });
 
           if (error) {
             console.error("Error al cargar partes de Supabase:", error);
@@ -134,9 +200,14 @@ function App() {
               notes: p.otros_trabajos, 
               lugarTrabajo: p.lugar_de_trabajo
             }));
+
+            if (esAdminOProyectos) {
+              setTodosLosPartesAdmin(partesFormateados);
+            }
             
-            setHistorialPartes(partesFormateados);
-            localStorage.setItem('m2m_historial_partes', JSON.stringify(partesFormateados));
+            const misPartes = partesFormateados.filter(p => p.empleado === usuarioConectado);
+            setHistorialPartes(misPartes);
+            localStorage.setItem('m2m_historial_partes', JSON.stringify(misPartes));
           }
         } catch (err) {
           console.error("Error de conexión con Supabase:", err);
@@ -145,15 +216,16 @@ function App() {
     };
 
     cargarPartesDesdeSupabase();
-  }, [usuarioConectado]);
+  }, [usuarioConectado, posicionUser]);
 
   const precioHoraActual = tarifasPorCategoria[posicionUser] || 10;
 
+  // LOGIN CON ENCRIPTACIÓN DE CONTRASEÑA
   const manejarLogin = async (e) => {
     e.preventDefault();
 
     const correoIntroducido = correo.trim().toLowerCase();
-    const passwordIntroducido = password.trim();
+    const passwordIntroducida = password.trim();
 
     if (correosAutorizados.includes(correoIntroducido)) {
       try {
@@ -167,27 +239,28 @@ function App() {
           console.error("Error al consultar Supabase:", error);
         }
 
-        // Si la clave en Supabase no existe o está vacía (NULL), aceptamos la clave temporal
-        const passwordCorrecta = (usuarioDb && usuarioDb.password) ? usuarioDb.password : PASSWORD_TEMPORAL;
+        const passHashIntroducida = await hashPassword(passwordIntroducida);
+        const passHashTemp = await hashPassword(PASSWORD_TEMPORAL);
 
-        if (passwordIntroducido === passwordCorrecta) {
-          setUsuarioConectado(correoIntroducido);
-
-          if (usuarioDb) {
-            setPosicionUser(usuarioDb.posicion || 'No Asignada');
-            setNombreEdit(usuarioDb.nombre || '');
-            setApellidosEdit(usuarioDb.apellidos || '');
-            setTelefonoEdit(usuarioDb.telefono || '');
-          }
-
-          // Si en Supabase no tiene clave o está vacía, le exigimos crearla
-          if (!usuarioDb || !usuarioDb.password) {
-            setPantallaActual('primer-cambio-pass');
-          } else {
+        if (usuarioDb && usuarioDb.password) {
+          // Si la contraseña almacenada coincide con el hash o texto plano anterior
+          if (usuarioDb.password === passHashIntroducida || usuarioDb.password === passwordIntroducida) {
+            setUsuarioConectado(correoIntroducido);
+            setPosicionUser(usuarioDb.posicion || datosEmpleadosPredeterminados[correoIntroducido]?.posicion || 'No Asignada');
+            setNombreEdit(usuarioDb.nombre || datosEmpleadosPredeterminados[correoIntroducido]?.nombre || '');
+            setApellidosEdit(usuarioDb.apellidos || datosEmpleadosPredeterminados[correoIntroducido]?.apellidos || '');
+            setTelefonoEdit(usuarioDb.telefono || datosEmpleadosPredeterminados[correoIntroducido]?.telefono || '');
             setPantallaActual('menu');
+          } else {
+            alert('❌ Contraseña incorrecta.');
           }
         } else {
-          alert('❌ Contraseña incorrecta.');
+          if (passwordIntroducida === PASSWORD_TEMPORAL || passHashIntroducida === passHashTemp) {
+            setUsuarioConectado(correoIntroducido);
+            setPantallaActual('primer-cambio-pass');
+          } else {
+            alert('❌ Contraseña incorrecta.');
+          }
         }
       } catch (err) {
         console.error("Error en el login:", err);
@@ -198,34 +271,40 @@ function App() {
     }
   };
 
+  // CAMBIO DE CONTRASEÑA CON ENCRIPTACIÓN
   const manejarChangePassword = async (e) => {
     e.preventDefault();
-    const passLimpia = nuevaPassword.trim();
-
-    if (passLimpia.length < 4) {
+    if (nuevaPassword.trim().length < 4) {
       alert('⚠️ La contraseña debe tener al menos 4 caracteres.');
       return;
     }
-    if (passLimpia === PASSWORD_TEMPORAL) {
+    if (nuevaPassword.trim() === PASSWORD_TEMPORAL) {
       alert('⚠️ No puedes usar la contraseña temporal. Elige una nueva.');
       return;
     }
 
     try {
-      const { data, error } = await supabase
+      const passEncriptada = await hashPassword(nuevaPassword.trim());
+      const infoEmp = datosEmpleadosPredeterminados[usuarioConectado] || {};
+
+      const { error } = await supabase
         .from('empleados')
-        .update({ password: passLimpia })
-        .eq('correo', usuarioConectado)
-        .select();
+        .upsert({ 
+          correo: usuarioConectado, 
+          password: passEncriptada,
+          nombre: nombreEdit || infoEmp.nombre,
+          apellidos: apellidosEdit || infoEmp.apellidos,
+          posicion: posicionUser || infoEmp.posicion
+        }, { onConflict: 'correo' });
 
       if (error) throw error;
 
-      alert('✅ Contraseña guardada en Supabase correctamente.');
+      alert('✅ Contraseña encriptada y guardada en la nube con éxito.');
       setNuevaPassword('');
       setPantallaActual('menu');
     } catch (err) {
       console.error("Error al guardar contraseña:", err);
-      alert('❌ No se pudo guardar la contraseña en Supabase: ' + (err.message || 'Error desconocido'));
+      alert('❌ No se pudo guardar la contraseña en la base de datos.');
     }
   };
 
@@ -260,20 +339,27 @@ function App() {
     }
 
     if (pass1 !== pass2) {
-      alert('❌ Las contraseñas introducidas no coinciden. Asegúrate de escribir exactamente lo mismo en ambas casillas.');
+      alert('❌ Las contraseñas introducidas no coinciden.');
       return;
     }
 
     try {
-      const { data, error } = await supabase
+      const passEncriptada = await hashPassword(pass1);
+      const infoEmp = datosEmpleadosPredeterminados[correoValidadoRecovery] || {};
+
+      const { error } = await supabase
         .from('empleados')
-        .update({ password: pass1 })
-        .eq('correo', correoValidadoRecovery)
-        .select();
+        .upsert({ 
+          correo: correoValidadoRecovery, 
+          password: passEncriptada,
+          nombre: infoEmp.nombre,
+          apellidos: infoEmp.apellidos,
+          posicion: infoEmp.posicion 
+        }, { onConflict: 'correo' });
 
       if (error) throw error;
 
-      alert('✅ Contraseña restablecida con éxito en Supabase. Ya puedes iniciar sesión.');
+      alert('✅ Contraseña restablecida de forma segura. Ya puedes iniciar sesión.');
       
       setCorreoRecovery('');
       setDniRecovery('');
@@ -283,7 +369,7 @@ function App() {
       setPantallaActual('menu');
     } catch (err) {
       console.error("Error al guardar la nueva contraseña:", err);
-      alert('❌ No se pudo guardar la nueva contraseña en Supabase: ' + (err.message || 'Error desconocido'));
+      alert('❌ No se pudo guardar la nueva contraseña en la base de datos.');
     }
   };
 
@@ -294,8 +380,11 @@ function App() {
   };
 
   const añadirFilaTarea = () => {
-    const obraPorDefecto = listaObras[0];
-    setTareasDelDia([...tareasDelDia, { obra: obraPorDefecto, trabajo: baseDatosObras[obraPorDefecto]?.[0] || '', horas: '8', especificarOtros: '', lugarTrabajo: '' }]);
+    const obraPorDefecto = listaObras[0] || '';
+    setTareasDelDia([
+      ...tareasDelDia, 
+      { obra: obraPorDefecto, trabajo: baseDatosObras[obraPorDefecto]?.[0] || 'OTROS', horas: '8', especificarOtros: '', lugarTrabajo: '' }
+    ]);
   };
 
   const eliminarFilaTarea = (index) => {
@@ -305,7 +394,7 @@ function App() {
   const actualizarObraEnTarea = (index, nuevaObra) => {
     const nuevasTareas = [...tareasDelDia];
     nuevasTareas[index].obra = nuevaObra;
-    nuevasTareas[index].trabajo = baseDatosObras[nuevaObra]?.[0] || '';
+    nuevasTareas[index].trabajo = baseDatosObras[nuevaObra]?.[0] || 'OTROS';
     nuevasTareas[index].especificarOtros = '';
     nuevasTareas[index].lugarTrabajo = '';
     setTareasDelDia(nuevasTareas);
@@ -321,13 +410,13 @@ function App() {
     e.preventDefault();
 
     const yaExisteParte = historialPartes.some(
-        (parte) => parte.empleado === usuarioConectado && parte.fecha === fecha
+      (parte) => parte.empleado === usuarioConectado && parte.fecha === fecha
     );
 
     if (yaExisteParte) {
-        const fechaFormateada = fecha.split('-').reverse().join('-');
-        alert(`⚠️ Ya has enviado un parte para el día ${fechaFormateada}. No se permiten duplicados.`);
-        return;
+      const fechaFormateada = fecha.split('-').reverse().join('-');
+      alert(`⚠️ Ya has enviado un parte para el día ${fechaFormateada}. No se permiten duplicados.`);
+      return;
     }
 
     const totalHoras = tareasDelDia.reduce((suma, t) => suma + Number(t.horas), 0);
@@ -339,93 +428,92 @@ function App() {
     let tareasInsertadasParaHistorial = [];
 
     for (const tarea of tareasDelDia) {
-        const nombreCompleto = datosEmpleadosPredeterminados[usuarioConectado]?.nombre + " " + datosEmpleadosPredeterminados[usuarioConectado]?.apellidos;
-        const trabajoRealizado = tarea.trabajo === 'OTROS' ? tarea.especificarOtros : tarea.trabajo;
-        const infoLugar = tarea.obra === 'TRABAJOS CON RODADO' ? (tarea.lugarTrabajo ? tarea.lugarTrabajo.trim() : "No especificado") : "Aplicación Web";
+      const nombreCompleto = (nombreEdit || datosEmpleadosPredeterminados[usuarioConectado]?.nombre) + " " + (apellidosEdit || datosEmpleadosPredeterminados[usuarioConectado]?.apellidos);
+      const trabajoRealizado = tarea.trabajo === 'OTROS' ? tarea.especificarOtros : tarea.trabajo;
+      const infoLugar = tarea.obra === 'TRABAJOS CON RODADO' ? (tarea.lugarTrabajo ? tarea.lugarTrabajo.trim() : "No especificado") : "Aplicación Web";
 
-        const textoFormateadoBarras = `FECHA: ${fecha.split('-').reverse().join('/')} / EMPLEADO: ${nombreCompleto} / OBRA: ${tarea.obra} / TRABAJO: ${trabajoRealizado} / HORAS: ${tarea.horas}h / HORAS EXTRA: ${calculoExtras}h / LUGAR: ${infoLugar} / OBSERVACIONES: ${notaGeneral || "Ninguna"}`;
+      const textoFormateadoBarras = `FECHA: ${fecha.split('-').reverse().join('/')} / EMPLEADO: ${nombreCompleto} / OBRA: ${tarea.obra} / TRABAJO: ${trabajoRealizado} / HORAS: ${tarea.horas}h / HORAS EXTRA: ${calculoExtras}h / LUGAR: ${infoLugar} / OBSERVACIONES: ${notaGeneral || "Ninguna"}`;
 
-        // 1. ENVÍO CON EMAILJS
-        try {
-            await fetch("https://api.emailjs.com/api/v1.0/email/send", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    service_id: "service_bnpz2dc",
-                    template_id: "template_vb8w9pk",
-                    user_id: "WNyn-TdoekkCZ0kuY",
-                    template_params: {
-                        detalle_parte: textoFormateadoBarras
-                    }
-                })
-            });
+      try {
+        await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            service_id: "service_bnpz2dc",
+            template_id: "template_vb8w9pk",
+            user_id: "WNyn-TdoekkCZ0kuY",
+            template_params: {
+              detalle_parte: textoFormateadoBarras
+            }
+          })
+        });
 
-            const formatoParteHistorial = {
-                id: Date.now() + Math.random(),
-                empleado: usuarioConectado,
-                fecha: fecha,
-                obra: tarea.obra,
-                trabajo: trabajoRealizado,
-                horas: tarea.horas,
-                notes: notaGeneral,
-                lugarTrabajo: tarea.obra === 'TRABAJOS CON RODADO' ? infoLugar : ''
-            };
-            tareasInsertadasParaHistorial.push(formatoParteHistorial);
+        const formatoParteHistorial = {
+          id: Date.now() + Math.random(),
+          empleado: usuarioConectado,
+          fecha: fecha,
+          obra: tarea.obra,
+          trabajo: trabajoRealizado,
+          horas: tarea.horas,
+          notes: notaGeneral,
+          lugarTrabajo: tarea.obra === 'TRABAJOS CON RODADO' ? infoLugar : ''
+        };
+        tareasInsertadasParaHistorial.push(formatoParteHistorial);
 
-        } catch (errorMail) {
-            console.error("Error en EmailJS:", errorMail);
-        }
+      } catch (errorMail) {
+        console.error("Error en EmailJS:", errorMail);
+      }
 
-       // 2. RESPALDO EN SUPABASE
-        try {
-            await supabase
-                .from('partes_publicos')
-                .insert([{
-                    fecha: fecha,
-                    empleado: usuarioConectado,
-                    obra: tarea.obra,
-                    trabajo: trabajoRealizado,
-                    horas: Number(tarea.horas),
-                    horas_extra: Number(calculoExtras),
-                    otros_trabajos: notaGeneral || "",
-                    lugar_de_trabajo: infoLugar
-                }]);
-        } catch (errorSupabase) {
-            console.error("Error en BD:", errorSupabase);
-        }
+      try {
+        await supabase
+          .from('partes_publicos')
+          .insert([{
+            fecha: fecha,
+            empleado: usuarioConectado,
+            obra: tarea.obra,
+            trabajo: trabajoRealizado,
+            horas: Number(tarea.horas),
+            horas_extra: Number(calculoExtras),
+            otros_trabajos: notaGeneral || "",
+            lugar_de_trabajo: infoLugar
+          }]);
+      } catch (errorSupabase) {
+        console.error("Error en BD:", errorSupabase);
+      }
     }
 
     if (tareasInsertadasParaHistorial.length > 0) {
-        const nuevoHistorialPartes = [...tareasInsertadasParaHistorial, ...historialPartes];
-        setHistorialPartes(nuevoHistorialPartes);
-        localStorage.setItem('m2m_historial_partes', JSON.stringify(nuevoHistorialPartes));
+      const nuevoHistorialPartes = [...tareasInsertadasParaHistorial, ...historialPartes];
+      setHistorialPartes(nuevoHistorialPartes);
+      localStorage.setItem('m2m_historial_partes', JSON.stringify(nuevoHistorialPartes));
 
-        const obrasTocadasHoy = [...new Set(tareasDelDia.map(t => t.obra))];
-        let motivoExtra = diaSemana === 6 ? 'Sábado' : diaSemana === 0 ? 'Domingo' : 'Exceso jornada (>8h)';
+      const obrasTocadasHoy = [...new Set(tareasDelDia.map(t => t.obra))];
+      let motivoExtra = diaSemana === 6 ? 'Sábado' : diaSemana === 0 ? 'Domingo' : 'Exceso jornada (>8h)';
 
-        if (calculoExtras > 0) {
-            const nuevoHistorialExtras = [{ 
-                id: 'ex-' + Date.now(), 
-                empleado: usuarioConectado, 
-                fecha: fecha, 
-                horas: calculoExtras, 
-                motivo: motivoExtra, 
-                obrasDelDia: obrasTocadasHoy 
-            }, ...horasExtrasHistorial];
-            
-            setHorasExtrasHistorial(nuevoHistorialExtras);
-            localStorage.setItem('m2m_horas_extras', JSON.stringify(nuevoHistorialExtras));
-            
-            alert(`🚀 ¡Parte Enviado y Registrado!\nSe detectaron ${calculoExtras}h extras.`);
-        } else {
-            alert('🚀 ¡Parte Enviado y Registrado con éxito!');
-        }
+      if (calculoExtras > 0) {
+        const nuevoHistorialExtras = [{ 
+          id: 'ex-' + Date.now(), 
+          empleado: usuarioConectado, 
+          fecha: fecha, 
+          horas: calculoExtras, 
+          motivo: motivoExtra, 
+          obrasDelDia: obrasTocadasHoy 
+        }, ...horasExtrasHistorial];
+        
+        setHorasExtrasHistorial(nuevoHistorialExtras);
+        localStorage.setItem('m2m_horas_extras', JSON.stringify(nuevoHistorialExtras));
+        
+        alert(`🚀 ¡Parte Enviado y Registrado!\nSe detectaron ${calculoExtras}h extras.`);
+      } else {
+        alert('🚀 ¡Parte Enviado y Registrado con éxito!');
+      }
     } else {
-        alert('❌ Error al procesar el envío del parte.');
+      alert('❌ Error al procesar el envío del parte.');
     }
 
     setNotaGeneral('');
-    setTareasDelDia([{ obra: listaObras[0], trabajo: baseDatosObras[listaObras[0]]?.[0] || '', horas: '8', especificarOtros: '', lugarTrabajo: '' }]);
+    const obraInicial = listaObras[0] || '';
+    setTareasDelDia([{ obra: obraInicial, trabajo: baseDatosObras[obraInicial]?.[0] || 'OTROS', horas: '8', especificarOtros: '', lugarTrabajo: '' }]);
     setPantallaActual('menu');
   };
 
@@ -447,7 +535,7 @@ function App() {
     return fechaParte >= lunesSemana && fechaParte <= domingoSemana;
   };
 
-  // --- LÓGICA DE HISTORIAL ---
+  // FILTRADO HISTORIAL
   const partesFiltradosBase = historialPartes.filter(p => {
     if (p.empleado !== usuarioConectado) return false;
     if (filtroParteMes && p.fecha.substring(0, 7) !== filtroParteMes) return false;
@@ -494,11 +582,6 @@ function App() {
   const totalGeneralExtrasProducidas = horasExtrasHistorial
     .filter(h => h.empleado === usuarioConectado)
     .reduce((sum, h) => sum + h.horas, 0);
-
-  const pagosDelUsuario = historialPagosM2M.filter(p => p.empleado === usuarioConectado);
-  const totalHorasPagadas = pagosDelUsuario.reduce((sum, p) => sum + p.horasPagadas, 0);
-  const saldoHorasPendientes = totalGeneralExtrasProducidas - totalHorasPagadas;
-  const saldoDineroPendiente = saldoHorasPendientes * precioHoraActual;
 
   return (
     <div style={{ 
@@ -585,6 +668,27 @@ function App() {
                   <button onClick={() => setPantallaActual('nuevo-parte')} style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '1px solid #ccc', background: '#f0f0f0' }}>📋 Enviar Nuevo Parte</button>
                   <button onClick={() => { setPantallaActual('mis-partes'); limpiarFiltrosGeneral(); }} style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '1px solid #ccc', background: '#f0f0f0' }}>📄 Ver Partes Enviados</button>
                   <button onClick={() => { setPantallaActual('horas-extras'); limpiarFiltrosExtras(); }} style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '1px solid #ccc', background: '#f0f0f0' }}>⏰ Mis Horas Extras</button>
+                  
+                  {/* BOTÓN ADMINISTRACIÓN */}
+                  {posicionUser === 'Administración' && (
+                    <button 
+                      onClick={() => setPantallaActual('gestion-administracion')} 
+                      style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '1px solid #043424', background: '#e2f0d9', color: '#043424' }}
+                    >
+                      💼 Gestión Administración
+                    </button>
+                  )}
+
+                  {/* BOTÓN TÉCNICO DE PROYECTOS */}
+                  {posicionUser === 'Técnico de Proyectos' && (
+                    <button 
+                      onClick={() => setPantallaActual('gestion-proyectos')} 
+                      style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '1px solid #b27d14', background: '#fdf7ec', color: '#b27d14' }}
+                    >
+                      📐 Gestión de Proyectos
+                    </button>
+                  )}
+
                   <button onClick={cerrarSesion} style={{ padding: '8px', fontSize: '13px', color: '#888', cursor: 'pointer', border: 'none', background: 'none', textDecoration: 'underline', marginTop: '15px' }}>Cerrar Sesión</button>
                 </div>
               </div>
@@ -618,13 +722,17 @@ function App() {
                       
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#333' }}>Obra:</label>
-                        <select value={tarea.obra} onChange={(e) => actualizarObraEnTarea(index, e.target.value)} style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }}>{listaObras.map((o, i) => <option key={i} value={o}>{o}</option>)}</select>
+                        <select value={tarea.obra} onChange={(e) => actualizarObraEnTarea(index, e.target.value)} style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }}>
+                          {listaObras.map((o, i) => <option key={i} value={o}>{o}</option>)}
+                        </select>
                       </div>
 
                       <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                         <div style={{ flex: '1 1 200px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                           <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#333' }}>Trabajos:</label>
-                          <select value={tarea.trabajo} onChange={(e) => actualizarCampoTarea(index, 'trabajo', e.target.value)} style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }}>{(baseDatosObras[tarea.obra] || []).map((t, i) => <option key={i} value={t}>{t}</option>)}</select>
+                          <select value={tarea.trabajo} onChange={(e) => actualizarCampoTarea(index, 'trabajo', e.target.value)} style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }}>
+                            {(baseDatosObras[tarea.obra] || []).map((t, i) => <option key={i} value={t}>{t}</option>)}
+                          </select>
                         </div>
                         <div style={{ flex: '1 1 80px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                           <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#333' }}>Horas:</label>
@@ -702,7 +810,6 @@ function App() {
                   ) : (
                     partesFiltrados.map((dia, index) => (
                       <div key={index} style={{ border: '2px solid #043424', padding: '12px', borderRadius: '6px', background: '#fff' }}>
-                        
                         <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #eee', paddingBottom: '6px', marginBottom: '8px' }}>
                           <span style={{ fontWeight: 'bold', color: '#043424', fontSize: '14px' }}>📅 {dia.fecha.split('-').reverse().join('/')}</span>
                           <span style={{ background: '#b27d14', color: '#fff', padding: '3px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold' }}>
@@ -720,7 +827,6 @@ function App() {
                             </div>
                           ))}
                         </div>
-
                       </div>
                     ))
                   )}
@@ -741,22 +847,9 @@ function App() {
                     <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#043424' }}>{totalGeneralExtrasProducidas} h</div>
                   </div>
                   <div style={{ background: '#fdf7ec', padding: '12px', borderRadius: '8px', border: '1px solid #f5e4c4' }}>
-                    <div style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', fontWeight: 'bold' }}>Saldo pendiente</div>
-                    <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#b27d14' }}>{saldoHorasPendientes} h</div>
-                    <div style={{ fontSize: '11px', color: '#777', marginTop: '2px' }}>~ {saldoDineroPendiente} € aprox.</div>
+                    <div style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', fontWeight: 'bold' }}>Saldo estimado</div>
+                    <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#b27d14' }}>{totalGeneralExtrasProducidas * precioHoraActual} €</div>
                   </div>
-                </div>
-
-                <div style={{ background: '#f5f5f5', padding: '12px', borderRadius: '8px', marginBottom: '15px', display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <label style={{ fontSize: '12px', fontWeight: 'bold' }}>Mes:</label>
-                    <input type="month" value={filtroExtraMes} onChange={(e) => setFiltroExtraMes(e.target.value)} style={{ padding: '4px', borderRadius: '4px', border: '1px solid #ccc' }} />
-                  </div>
-                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                    <input type="checkbox" id="chkExSemana" checked={filtroExtraSemana} onChange={(e) => setFiltroExtraSemana(e.target.checked)} />
-                    <label htmlFor="chkExSemana" style={{ fontSize: '12px', cursor: 'pointer' }}>Esta semana</label>
-                  </div>
-                  <button onClick={limpiarFiltrosExtras} style={{ fontSize: '11px', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', marginLeft: 'auto' }}>Limpiar</button>
                 </div>
 
                 <div style={{ maxHeight: '280px', overflowY: 'auto', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -768,14 +861,49 @@ function App() {
                         <div>
                           <span style={{ fontWeight: 'bold', fontSize: '13px', color: '#333' }}>📅 {extra.fecha.split('-').reverse().join('/')}</span>
                           <span style={{ fontSize: '11px', color: '#666', marginLeft: '10px', background: '#edf2f7', padding: '2px 6px', borderRadius: '4px' }}>{extra.motivo}</span>
-                          <div style={{ fontSize: '11px', color: '#777', marginTop: '3px' }}>Obras: {extra.obrasDelDia ? extra.obrasDelDia.join(', ') : 'Desconocida'}</div>
                         </div>
-                        <div style={{ fontWeight: 'bold', color: '#b27d14', fontSize: '15px', background: '#fffaf0', padding: '6px 10px', borderRadius: '6px', border: '1px dashed #f5e4c4' }}>
+                        <div style={{ fontWeight: 'bold', color: '#b27d14', fontSize: '15px' }}>
                           +{extra.horas}h
                         </div>
                       </div>
                     ))
                   )}
+                </div>
+              </div>
+            )}
+
+            {/* PANTALLA GESTIÓN ADMINISTRACIÓN */}
+            {pantallaActual === 'gestion-administracion' && (
+              <div style={{ textAlign: 'left' }}>
+                <h2 style={{ color: '#043424', textAlign: 'center', fontSize: '20px', marginBottom: '15px' }}>💼 Panel de Administración</h2>
+                <p style={{ fontSize: '13px', color: '#555', textAlign: 'center', marginBottom: '15px' }}>Visión global de partes registrados en Supabase.</p>
+                <div style={{ maxHeight: '350px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {todosLosPartesAdmin.length === 0 ? (
+                    <p style={{ textAlign: 'center', color: '#888' }}>No hay partes globales para mostrar.</p>
+                  ) : (
+                    todosLosPartesAdmin.map((p, i) => (
+                      <div key={i} style={{ padding: '10px', border: '1px solid #ccc', borderRadius: '6px', background: '#fff' }}>
+                        <div style={{ fontWeight: 'bold', color: '#043424', fontSize: '13px' }}>👤 {p.empleado} - 📅 {p.fecha}</div>
+                        <div style={{ fontSize: '12px', marginTop: '4px' }}><strong>Obra:</strong> {p.obra} | <strong>Trabajo:</strong> {p.trabajo} ({p.horas}h)</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* PANTALLA GESTIÓN PROYECTOS */}
+            {pantallaActual === 'gestion-proyectos' && (
+              <div style={{ textAlign: 'left' }}>
+                <h2 style={{ color: '#b27d14', textAlign: 'center', fontSize: '20px', marginBottom: '15px' }}>📐 Panel de Proyectos</h2>
+                <p style={{ fontSize: '13px', color: '#555', textAlign: 'center', marginBottom: '15px' }}>Obras Activas y asignaciones de trabajo.</p>
+                <div style={{ background: '#fdf7ec', padding: '12px', borderRadius: '8px', border: '1px solid #f5e4c4' }}>
+                  <h4 style={{ margin: '0 0 10px 0', color: '#b27d14' }}>Obras Activas Registradas:</h4>
+                  <ul style={{ paddingLeft: '20px', margin: 0, fontSize: '13px', color: '#333' }}>
+                    {listaObras.map((o, index) => (
+                      <li key={index} style={{ marginBottom: '5px' }}><strong>{o}</strong></li>
+                    ))}
+                  </ul>
                 </div>
               </div>
             )}
