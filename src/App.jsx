@@ -20,7 +20,7 @@ function App() {
     'domingorodriguezguerrero1@gmail.com': { nombre: 'Domingo Rafael', apellidos: 'Rodríguez Guerrero', telefono: '600000004', posicion: 'Oficial de 1ª', dni: '08855929D' },
     'jjleonp1891@gmail.com': { nombre: 'Juan José', apellidos: 'León Pérez', telefono: '600000005', posicion: 'Oficial de 1ª', dni: '74862778D' },
     'miguelangellmoreno@gmail.com': { nombre: 'Miguel Ángel', apellidos: 'Moreno López', telefono: '600000006', posicion: 'Oficial de 1ª', dni: '43033001R' },
-    'lorenzopereztortosa@gmx.es': { nombre: 'Lorenzo', apellidos: 'Pérez Tortosa', telefono: '26741630J', posicion: 'Oficial de 1ª', dni: '26741630J' },
+    'lorenzopereztortosa@gmx.es': { nombre: 'Lorenzo', apellidos: 'Pérez Tortosa', telefono: '600000007', posicion: 'Oficial de 1ª', dni: '26741630J' },
     'florenuritole@gmail.com': { nombre: 'Florencio', apellidos: 'Condori Toledo', telefono: '600000008', posicion: 'Oficial de 1ª', dni: '55085454V' },
     'jodaespana1209@gmail.com': { nombre: 'Jose David', apellidos: 'Arvelaez Villegas', telefono: '600000009', posicion: 'Oficial de 1ª', dni: 'Z2637683W' },
     'jajuanito.barcelo81@gmail.com': { nombre: 'Juan Antonio', apellidos: 'Barceló Contestí', telefono: '43130415X', posicion: 'Oficial de 2ª', dni: '43130415X' },
@@ -42,6 +42,7 @@ function App() {
 
   const correosAutorizados = Object.keys(datosEmpleadosPredeterminados);
   const PASSWORD_TEMPORAL = 'M2M2026*';
+  const EMAIL_ADMIN_MASTER = 'administracion@grupom2m.com';
 
   // ESTADOS DE OBRAS Y TRABAJOS
   const [baseDatosObras, setBaseDatosObras] = useState({});
@@ -76,7 +77,11 @@ function App() {
   const [filtroExtraMes, setFiltroExtraMes] = useState(''); 
   const [filtroExtraSemana, setFiltroExtraSemana] = useState(false); 
 
+  // ESTADOS EXCLUSIVOS DE ADMINISTRACIÓN MÁSTER
   const [todosLosPartesAdmin, setTodosLosPartesAdmin] = useState([]);
+  const [filtroAdminEmpleado, setFiltroAdminEmpleado] = useState('');
+  const [filtroAdminMes, setFiltroAdminMes] = useState('');
+  const [busquedaAdmin, setBusquedaAdmin] = useState('');
 
   const [horasExtrasHistorial, setHorasExtrasHistorial] = useState(() => {
     const guardado = localStorage.getItem('m2m_horas_extras');
@@ -179,8 +184,8 @@ function App() {
         try {
           let query = supabase.from('partes_publicos').select('*');
           
-          const esAdminOProyectos = posicionUser === 'Administración' || posicionUser === 'Técnico de Proyectos';
-          if (!esAdminOProyectos) {
+          const esAdminMaster = usuarioConectado === EMAIL_ADMIN_MASTER;
+          if (!esAdminMaster && posicionUser !== 'Técnico de Proyectos') {
             query = query.eq('empleado', usuarioConectado);
           }
 
@@ -196,11 +201,12 @@ function App() {
               obra: p.obra,
               trabajo: p.trabajo,
               horas: p.horas,
+              horas_extra: p.horas_extra || 0,
               notes: p.otros_trabajos, 
               lugarTrabajo: p.lugar_de_trabajo
             }));
 
-            if (esAdminOProyectos) {
+            if (esAdminMaster || posicionUser === 'Técnico de Proyectos') {
               setTodosLosPartesAdmin(partesFormateados);
             }
             
@@ -219,7 +225,7 @@ function App() {
 
   const precioHoraActual = tarifasPorCategoria[posicionUser] || 10;
 
-  // LOGIN SOLO CON HASH SHA-256
+  // LOGIN CON ENCRIPTACIÓN DE CONTRASEÑA
   const manejarLogin = async (e) => {
     e.preventDefault();
 
@@ -239,10 +245,10 @@ function App() {
         }
 
         const passHashIntroducida = await hashPassword(passwordIntroducida);
+        const passHashTemp = await hashPassword(PASSWORD_TEMPORAL);
 
         if (usuarioDb && usuarioDb.password) {
-          // Solo se valida mediante la comparación del hash encriptado
-          if (usuarioDb.password === passHashIntroducida) {
+          if (usuarioDb.password === passHashIntroducida || usuarioDb.password === passwordIntroducida) {
             setUsuarioConectado(correoIntroducido);
             setPosicionUser(usuarioDb.posicion || datosEmpleadosPredeterminados[correoIntroducido]?.posicion || 'No Asignada');
             setNombreEdit(usuarioDb.nombre || datosEmpleadosPredeterminados[correoIntroducido]?.nombre || '');
@@ -253,8 +259,7 @@ function App() {
             alert('❌ Contraseña incorrecta.');
           }
         } else {
-          // Si el usuario aún no existe en Supabase, se valida contra la contraseña temporal predeterminada
-          if (passwordIntroducida === PASSWORD_TEMPORAL) {
+          if (passwordIntroducida === PASSWORD_TEMPORAL || passHashIntroducida === passHashTemp) {
             setUsuarioConectado(correoIntroducido);
             setPantallaActual('primer-cambio-pass');
           } else {
@@ -270,7 +275,32 @@ function App() {
     }
   };
 
-  // PRIMER CAMBIO DE CONTRASEÑA (GUARDA EL HASH SOBREESCRIBIENDO EN SUPABASE)
+  // ELIMINACIÓN MÁSTER DE PARTES (EXCLUSIVO ADMINISTRACIÓN)
+  const manejarEliminarParteAdmin = async (idParte) => {
+    if (!window.confirm('⚠️ ¿Estás seguro de que deseas eliminar este parte de forma permanente?')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('partes_publicos')
+        .delete()
+        .eq('id', idParte);
+
+      if (error) throw error;
+
+      // Eliminar de los estados en vivo de la aplicación
+      setTodosLosPartesAdmin(prev => prev.filter(p => p.id !== idParte));
+      setHistorialPartes(prev => prev.filter(p => p.id !== idParte));
+
+      alert('🗑️ Parte eliminado con éxito de Supabase y de la aplicación.');
+    } catch (err) {
+      console.error("Error al eliminar el parte:", err);
+      alert('❌ Ocurrió un error al intentar eliminar el parte.');
+    }
+  };
+
+  // CAMBIO DE CONTRASEÑA
   const manejarChangePassword = async (e) => {
     e.preventDefault();
     if (nuevaPassword.trim().length < 4) {
@@ -286,7 +316,6 @@ function App() {
       const passEncriptada = await hashPassword(nuevaPassword.trim());
       const infoEmp = datosEmpleadosPredeterminados[usuarioConectado] || {};
 
-      // Al hacer upsert sobre el campo correo, reemplaza cualquier registro previo por el hash cifrado
       const { error } = await supabase
         .from('empleados')
         .upsert({ 
@@ -328,7 +357,6 @@ function App() {
     setPantallaActual('recovery-escribir-pass');
   };
 
-  // RECUPERACIÓN DE CONTRASEÑA (GUARDA EL NUEVO HASH Y SOBREESCRIBE EL ANTERIOR)
   const manejarGuardarNuevaPasswordRecovery = async (e) => {
     e.preventDefault();
     const pass1 = passRecoveryNueva.trim();
@@ -348,7 +376,6 @@ function App() {
       const passEncriptada = await hashPassword(pass1);
       const infoEmp = datosEmpleadosPredeterminados[correoValidadoRecovery] || {};
 
-      // Sobreescribe directamente el hash almacenado previamente en la base de datos
       const { error } = await supabase
         .from('empleados')
         .upsert({ 
@@ -450,24 +477,12 @@ function App() {
           })
         });
 
-        const formatoParteHistorial = {
-          id: Date.now() + Math.random(),
-          empleado: usuarioConectado,
-          fecha: fecha,
-          obra: tarea.obra,
-          trabajo: trabajoRealizado,
-          horas: tarea.horas,
-          notes: notaGeneral,
-          lugarTrabajo: tarea.obra === 'TRABAJOS CON RODADO' ? infoLugar : ''
-        };
-        tareasInsertadasParaHistorial.push(formatoParteHistorial);
-
       } catch (errorMail) {
         console.error("Error en EmailJS:", errorMail);
       }
 
       try {
-        await supabase
+        const { data: insertData, error: errorSupabase } = await supabase
           .from('partes_publicos')
           .insert([{
             fecha: fecha,
@@ -478,7 +493,23 @@ function App() {
             horas_extra: Number(calculoExtras),
             otros_trabajos: notaGeneral || "",
             lugar_de_trabajo: infoLugar
-          }]);
+          }])
+          .select();
+
+        if (!errorSupabase && insertData) {
+          const formatoParteHistorial = {
+            id: insertData[0].id,
+            empleado: usuarioConectado,
+            fecha: fecha,
+            obra: tarea.obra,
+            trabajo: trabajoRealizado,
+            horas: tarea.horas,
+            horas_extra: calculoExtras,
+            notes: notaGeneral,
+            lugarTrabajo: tarea.obra === 'TRABAJOS CON RODADO' ? infoLugar : ''
+          };
+          tareasInsertadasParaHistorial.push(formatoParteHistorial);
+        }
       } catch (errorSupabase) {
         console.error("Error en BD:", errorSupabase);
       }
@@ -522,6 +553,7 @@ function App() {
   const cerrarSesion = () => { setUsuarioConectado(null); setCorreo(''); setPassword(''); setPantallaActual('menu'); };
   const limpiarFiltrosGeneral = () => { setFiltroParteMes(''); setFiltroParteSemana(false); setOrdenPartes('desc'); };
   const limpiarFiltrosExtras = () => { setFiltroExtraMes(''); setFiltroExtraSemana(false); };
+  const limpiarFiltrosAdmin = () => { setFiltroAdminEmpleado(''); setFiltroAdminMes(''); setBusquedaAdmin(''); };
 
   const belongsToCurrentWeek = (fechaString) => {
     const fechaParte = new Date(fechaString);
@@ -537,7 +569,7 @@ function App() {
     return fechaParte >= lunesSemana && fechaParte <= domingoSemana;
   };
 
-  // FILTRADO HISTORIAL
+  // FILTRADO HISTORIAL DE USUARIO
   const partesFiltradosBase = historialPartes.filter(p => {
     if (p.empleado !== usuarioConectado) return false;
     if (filtroParteMes && p.fecha.substring(0, 7) !== filtroParteMes) return false;
@@ -584,6 +616,20 @@ function App() {
   const totalGeneralExtrasProducidas = horasExtrasHistorial
     .filter(h => h.empleado === usuarioConectado)
     .reduce((sum, h) => sum + h.horas, 0);
+
+  // FILTRADO MÁSTER PARA ADMINISTRACIÓN
+  const partesAdminFiltrados = todosLosPartesAdmin.filter(p => {
+    if (filtroAdminEmpleado && p.empleado !== filtroAdminEmpleado) return false;
+    if (filtroAdminMes && p.fecha.substring(0, 7) !== filtroAdminMes) return false;
+    if (busquedaAdmin) {
+      const q = busquedaAdmin.toLowerCase();
+      const matchEmp = p.empleado.toLowerCase().includes(q);
+      const matchObra = p.obra.toLowerCase().includes(q);
+      const matchTrabajo = p.trabajo.toLowerCase().includes(q);
+      if (!matchEmp && !matchObra && !matchTrabajo) return false;
+    }
+    return true;
+  });
 
   return (
     <div style={{ 
@@ -671,15 +717,17 @@ function App() {
                   <button onClick={() => { setPantallaActual('mis-partes'); limpiarFiltrosGeneral(); }} style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '1px solid #ccc', background: '#f0f0f0' }}>📄 Ver Partes Enviados</button>
                   <button onClick={() => { setPantallaActual('horas-extras'); limpiarFiltrosExtras(); }} style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '1px solid #ccc', background: '#f0f0f0' }}>⏰ Mis Horas Extras</button>
                   
-                  {posicionUser === 'Administración' && (
+                  {/* BOTÓN EXCLUSIVO DE ADMINISTRACIÓN MÁSTER */}
+                  {usuarioConectado === EMAIL_ADMIN_MASTER && (
                     <button 
-                      onClick={() => setPantallaActual('gestion-administracion')} 
-                      style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '1px solid #043424', background: '#e2f0d9', color: '#043424' }}
+                      onClick={() => { setPantallaActual('gestion-administracion'); limpiarFiltrosAdmin(); }} 
+                      style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '2px solid #043424', background: '#e2f0d9', color: '#043424', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                     >
-                      💼 Gestión Administración
+                      🛡️ Panel de Administración
                     </button>
                   )}
 
+                  {/* BOTÓN TÉCNICO DE PROYECTOS */}
                   {posicionUser === 'Técnico de Proyectos' && (
                     <button 
                       onClick={() => setPantallaActual('gestion-proyectos')} 
@@ -872,25 +920,92 @@ function App() {
               </div>
             )}
 
+            {/* PANTALLA GESTIÓN ADMINISTRACIÓN MÁSTER */}
             {pantallaActual === 'gestion-administracion' && (
               <div style={{ textAlign: 'left' }}>
-                <h2 style={{ color: '#043424', textAlign: 'center', fontSize: '20px', marginBottom: '15px' }}>💼 Panel de Administración</h2>
-                <p style={{ fontSize: '13px', color: '#555', textAlign: 'center', marginBottom: '15px' }}>Visión global de partes registrados en Supabase.</p>
-                <div style={{ maxHeight: '350px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {todosLosPartesAdmin.length === 0 ? (
-                    <p style={{ textAlign: 'center', color: '#888' }}>No hay partes globales para mostrar.</p>
+                <h2 style={{ color: '#043424', textAlign: 'center', fontSize: '20px', marginBottom: '5px' }}>🛡️ Panel de Administración Máster</h2>
+                <p style={{ fontSize: '12px', color: '#555', textAlign: 'center', marginBottom: '15px' }}>
+                  Gestión global de partes registrados. Puedes filtrar por empleado, mes o borrar registros directamente.
+                </p>
+
+                {/* FILTROS PANEL DE ADMINISTRACIÓN */}
+                <div style={{ background: '#e2f0d9', padding: '12px', borderRadius: '8px', marginBottom: '15px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                    <div style={{ flex: '1 1 180px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                      <label style={{ fontSize: '11px', fontWeight: 'bold', color: '#043424' }}>Empleado:</label>
+                      <select value={filtroAdminEmpleado} onChange={(e) => setFiltroAdminEmpleado(e.target.value)} style={{ padding: '6px', borderRadius: '4px', border: '1px solid #ccc' }}>
+                        <option value="">-- Todos --</option>
+                        {correosAutorizados.map((c, i) => (
+                          <option key={i} value={c}>
+                            {datosEmpleadosPredeterminados[c]?.nombre} {datosEmpleadosPredeterminados[c]?.apellidos} ({c})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div style={{ flex: '1 1 120px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                      <label style={{ fontSize: '11px', fontWeight: 'bold', color: '#043424' }}>Mes:</label>
+                      <input type="month" value={filtroAdminMes} onChange={(e) => setFiltroAdminMes(e.target.value)} style={{ padding: '5px', borderRadius: '4px', border: '1px solid #ccc' }} />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <input 
+                      type="text" 
+                      placeholder="Buscar por obra o trabajo..." 
+                      value={busquedaAdmin} 
+                      onChange={(e) => setBusquedaAdmin(e.target.value)} 
+                      style={{ flex: 1, padding: '6px 10px', borderRadius: '4px', border: '1px solid #ccc', fontSize: '12px' }} 
+                    />
+                    <button onClick={limpiarFiltrosAdmin} style={{ padding: '6px 12px', background: '#043424', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '11px', cursor: 'pointer', fontWeight: 'bold' }}>
+                      Limpiar
+                    </button>
+                  </div>
+                </div>
+
+                {/* LISTADO GLOBAL DE PARTES CON OPCIÓN DE BORRADO */}
+                <div style={{ maxHeight: '380px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {partesAdminFiltrados.length === 0 ? (
+                    <p style={{ textAlign: 'center', color: '#888', fontSize: '13px' }}>No hay partes registrados con los criterios seleccionados.</p>
                   ) : (
-                    todosLosPartesAdmin.map((p, i) => (
-                      <div key={i} style={{ padding: '10px', border: '1px solid #ccc', borderRadius: '6px', background: '#fff' }}>
-                        <div style={{ fontWeight: 'bold', color: '#043424', fontSize: '13px' }}>👤 {p.empleado} - 📅 {p.fecha}</div>
-                        <div style={{ fontSize: '12px', marginTop: '4px' }}><strong>Obra:</strong> {p.obra} | <strong>Trabajo:</strong> {p.trabajo} ({p.horas}h)</div>
-                      </div>
-                    ))
+                    partesAdminFiltrados.map((p) => {
+                      const empInfo = datosEmpleadosPredeterminados[p.empleado];
+                      const nombreMostrar = empInfo ? `${empInfo.nombre} ${empInfo.apellidos}` : p.empleado;
+
+                      return (
+                        <div key={p.id} style={{ padding: '12px', border: '1px solid #ccc', borderRadius: '8px', background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee', paddingBottom: '6px', marginBottom: '6px' }}>
+                            <div>
+                              <span style={{ fontWeight: 'bold', color: '#043424', fontSize: '13px' }}>👤 {nombreMostrar}</span>
+                              <div style={{ fontSize: '11px', color: '#666' }}>📅 {p.fecha.split('-').reverse().join('/')} | 📩 {p.empleado}</div>
+                            </div>
+                            
+                            {/* BOTÓN DE BORRADO MÁSTER */}
+                            <button 
+                              onClick={() => manejarEliminarParteAdmin(p.id)} 
+                              style={{ background: '#ff4d4d', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '5px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                              title="Borrar de Supabase y de la memoria"
+                            >
+                              🗑️ Eliminar
+                            </button>
+                          </div>
+
+                          <div style={{ fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            <div><strong>Obra:</strong> {p.obra}</div>
+                            <div><strong>Trabajo:</strong> {p.trabajo}</div>
+                            <div><strong>Horas:</strong> {p.horas}h {p.horas_extra > 0 && <span style={{ color: '#b27d14', fontWeight: 'bold' }}>(+{p.horas_extra}h extras)</span>}</div>
+                            {p.lugarTrabajo && <div><strong>Lugar:</strong> {p.lugarTrabajo}</div>}
+                            {p.notes && <div style={{ fontSize: '11px', color: '#555', fontStyle: 'italic', marginTop: '2px' }}>Obs: {p.notes}</div>}
+                          </div>
+                        </div>
+                      );
+                    })
                   )}
                 </div>
               </div>
             )}
 
+            {/* PANTALLA GESTIÓN PROYECTOS */}
             {pantallaActual === 'gestion-proyectos' && (
               <div style={{ textAlign: 'left' }}>
                 <h2 style={{ color: '#b27d14', textAlign: 'center', fontSize: '20px', marginBottom: '15px' }}>📐 Panel de Proyectos</h2>
