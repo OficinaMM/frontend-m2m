@@ -90,9 +90,9 @@ function App() {
   const [conceptoEfectivo, setConceptoEfectivo] = useState('');
   const [fechaEfectivo, setFechaEfectivo] = useState(new Date().toISOString().split('T')[0]);
 
-  // ESTADOS DE PLUS DE PRODUCTIVIDAD
+  // ESTADOS DE PAGOS DE HORAS EXTRAS / PLUSES
   const [historialPluses, setHistorialPluses] = useState([]);
-  const [misPluses, setMisPluses] = useState([]); // Pluses del usuario conectado
+  const [misPluses, setMisPluses] = useState([]); // Pagos recibidos por el usuario conectado
   const [fechaPlus, setFechaPlus] = useState(new Date().toISOString().split('T')[0]);
   const [empleadoPlus, setEmpleadoPlus] = useState('');
   const [montoPlus, setMontoPlus] = useState('');
@@ -315,7 +315,7 @@ function App() {
     }
   };
 
-  // CARGAR REGISTROS DE PLUSES DE PRODUCTIVIDAD DESDE SUPABASE
+  // CARGAR REGISTROS DE PLUSES Y PAGOS REALIZADOS DESDE SUPABASE
   const cargarPluses = async () => {
     try {
       const { data, error } = await supabase
@@ -332,7 +332,7 @@ function App() {
         }
       }
     } catch (err) {
-      console.error("Error al cargar pluses de productividad:", err);
+      console.error("Error al cargar pagos/pluses:", err);
     }
   };
 
@@ -458,7 +458,7 @@ function App() {
     }
   };
 
-  // REGISTRAR PLUS DE PRODUCTIVIDAD
+  // REGISTRAR PAGO DE HORAS EXTRAS / PLUS DE PRODUCTIVIDAD
   const manejarGuardarPlus = async (e) => {
     e.preventDefault();
     if (!montoPlus || isNaN(montoPlus) || Number(montoPlus) <= 0) {
@@ -476,7 +476,7 @@ function App() {
           created_at: new Date(fechaPlus).toISOString(),
           empleado: empAsignado,
           importe: parseFloat(montoPlus),
-          concepto: conceptoPlus || 'Plus de Productividad'
+          concepto: conceptoPlus || 'Pago Horas Extras'
         }]);
 
       if (error) {
@@ -485,13 +485,13 @@ function App() {
         return;
       }
 
-      alert('✅ Plus asignado con éxito y reflejado en el saldo del empleado.');
+      alert('✅ Pago registrado con éxito. Se ha descontado del saldo del empleado.');
       setMontoPlus('');
       setConceptoPlus('');
       setEmpleadoPlus('');
       cargarPluses();
     } catch (err) {
-      console.error("Error al guardar plus de productividad:", err);
+      console.error("Error al guardar pago:", err);
       alert('❌ Ocurrió un error inesperado al intentar guardar.');
     }
   };
@@ -787,10 +787,10 @@ function App() {
     .filter(h => h.empleado === usuarioConectado)
     .reduce((sum, h) => sum + h.horas, 0);
 
-  // CÁLCULO DE PLUSES Y TOTAL COMBINADO PARA EL EMPLEADO
-  const totalPlusesEmpleado = misPluses.reduce((acc, p) => acc + Number(p.importe || 0), 0);
-  const eurosHorasExtras = totalGeneralExtrasProducidas * precioHoraActual;
-  const saldoTotalAcumuladoEmpleado = eurosHorasExtras + totalPlusesEmpleado;
+  // CÁLCULO DE PAGOS/PLUSES Y SALDO PENDIENTE (RESTANDO LOS PAGOS REALIZADOS)
+  const totalPagadosEmpleado = misPluses.reduce((acc, p) => acc + Number(p.importe || 0), 0);
+  const eurosHorasExtrasTotales = totalGeneralExtrasProducidas * precioHoraActual;
+  const saldoPendienteEmpleado = eurosHorasExtrasTotales - totalPagadosEmpleado;
 
   // FILTRADO MÁSTER PARA ADMINISTRACIÓN
   const partesAdminFiltrados = todosLosPartesAdmin.filter(p => {
@@ -908,13 +908,13 @@ function App() {
                     </button>
                   )}
 
-                  {/* BOTÓN PLUS DE PRODUCTIVIDAD */}
+                  {/* BOTÓN REGISTRO DE PAGOS DE HORAS EXTRAS */}
                   {(usuarioConectado === EMAIL_ADMIN_MASTER || posicionUser === 'Técnico de Proyectos') && (
                     <button 
                       onClick={() => setPantallaActual('gestion-plus')} 
                       style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '2px solid #28a745', background: '#eef9f0', color: '#1e7e34', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                     >
-                      🏆 Plus de Productividad
+                      💵 Pagos / Pluses de Horas Extras
                     </button>
                   )}
 
@@ -1073,12 +1073,12 @@ function App() {
               </div>
             )}
 
-            {/* PANTALLA DE MIS HORAS EXTRAS Y PLUSES DEL EMPLEADO */}
+            {/* PANTALLA DE MIS HORAS EXTRAS Y PAGOS RECIBIDOS */}
             {pantallaActual === 'horas-extras' && (
               <div>
-                <h2 style={{ color: '#043424', fontSize: '20px', marginBottom: '5px' }}>⏰ Control de Horas Extras y Pluses</h2>
+                <h2 style={{ color: '#043424', fontSize: '20px', marginBottom: '5px' }}>⏰ Control de Horas Extras y Pagos</h2>
                 <p style={{ margin: '0 0 15px 0', fontSize: '12px', color: '#555' }}>
-                  Resumen de tus horas extras realizadas y pagos adicionales abonados por administración.
+                  Balance general entre tus horas extras acumuladas y los pagos/anticipos abonados.
                 </p>
 
                 {/* TRES TARJETAS DE INFORMACIÓN */}
@@ -1086,26 +1086,26 @@ function App() {
                   <div style={{ background: '#f2f7f4', padding: '10px', borderRadius: '8px', border: '1px solid #c5d9cc', textAlign: 'center' }}>
                     <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', fontWeight: 'bold' }}>Horas Extras</div>
                     <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#043424', marginTop: '4px' }}>{totalGeneralExtrasProducidas} h</div>
-                    <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>({eurosHorasExtras.toFixed(2)} €)</div>
+                    <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>({eurosHorasExtrasTotales.toFixed(2)} €)</div>
                   </div>
                   
                   <div style={{ background: '#eef9f0', padding: '10px', borderRadius: '8px', border: '1px solid #c3e6cb', textAlign: 'center' }}>
-                    <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', fontWeight: 'bold' }}>Pluses / Cobros</div>
-                    <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#28a745', marginTop: '4px' }}>{totalPlusesEmpleado.toFixed(2)} €</div>
-                    <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>({misPluses.length} pagos)</div>
+                    <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', fontWeight: 'bold' }}>Pagos / Cobros</div>
+                    <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#28a745', marginTop: '4px' }}>-{totalPagadosEmpleado.toFixed(2)} €</div>
+                    <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>({misPluses.length} recibidos)</div>
                   </div>
 
-                  <div style={{ background: '#fdf7ec', padding: '10px', borderRadius: '8px', border: '1px solid #f5e4c4', textAlign: 'center' }}>
-                    <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', fontWeight: 'bold' }}>Total Estimado</div>
-                    <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#b27d14', marginTop: '4px' }}>{saldoTotalAcumuladoEmpleado.toFixed(2)} €</div>
-                    <div style={{ fontSize: '10px', color: '#888', marginTop: '2px' }}>Acumulado</div>
+                  <div style={{ background: saldoPendienteEmpleado >= 0 ? '#fdf7ec' : '#f8d7da', padding: '10px', borderRadius: '8px', border: `1px solid ${saldoPendienteEmpleado >= 0 ? '#f5e4c4' : '#f5c6cb'}`, textAlign: 'center' }}>
+                    <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', fontWeight: 'bold' }}>Saldo Pendiente</div>
+                    <div style={{ fontSize: '18px', fontWeight: 'bold', color: saldoPendienteEmpleado >= 0 ? '#b27d14' : '#721c24', marginTop: '4px' }}>{saldoPendienteEmpleado.toFixed(2)} €</div>
+                    <div style={{ fontSize: '10px', color: '#888', marginTop: '2px' }}>A Cobrar</div>
                   </div>
                 </div>
 
-                {/* DESGLOSE DE PLUSES RECIBIDOS */}
+                {/* DESGLOSE DE PAGOS Y ANTEPOS RECIBIDOS */}
                 {misPluses.length > 0 && (
                   <div style={{ textAlign: 'left', marginBottom: '15px' }}>
-                    <h4 style={{ margin: '0 0 8px 0', fontSize: '13px', color: '#1e7e34' }}>🏆 Pluses de Productividad / Pagos Especiales:</h4>
+                    <h4 style={{ margin: '0 0 8px 0', fontSize: '13px', color: '#1e7e34' }}>💵 Pagos / Anticipos Recibidos:</h4>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '120px', overflowY: 'auto' }}>
                       {misPluses.map((plus) => (
                         <div key={plus.id} style={{ padding: '8px 10px', background: '#eef9f0', borderRadius: '6px', borderLeft: '4px solid #28a745', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1114,7 +1114,7 @@ function App() {
                             <div style={{ fontSize: '10px', color: '#666' }}>📅 {plus.created_at ? new Date(plus.created_at).toLocaleDateString('es-ES') : ''}</div>
                           </div>
                           <div style={{ fontWeight: 'bold', color: '#28a745', fontSize: '14px' }}>
-                            +{Number(plus.importe || 0).toFixed(2)} €
+                            -{Number(plus.importe || 0).toFixed(2)} €
                           </div>
                         </div>
                       ))}
@@ -1211,16 +1211,16 @@ function App() {
               </div>
             )}
 
-            {/* PANTALLA GESTIÓN PLUS DE PRODUCTIVIDAD */}
+            {/* PANTALLA REGISTRO DE PAGOS DE HORAS EXTRAS */}
             {pantallaActual === 'gestion-plus' && (usuarioConectado === EMAIL_ADMIN_MASTER || posicionUser === 'Técnico de Proyectos') && (
               <div style={{ textAlign: 'left' }}>
-                <h2 style={{ color: '#1e7e34', textAlign: 'center', fontSize: '20px', marginBottom: '5px' }}>🏆 Plus de Productividad</h2>
+                <h2 style={{ color: '#1e7e34', textAlign: 'center', fontSize: '20px', marginBottom: '5px' }}>💵 Pagos / Pluses de Horas Extras</h2>
                 <p style={{ fontSize: '12px', color: '#555', textAlign: 'center', marginBottom: '15px' }}>
-                  Asignación y registro centralizado de gratificaciones y pagos de horas extras.
+                  Registro de pagos realizados a empleados (se restan automáticamente del saldo pendiente de sus horas extras).
                 </p>
 
                 <form onSubmit={manejarGuardarPlus} style={{ background: '#eef9f0', padding: '15px', borderRadius: '8px', border: '1px solid #c3e6cb', display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
-                  <h4 style={{ margin: '0 0 5px 0', color: '#1e7e34' }}>➕ Asignar Nuevo Plus</h4>
+                  <h4 style={{ margin: '0 0 5px 0', color: '#1e7e34' }}>➕ Registrar Nuevo Pago</h4>
                   
                   <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                     <div style={{ flex: '1 1 140px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
@@ -1242,24 +1242,24 @@ function App() {
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <label style={{ fontSize: '11px', fontWeight: 'bold' }}>Importe (€):</label>
+                    <label style={{ fontSize: '11px', fontWeight: 'bold' }}>Importe Pagado (€):</label>
                     <input type="number" step="0.01" min="0.01" placeholder="Ej: 100.00" value={montoPlus} onChange={(e) => setMontoPlus(e.target.value)} required style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }} />
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                     <label style={{ fontSize: '11px', fontWeight: 'bold' }}>Concepto / Motivo:</label>
-                    <input type="text" placeholder="Ej: Pago de horas extras mes de Julio" value={conceptoPlus} onChange={(e) => setConceptoPlus(e.target.value)} required style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }} />
+                    <input type="text" placeholder="Ej: Pago a cuenta horas extras Julio" value={conceptoPlus} onChange={(e) => setConceptoPlus(e.target.value)} required style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }} />
                   </div>
 
                   <button type="submit" style={{ padding: '10px', background: '#28a745', color: '#fff', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', marginTop: '5px' }}>
-                    💾 Guardar Plus
+                    💾 Registrar Pago
                   </button>
                 </form>
 
-                <h4 style={{ margin: '0 0 10px 0', color: '#043424' }}>📋 Historial de Pluses Asignados:</h4>
+                <h4 style={{ margin: '0 0 10px 0', color: '#043424' }}>📋 Historial de Pagos Realizados:</h4>
                 <div style={{ maxHeight: '250px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {historialPluses.length === 0 ? (
-                    <p style={{ textAlign: 'center', color: '#888', fontSize: '13px' }}>No hay pluses registrados.</p>
+                    <p style={{ textAlign: 'center', color: '#888', fontSize: '13px' }}>No hay pagos registrados.</p>
                   ) : (
                     historialPluses.map((p) => {
                       const empInfo = datosEmpleadosPredeterminados[p.empleado];
@@ -1274,7 +1274,7 @@ function App() {
                             <div style={{ fontSize: '10px', color: '#888' }}>📅 {fechaFormateada}</div>
                           </div>
                           <div style={{ fontWeight: 'bold', fontSize: '16px', color: '#28a745' }}>
-                            +{Number(p.importe || 0).toFixed(2)} €
+                            -{Number(p.importe || 0).toFixed(2)} €
                           </div>
                         </div>
                       );
