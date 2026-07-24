@@ -70,6 +70,9 @@ function App() {
   const [notaGeneral, setNotaGeneral] = useState('');
   const [tareasDelDia, setTareasDelDia] = useState([]);
 
+  // ESTADO DE BLOQUEO CONTRA DOBLE ENVÍO
+  const [enviandoParte, setEnviandoParte] = useState(false);
+
   const [filtroParteMes, setFiltroParteMes] = useState('');
   const [filtroParteSemana, setFiltroParteSemana] = useState(false);
   const [ordenPartes, setOrdenPartes] = useState('desc'); 
@@ -92,7 +95,7 @@ function App() {
 
   // ESTADOS DE PAGOS DE HORAS EXTRAS / PLUSES
   const [historialPluses, setHistorialPluses] = useState([]);
-  const [misPluses, setMisPluses] = useState([]); // Pagos recibidos por el usuario conectado
+  const [misPluses, setMisPluses] = useState([]);
   const [fechaPlus, setFechaPlus] = useState(new Date().toISOString().split('T')[0]);
   const [empleadoPlus, setEmpleadoPlus] = useState('');
   const [montoPlus, setMontoPlus] = useState('');
@@ -252,7 +255,6 @@ function App() {
 
     cargarPartesDesdeSupabase();
 
-    // SUSCRIPCIÓN EN TIEMPO REAL A LA TABLA partes_publicos
     const canalPartes = supabase
       .channel('cambios_partes_publicos')
       .on(
@@ -631,8 +633,11 @@ function App() {
     setTareasDelDia(nuevasTareas);
   };
 
+  // FUNCIÓN DE ENVÍO CORREGIDA CON BLOQUEO ANTI-DUPLICADOS
   const manejarEnviarParte = async (e) => {
     e.preventDefault();
+
+    if (enviandoParte) return; // Evita pulsaciones múltiples si ya se está procesando
 
     const yaExisteParte = historialPartes.some(
       (parte) => parte.empleado === usuarioConectado && parte.fecha === fecha
@@ -644,80 +649,89 @@ function App() {
       return;
     }
 
-    const totalHoras = tareasDelDia.reduce((suma, t) => suma + Number(t.horas), 0);
-    const [ano, mes, dia] = fecha.split('-');
-    const diaSemana = new Date(Date.UTC(ano, mes - 1, dia)).getUTCDay();
-    const esFinDeSemana = diaSemana === 6 || diaSemana === 0;
-    let calculoExtras = esFinDeSemana ? totalHoras : totalHoras > 8 ? totalHoras - 8 : 0;
+    setEnviandoParte(true); // Bloquea el botón e indica carga
 
-    for (const tarea of tareasDelDia) {
-      const nombreCompleto = (nombreEdit || datosEmpleadosPredeterminados[usuarioConectado]?.nombre) + " " + (apellidosEdit || datosEmpleadosPredeterminados[usuarioConectado]?.apellidos);
-      const trabajoRealizado = tarea.trabajo === 'OTROS' ? tarea.especificarOtros : tarea.trabajo;
-      const infoLugar = tarea.obra === 'TRABAJOS CON RODADO' ? (tarea.lugarTrabajo ? tarea.lugarTrabajo.trim() : "No especificado") : "Aplicación Web";
+    try {
+      const totalHoras = tareasDelDia.reduce((suma, t) => suma + Number(t.horas), 0);
+      const [ano, mes, dia] = fecha.split('-');
+      const diaSemana = new Date(Date.UTC(ano, mes - 1, dia)).getUTCDay();
+      const esFinDeSemana = diaSemana === 6 || diaSemana === 0;
+      let calculoExtras = esFinDeSemana ? totalHoras : totalHoras > 8 ? totalHoras - 8 : 0;
 
-      const textoFormateadoBarras = `FECHA: ${fecha.split('-').reverse().join('/')} / EMPLEADO: ${nombreCompleto} / OBRA: ${tarea.obra} / TRABAJO: ${trabajoRealizado} / HORAS: ${tarea.horas}h / HORAS EXTRA: ${calculoExtras}h / LUGAR: ${infoLugar} / OBSERVACIONES: ${notaGeneral || "Ninguna"}`;
+      for (const tarea of tareasDelDia) {
+        const nombreCompleto = (nombreEdit || datosEmpleadosPredeterminados[usuarioConectado]?.nombre) + " " + (apellidosEdit || datosEmpleadosPredeterminados[usuarioConectado]?.apellidos);
+        const trabajoRealizado = tarea.trabajo === 'OTROS' ? tarea.especificarOtros : tarea.trabajo;
+        const infoLugar = tarea.obra === 'TRABAJOS CON RODADO' ? (tarea.lugarTrabajo ? tarea.lugarTrabajo.trim() : "No especificado") : "Aplicación Web";
 
-      try {
-        await fetch("https://api.emailjs.com/api/v1.0/email/send", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            service_id: "service_bnpz2dc",
-            template_id: "template_vb8w9pk",
-            user_id: "WNyn-TdoekkCZ0kuY",
-            template_params: {
-              detalle_parte: textoFormateadoBarras
-            }
-          })
-        });
+        const textoFormateadoBarras = `FECHA: ${fecha.split('-').reverse().join('/')} / EMPLEADO: ${nombreCompleto} / OBRA: ${tarea.obra} / TRABAJO: ${trabajoRealizado} / HORAS: ${tarea.horas}h / HORAS EXTRA: ${calculoExtras}h / LUGAR: ${infoLugar} / OBSERVACIONES: ${notaGeneral || "Ninguna"}`;
 
-      } catch (errorMail) {
-        console.error("Error en EmailJS:", errorMail);
+        try {
+          await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              service_id: "service_bnpz2dc",
+              template_id: "template_vb8w9pk",
+              user_id: "WNyn-TdoekkCZ0kuY",
+              template_params: {
+                detalle_parte: textoFormateadoBarras
+              }
+            })
+          });
+        } catch (errorMail) {
+          console.error("Error en EmailJS:", errorMail);
+        }
+
+        try {
+          await supabase
+            .from('partes_publicos')
+            .insert([{
+              fecha: fecha,
+              empleado: usuarioConectado,
+              obra: tarea.obra,
+              trabajo: trabajoRealizado,
+              horas: Number(tarea.horas),
+              horas_extra: Number(calculoExtras),
+              otros_trabajos: notaGeneral || "",
+              lugar_de_trabajo: infoLugar
+            }]);
+        } catch (errorSupabase) {
+          console.error("Error en BD:", errorSupabase);
+        }
       }
 
-      try {
-        await supabase
-          .from('partes_publicos')
-          .insert([{
-            fecha: fecha,
-            empleado: usuarioConectado,
-            obra: tarea.obra,
-            trabajo: trabajoRealizado,
-            horas: Number(tarea.horas),
-            horas_extra: Number(calculoExtras),
-            otros_trabajos: notaGeneral || "",
-            lugar_de_trabajo: infoLugar
-          }]);
-      } catch (errorSupabase) {
-        console.error("Error en BD:", errorSupabase);
+      const obrasTocadasHoy = [...new Set(tareasDelDia.map(t => t.obra))];
+      let motivoExtra = diaSemana === 6 ? 'Sábado' : diaSemana === 0 ? 'Domingo' : 'Exceso jornada (>8h)';
+
+      if (calculoExtras > 0) {
+        const nuevoHistorialExtras = [{ 
+          id: 'ex-' + Date.now(), 
+          empleado: usuarioConectado, 
+          fecha: fecha, 
+          horas: calculoExtras, 
+          motivo: motivoExtra, 
+          obrasDelDia: obrasTocadasHoy 
+        }, ...horasExtrasHistorial];
+        
+        setHorasExtrasHistorial(nuevoHistorialExtras);
+        localStorage.setItem('m2m_horas_extras', JSON.stringify(nuevoHistorialExtras));
+        
+        alert(`🚀 ¡Parte Enviado y Registrado!\nSe detectaron ${calculoExtras}h extras.`);
+      } else {
+        alert('🚀 ¡Parte Enviado y Registrado con éxito!');
       }
+
+      setNotaGeneral('');
+      const obraInicial = listaObras[0] || '';
+      setTareasDelDia([{ obra: obraInicial, trabajo: baseDatosObras[obraInicial]?.[0] || 'OTROS', horas: '8', especificarOtros: '', lugarTrabajo: '' }]);
+      setPantallaActual('menu');
+
+    } catch (errorGlobal) {
+      console.error("Error en el envío del parte:", errorGlobal);
+      alert("❌ Ocurrió un error inesperado al enviar el parte.");
+    } finally {
+      setEnviandoParte(false); // Reactiva el botón siempre al terminar
     }
-
-    const obrasTocadasHoy = [...new Set(tareasDelDia.map(t => t.obra))];
-    let motivoExtra = diaSemana === 6 ? 'Sábado' : diaSemana === 0 ? 'Domingo' : 'Exceso jornada (>8h)';
-
-    if (calculoExtras > 0) {
-      const nuevoHistorialExtras = [{ 
-        id: 'ex-' + Date.now(), 
-        empleado: usuarioConectado, 
-        fecha: fecha, 
-        horas: calculoExtras, 
-        motivo: motivoExtra, 
-        obrasDelDia: obrasTocadasHoy 
-      }, ...horasExtrasHistorial];
-      
-      setHorasExtrasHistorial(nuevoHistorialExtras);
-      localStorage.setItem('m2m_horas_extras', JSON.stringify(nuevoHistorialExtras));
-      
-      alert(`🚀 ¡Parte Enviado y Registrado!\nSe detectaron ${calculoExtras}h extras.`);
-    } else {
-      alert('🚀 ¡Parte Enviado y Registrado con éxito!');
-    }
-
-    setNotaGeneral('');
-    const obraInicial = listaObras[0] || '';
-    setTareasDelDia([{ obra: obraInicial, trabajo: baseDatosObras[obraInicial]?.[0] || 'OTROS', horas: '8', especificarOtros: '', lugarTrabajo: '' }]);
-    setPantallaActual('menu');
   };
 
   const cerrarSesion = () => { setUsuarioConectado(null); setCorreo(''); setPassword(''); setPantallaActual('menu'); };
@@ -787,7 +801,7 @@ function App() {
     .filter(h => h.empleado === usuarioConectado)
     .reduce((sum, h) => sum + h.horas, 0);
 
-  // CÁLCULO DE PAGOS/PLUSES Y SALDO PENDIENTE (RESTANDO LOS PAGOS REALIZADOS)
+  // CÁLCULO DE PAGOS/PLUSES Y SALDO PENDIENTE
   const totalPagadosEmpleado = misPluses.reduce((acc, p) => acc + Number(p.importe || 0), 0);
   const eurosHorasExtrasTotales = totalGeneralExtrasProducidas * precioHoraActual;
   const saldoPendienteEmpleado = eurosHorasExtrasTotales - totalPagadosEmpleado;
@@ -1013,8 +1027,27 @@ function App() {
                     <textarea placeholder="Notas u observaciones sobre la jornada de hoy..." value={notaGeneral} onChange={(e) => setNotaGeneral(e.target.value)} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc', minHeight: '70px', resize: 'vertical' }} />
                   </div>
 
+                  {/* BOTÓN CON ESTADO DE CARGA Y BLOQUEO ANTI-DUPLICADOS */}
                   <div style={{ marginTop: '10px' }}>
-                    <button type="submit" style={{ width: '100%', padding: '14px', background: '#043424', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer', textAlign: 'center' }}>🚀 Enviar Parte</button>
+                    <button 
+                      type="submit" 
+                      disabled={enviandoParte}
+                      style={{ 
+                        width: '100%', 
+                        padding: '14px', 
+                        background: enviandoParte ? '#888888' : '#043424', 
+                        color: '#fff', 
+                        border: 'none', 
+                        borderRadius: '6px', 
+                        fontWeight: 'bold', 
+                        fontSize: '16px', 
+                        cursor: enviandoParte ? 'not-allowed' : 'pointer', 
+                        textAlign: 'center',
+                        opacity: enviandoParte ? 0.7 : 1
+                      }}
+                    >
+                      {enviandoParte ? '⏳ Enviando parte...' : '🚀 Enviar Parte'}
+                    </button>
                   </div>
                 </form>
               </div>
@@ -1073,7 +1106,6 @@ function App() {
               </div>
             )}
 
-            {/* PANTALLA DE MIS HORAS EXTRAS Y PAGOS RECIBIDOS */}
             {pantallaActual === 'horas-extras' && (
               <div>
                 <h2 style={{ color: '#043424', fontSize: '20px', marginBottom: '5px' }}>⏰ Control de Horas Extras y Pagos</h2>
@@ -1081,7 +1113,6 @@ function App() {
                   Balance general entre tus horas extras acumuladas y los pagos/anticipos abonados.
                 </p>
 
-                {/* TRES TARJETAS DE INFORMACIÓN */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '15px' }}>
                   <div style={{ background: '#f2f7f4', padding: '10px', borderRadius: '8px', border: '1px solid #c5d9cc', textAlign: 'center' }}>
                     <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', fontWeight: 'bold' }}>Horas Extras</div>
@@ -1102,7 +1133,6 @@ function App() {
                   </div>
                 </div>
 
-                {/* DESGLOSE DE PAGOS Y ANTEPOS RECIBIDOS */}
                 {misPluses.length > 0 && (
                   <div style={{ textAlign: 'left', marginBottom: '15px' }}>
                     <h4 style={{ margin: '0 0 8px 0', fontSize: '13px', color: '#1e7e34' }}>💵 Pagos / Anticipos Recibidos:</h4>
@@ -1143,7 +1173,6 @@ function App() {
               </div>
             )}
 
-            {/* PANTALLA GESTIÓN DE EFECTIVO */}
             {pantallaActual === 'gestion-efectivo' && (usuarioConectado === EMAIL_ADMIN_MASTER || posicionUser === 'Técnico de Proyectos') && (
               <div style={{ textAlign: 'left' }}>
                 <h2 style={{ color: '#b27d14', textAlign: 'center', fontSize: '20px', marginBottom: '5px' }}>💵 Control de Caja / Efectivo</h2>
@@ -1211,7 +1240,6 @@ function App() {
               </div>
             )}
 
-            {/* PANTALLA REGISTRO DE PAGOS DE HORAS EXTRAS */}
             {pantallaActual === 'gestion-plus' && (usuarioConectado === EMAIL_ADMIN_MASTER || posicionUser === 'Técnico de Proyectos') && (
               <div style={{ textAlign: 'left' }}>
                 <h2 style={{ color: '#1e7e34', textAlign: 'center', fontSize: '20px', marginBottom: '5px' }}>💵 Pagos / Pluses de Horas Extras</h2>
@@ -1284,7 +1312,6 @@ function App() {
               </div>
             )}
 
-            {/* PANTALLA GESTIÓN ADMINISTRACIÓN MÁSTER */}
             {pantallaActual === 'gestion-administracion' && usuarioConectado === EMAIL_ADMIN_MASTER && (
               <div style={{ textAlign: 'left' }}>
                 <h2 style={{ color: '#043424', textAlign: 'center', fontSize: '20px', marginBottom: '5px' }}>🛡️ Control de Partes (Administración)</h2>
