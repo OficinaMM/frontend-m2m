@@ -206,39 +206,73 @@ function App() {
     checkUsuarioYActualizarDatos();
   }, [usuarioConectado]);
 
-  // CARGAR REGISTROS DE PLUSES DE PRODUCTIVIDAD DESDE SUPABASE (Para todos los usuarios conectados)
-  const cargarPluses = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('PLUS PRODUCTIVIDAD')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      if (data) setHistorialPluses(data);
-    } catch (err) {
-      console.error("Error al cargar pluses de productividad:", err);
-    }
-  };
-
-  // CARGAR HISTORIAL DE PARTES SEGÚN ROL
+  // CARGAR HISTORIAL DE PARTES SEGÚN ROL Y ESCUCHAR CAMBIOS EN TIEMPO REAL
   useEffect(() => {
+    if (!usuarioConectado) return;
+
     const cargarPartesDesdeSupabase = async () => {
-      if (usuarioConectado) {
-        try {
-          let query = supabase.from('partes_publicos').select('*');
-          
-          const esAdminMaster = usuarioConectado === EMAIL_ADMIN_MASTER;
-          if (!esAdminMaster && posicionUser !== 'Técnico de Proyectos') {
-            query = query.eq('empleado', usuarioConectado);
+      try {
+        let query = supabase.from('partes_publicos').select('*');
+        
+        const esAdminMaster = usuarioConectado === EMAIL_ADMIN_MASTER;
+        if (!esAdminMaster && posicionUser !== 'Técnico de Proyectos') {
+          query = query.eq('empleado', usuarioConectado);
+        }
+
+        const { data, error } = await query.order('fecha', { ascending: false });
+
+        if (error) {
+          console.error("Error al cargar partes de Supabase:", error);
+        } else if (data) {
+          const partesFormateados = data.map(p => ({
+            id: p.id,
+            empleado: p.empleado,
+            fecha: p.fecha,
+            obra: p.obra,
+            trabajo: p.trabajo,
+            horas: p.horas,
+            horas_extra: p.horas_extra || 0,
+            notes: p.otros_trabajos, 
+            lugarTrabajo: p.lugar_de_trabajo
+          }));
+
+          if (esAdminMaster || posicionUser === 'Técnico de Proyectos') {
+            setTodosLosPartesAdmin(partesFormateados);
           }
+          
+          const misPartes = partesFormateados.filter(p => p.empleado === usuarioConectado);
+          setHistorialPartes(misPartes);
+          localStorage.setItem('m2m_historial_partes', JSON.stringify(misPartes));
+        }
+      } catch (err) {
+        console.error("Error de conexión con Supabase:", err);
+      }
+    };
 
-          const { data, error } = await query.order('fecha', { ascending: false });
+    cargarPartesDesdeSupabase();
 
-          if (error) {
-            console.error("Error al cargar partes de Supabase:", error);
-          } else if (data) {
-            const partesFormateados = data.map(p => ({
+    // SUSCRIPCIÓN EN TIEMPO REAL A LA TABLA partes_publicos
+    const canalPartes = supabase
+      .channel('cambios_partes_publicos')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'partes_publicos' },
+        (payload) => {
+          if (payload.eventType === 'DELETE') {
+            const idEliminado = payload.old.id;
+            
+            // Eliminar inmediatamente del panel de control máster
+            setTodosLosPartesAdmin(prev => prev.filter(p => p.id !== idEliminado));
+            
+            // Eliminar de las apps de los empleados en tiempo real
+            setHistorialPartes(prev => {
+              const actualizados = prev.filter(p => p.id !== idEliminado);
+              localStorage.setItem('m2m_historial_partes', JSON.stringify(actualizados));
+              return actualizados;
+            });
+          } else if (payload.eventType === 'INSERT') {
+            const p = payload.new;
+            const nuevoParte = {
               id: p.id,
               empleado: p.empleado,
               fecha: p.fecha,
@@ -248,23 +282,25 @@ function App() {
               horas_extra: p.horas_extra || 0,
               notes: p.otros_trabajos, 
               lugarTrabajo: p.lugar_de_trabajo
-            }));
+            };
 
-            if (esAdminMaster || posicionUser === 'Técnico de Proyectos') {
-              setTodosLosPartesAdmin(partesFormateados);
+            setTodosLosPartesAdmin(prev => [nuevoParte, ...prev.filter(item => item.id !== p.id)]);
+
+            if (p.empleado === usuarioConectado) {
+              setHistorialPartes(prev => {
+                const actualizados = [nuevoParte, ...prev.filter(item => item.id !== p.id)];
+                localStorage.setItem('m2m_historial_partes', JSON.stringify(actualizados));
+                return actualizados;
+              });
             }
-            
-            const misPartes = partesFormateados.filter(p => p.empleado === usuarioConectado);
-            setHistorialPartes(misPartes);
-            localStorage.setItem('m2m_historial_partes', JSON.stringify(misPartes));
           }
-        } catch (err) {
-          console.error("Error de conexión con Supabase:", err);
         }
-      }
-    };
+      )
+      .subscribe();
 
-    cargarPartesDesdeSupabase();
+    return () => {
+      supabase.removeChannel(canalPartes);
+    };
   }, [usuarioConectado, posicionUser]);
 
   // CARGAR REGISTROS DE EFECTIVO DESDE SUPABASE
@@ -282,12 +318,25 @@ function App() {
     }
   };
 
+  // CARGAR REGISTROS DE PLUSES DE PRODUCTIVIDAD DESDE SUPABASE
+  const cargarPluses = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('PLUS PRODUCTIVIDAD')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      if (data) setHistorialPluses(data);
+    } catch (err) {
+      console.error("Error al cargar pluses de productividad:", err);
+    }
+  };
+
   useEffect(() => {
-    if (usuarioConectado) {
-      cargarPluses(); // Se carga para todos para refrescar sus pluses/horas
-      if (usuarioConectado === EMAIL_ADMIN_MASTER || posicionUser === 'Técnico de Proyectos') {
-        cargarEfectivo();
-      }
+    if (usuarioConectado && (usuarioConectado === EMAIL_ADMIN_MASTER || posicionUser === 'Técnico de Proyectos')) {
+      cargarEfectivo();
+      cargarPluses();
     }
   }, [usuarioConectado, posicionUser]);
 
@@ -343,9 +392,14 @@ function App() {
     }
   };
 
-  // ELIMINACIÓN MÁSTER DE PARTES
+  // ELIMINACIÓN MÁSTER DE PARTES (EXCLUSIVO MÁSTER ADMIN)
   const manejarEliminarParteAdmin = async (idParte) => {
-    if (!window.confirm('⚠️ ¿Estás seguro de que deseas eliminar este parte de forma permanente?')) {
+    if (usuarioConectado !== EMAIL_ADMIN_MASTER) {
+      alert('❌ Solo la cuenta máster de Administración puede eliminar partes.');
+      return;
+    }
+
+    if (!window.confirm('⚠️ ¿Estás seguro de que deseas eliminar este parte de forma permanente? Se eliminará automáticamente de la app del empleado.')) {
       return;
     }
 
@@ -357,10 +411,7 @@ function App() {
 
       if (error) throw error;
 
-      setTodosLosPartesAdmin(prev => prev.filter(p => p.id !== idParte));
-      setHistorialPartes(prev => prev.filter(p => p.id !== idParte));
-
-      alert('🗑️ Parte eliminado con éxito de Supabase y de la aplicación.');
+      alert('🗑️ Parte eliminado correctamente de la base de datos.');
     } catch (err) {
       console.error("Error al eliminar el parte:", err);
       alert('❌ Ocurrió un error al intentar eliminar el parte.');
@@ -594,8 +645,6 @@ function App() {
     const esFinDeSemana = diaSemana === 6 || diaSemana === 0;
     let calculoExtras = esFinDeSemana ? totalHoras : totalHoras > 8 ? totalHoras - 8 : 0;
 
-    let tareasInsertadasParaHistorial = [];
-
     for (const tarea of tareasDelDia) {
       const nombreCompleto = (nombreEdit || datosEmpleadosPredeterminados[usuarioConectado]?.nombre) + " " + (apellidosEdit || datosEmpleadosPredeterminados[usuarioConectado]?.apellidos);
       const trabajoRealizado = tarea.trabajo === 'OTROS' ? tarea.especificarOtros : tarea.trabajo;
@@ -622,7 +671,7 @@ function App() {
       }
 
       try {
-        const { data: insertData, error: errorSupabase } = await supabase
+        await supabase
           .from('partes_publicos')
           .insert([{
             fecha: fecha,
@@ -633,55 +682,31 @@ function App() {
             horas_extra: Number(calculoExtras),
             otros_trabajos: notaGeneral || "",
             lugar_de_trabajo: infoLugar
-          }])
-          .select();
-
-        if (!errorSupabase && insertData) {
-          const formatoParteHistorial = {
-            id: insertData[0].id,
-            empleado: usuarioConectado,
-            fecha: fecha,
-            obra: tarea.obra,
-            trabajo: trabajoRealizado,
-            horas: tarea.horas,
-            horas_extra: calculoExtras,
-            notes: notaGeneral,
-            lugarTrabajo: tarea.obra === 'TRABAJOS CON RODADO' ? infoLugar : ''
-          };
-          tareasInsertadasParaHistorial.push(formatoParteHistorial);
-        }
+          }]);
       } catch (errorSupabase) {
         console.error("Error en BD:", errorSupabase);
       }
     }
 
-    if (tareasInsertadasParaHistorial.length > 0) {
-      const nuevoHistorialPartes = [...tareasInsertadasParaHistorial, ...historialPartes];
-      setHistorialPartes(nuevoHistorialPartes);
-      localStorage.setItem('m2m_historial_partes', JSON.stringify(nuevoHistorialPartes));
+    const obrasTocadasHoy = [...new Set(tareasDelDia.map(t => t.obra))];
+    let motivoExtra = diaSemana === 6 ? 'Sábado' : diaSemana === 0 ? 'Domingo' : 'Exceso jornada (>8h)';
 
-      const obrasTocadasHoy = [...new Set(tareasDelDia.map(t => t.obra))];
-      let motivoExtra = diaSemana === 6 ? 'Sábado' : diaSemana === 0 ? 'Domingo' : 'Exceso jornada (>8h)';
-
-      if (calculoExtras > 0) {
-        const nuevoHistorialExtras = [{ 
-          id: 'ex-' + Date.now(), 
-          empleado: usuarioConectado, 
-          fecha: fecha, 
-          horas: calculoExtras, 
-          motivo: motivoExtra, 
-          obrasDelDia: obrasTocadasHoy 
-        }, ...horasExtrasHistorial];
-        
-        setHorasExtrasHistorial(nuevoHistorialExtras);
-        localStorage.setItem('m2m_horas_extras', JSON.stringify(nuevoHistorialExtras));
-        
-        alert(`🚀 ¡Parte Enviado y Registrado!\nSe detectaron ${calculoExtras}h extras.`);
-      } else {
-        alert('🚀 ¡Parte Enviado y Registrado con éxito!');
-      }
+    if (calculoExtras > 0) {
+      const nuevoHistorialExtras = [{ 
+        id: 'ex-' + Date.now(), 
+        empleado: usuarioConectado, 
+        fecha: fecha, 
+        horas: calculoExtras, 
+        motivo: motivoExtra, 
+        obrasDelDia: obrasTocadasHoy 
+      }, ...horasExtrasHistorial];
+      
+      setHorasExtrasHistorial(nuevoHistorialExtras);
+      localStorage.setItem('m2m_horas_extras', JSON.stringify(nuevoHistorialExtras));
+      
+      alert(`🚀 ¡Parte Enviado y Registrado!\nSe detectaron ${calculoExtras}h extras.`);
     } else {
-      alert('❌ Error al procesar el envío del parte.');
+      alert('🚀 ¡Parte Enviado y Registrado con éxito!');
     }
 
     setNotaGeneral('');
@@ -746,45 +771,16 @@ function App() {
     ordenPartes === 'asc' ? new Date(a.fecha) - new Date(b.fecha) : new Date(b.fecha) - new Date(a.fecha)
   );
   
-  // CÁLCULOS DE HORAS EXTRAS Y PLUSES PARA EL EMPLEADO CONECTADO
-  const extrasDelEmpleado = horasExtrasHistorial.filter(h => h.empleado === usuarioConectado);
-  const totalGeneralExtrasProducidas = extrasDelEmpleado.reduce((sum, h) => sum + h.horas, 0);
+  const extrasFiltradas = horasExtrasHistorial.filter(h => {
+    if (h.empleado !== usuarioConectado) return false;
+    if (filtroExtraMes && h.fecha.substring(0, 7) !== filtroExtraMes) return false;
+    if (filtroExtraSemana && !belongsToCurrentWeek(h.fecha)) return false;
+    return true;
+  });
 
-  const plusesDelEmpleado = historialPluses.filter(p => p.empleado === usuarioConectado);
-  const totalImportePlusesCobrados = plusesDelEmpleado.reduce((sum, p) => sum + Number(p.importe || 0), 0);
-
-  const totalValorExtrasEuros = totalGeneralExtrasProducidas * precioHoraActual;
-  const saldoPendienteEuros = totalValorExtrasEuros - totalImportePlusesCobrados;
-  const horasPendientesEquivalentes = precioHoraActual > 0 ? (saldoPendienteEuros / precioHoraActual) : 0;
-
-  // CONSTRUCCIÓN DEL HISTORIAL COMBINADO DE EXTRAS Y PAGOS (PLUSES)
-  const listaMovimientosExtras = [
-    ...extrasDelEmpleado.map(h => ({
-      id: h.id,
-      tipo: 'hora',
-      fecha: h.fecha,
-      motivo: h.motivo,
-      horas: h.horas,
-      monto: h.horas * precioHoraActual
-    })),
-    ...plusesDelEmpleado.map(p => ({
-      id: 'plus-' + p.id,
-      tipo: 'pago',
-      fecha: p.created_at ? p.created_at.substring(0, 10) : new Date().toISOString().substring(0, 10),
-      motivo: `💸 Pago / Plus: ${p.concepto || 'Productividad'}`,
-      horas: precioHoraActual > 0 ? Number(p.importe || 0) / precioHoraActual : 0,
-      monto: Number(p.importe || 0)
-    }))
-  ];
-
-  // Aplicar filtros de mes y semana al historial unificado
-  const movimientosExtrasFiltrados = listaMovimientosExtras
-    .filter(m => {
-      if (filtroExtraMes && m.fecha.substring(0, 7) !== filtroExtraMes) return false;
-      if (filtroExtraSemana && !belongsToCurrentWeek(m.fecha)) return false;
-      return true;
-    })
-    .sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+  const totalGeneralExtrasProducidas = horasExtrasHistorial
+    .filter(h => h.empleado === usuarioConectado)
+    .reduce((sum, h) => sum + h.horas, 0);
 
   // FILTRADO MÁSTER PARA ADMINISTRACIÓN
   const partesAdminFiltrados = todosLosPartesAdmin.filter(p => {
@@ -912,7 +908,7 @@ function App() {
                     </button>
                   )}
 
-                  {/* BOTÓN CONTROL DE PARTES (ADMINISTRACIÓN) */}
+                  {/* BOTÓN CONTROL DE PARTES (EXCLUSIVO ADMINISTRACIÓN MÁSTER) */}
                   {usuarioConectado === EMAIL_ADMIN_MASTER && (
                     <button 
                       onClick={() => { setPantallaActual('gestion-administracion'); limpiarFiltrosAdmin(); }} 
@@ -1067,57 +1063,36 @@ function App() {
               </div>
             )}
 
-            {/* PANTALLA HORAS EXTRAS VINCULADA CON PLUSES */}
             {pantallaActual === 'horas-extras' && (
               <div>
-                <h2 style={{ color: '#043424', fontSize: '20px', marginBottom: '5px' }}>⏰ Balance de Horas Extras y Pluses</h2>
+                <h2 style={{ color: '#043424', fontSize: '20px', marginBottom: '5px' }}>⏰ Control de Horas Extras</h2>
                 <p style={{ margin: '0 0 15px 0', fontSize: '12px', color: '#555' }}>
-                  El saldo acumulado refleja las horas producidas descontando los pluses de productividad abonados.
+                  Las horas extras calculadas son las trabajadas en fines de semana o las que superen las 8h diarias de lunes a viernes.
                 </p>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
-                  <div style={{ background: '#f2f7f4', padding: '12px', borderRadius: '8px', border: '1px solid #c5d9cc', textAlign: 'center' }}>
-                    <div style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', fontWeight: 'bold' }}>Producido Total</div>
-                    <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#043424' }}>{totalGeneralExtrasProducidas} h</div>
-                    <div style={{ fontSize: '11px', color: '#666' }}>({totalValorExtrasEuros.toFixed(2)} €)</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '20px' }}>
+                  <div style={{ background: '#f2f7f4', padding: '12px', borderRadius: '8px', border: '1px solid #c5d9cc' }}>
+                    <div style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', fontWeight: 'bold' }}>Acumuladas totales</div>
+                    <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#043424' }}>{totalGeneralExtrasProducidas} h</div>
                   </div>
-                  <div style={{ background: '#eef9f0', padding: '12px', borderRadius: '8px', border: '1px solid #c3e6cb', textAlign: 'center' }}>
-                    <div style={{ fontSize: '11px', color: '#155724', textTransform: 'uppercase', fontWeight: 'bold' }}>Pluses Cobrados</div>
-                    <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#28a745' }}>{totalImportePlusesCobrados.toFixed(2)} €</div>
-                    <div style={{ fontSize: '11px', color: '#155724' }}>({precioHoraActual > 0 ? (totalImportePlusesCobrados / precioHoraActual).toFixed(1) : 0} h equiv.)</div>
+                  <div style={{ background: '#fdf7ec', padding: '12px', borderRadius: '8px', border: '1px solid #f5e4c4' }}>
+                    <div style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', fontWeight: 'bold' }}>Saldo estimado</div>
+                    <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#b27d14' }}>{totalGeneralExtrasProducidas * precioHoraActual} €</div>
                   </div>
                 </div>
 
-                <div style={{ background: saldoPendienteEuros >= 0 ? '#fdf7ec' : '#f8d7da', padding: '14px', borderRadius: '8px', border: '1px solid #ccc', marginBottom: '20px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#555', textTransform: 'uppercase' }}>Saldo Pendiente Actual</div>
-                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: saldoPendienteEuros >= 0 ? '#b27d14' : '#721c24', margin: '4px 0' }}>
-                    {saldoPendienteEuros.toFixed(2)} €
-                  </div>
-                  <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#444' }}>
-                    Equivalente a: <span style={{ color: '#043424' }}>{horasPendientesEquivalentes.toFixed(1)} Horas Extras</span>
-                  </div>
-                </div>
-
-                <h4 style={{ margin: '0 0 10px 0', color: '#043424', textAlign: 'left' }}>📋 Detalle de Registro de Horas y Pagos:</h4>
                 <div style={{ maxHeight: '280px', overflowY: 'auto', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {movimientosExtrasFiltrados.length === 0 ? (
-                    <p style={{ textAlign: 'center', color: '#666', fontSize: '13px', padding: '10px' }}>No hay registros de horas extras o pluses en este rango.</p>
+                  {extrasFiltradas.length === 0 ? (
+                    <p style={{ textAlign: 'center', color: '#666', fontSize: '13px', padding: '10px' }}>No hay registros de horas extras en este rango.</p>
                   ) : (
-                    movimientosExtrasFiltrados.map((item) => (
-                      <div key={item.id} style={{ border: '1px solid #e2e8f0', padding: '10px', borderRadius: '6px', background: item.tipo === 'pago' ? '#f0fff4' : '#fff', borderLeft: `5px solid ${item.tipo === 'pago' ? '#28a745' : '#b27d14'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    extrasFiltradas.map((extra) => (
+                      <div key={extra.id} style={{ border: '1px solid #e2e8f0', padding: '10px', borderRadius: '6px', background: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
-                          <span style={{ fontWeight: 'bold', fontSize: '13px', color: '#333' }}>📅 {item.fecha.split('-').reverse().join('/')}</span>
-                          <span style={{ fontSize: '11px', color: item.tipo === 'pago' ? '#1e7e34' : '#666', marginLeft: '10px', background: item.tipo === 'pago' ? '#d4edda' : '#edf2f7', padding: '2px 6px', borderRadius: '4px', fontWeight: item.tipo === 'pago' ? 'bold' : 'normal' }}>
-                            {item.motivo}
-                          </span>
+                          <span style={{ fontWeight: 'bold', fontSize: '13px', color: '#333' }}>📅 {extra.fecha.split('-').reverse().join('/')}</span>
+                          <span style={{ fontSize: '11px', color: '#666', marginLeft: '10px', background: '#edf2f7', padding: '2px 6px', borderRadius: '4px' }}>{extra.motivo}</span>
                         </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontWeight: 'bold', color: item.tipo === 'pago' ? '#dc3545' : '#28a745', fontSize: '15px' }}>
-                            {item.tipo === 'pago' ? '-' : '+'}{item.monto.toFixed(2)} €
-                          </div>
-                          <div style={{ fontSize: '11px', color: '#666' }}>
-                            {item.tipo === 'pago' ? `(-${item.horas.toFixed(1)}h)` : `(+${item.horas}h)`}
-                          </div>
+                        <div style={{ fontWeight: 'bold', color: '#b27d14', fontSize: '15px' }}>
+                          +{extra.horas}h
                         </div>
                       </div>
                     ))
@@ -1272,7 +1247,7 @@ function App() {
               <div style={{ textAlign: 'left' }}>
                 <h2 style={{ color: '#043424', textAlign: 'center', fontSize: '20px', marginBottom: '5px' }}>🛡️ Control de Partes (Administración)</h2>
                 <p style={{ fontSize: '12px', color: '#555', textAlign: 'center', marginBottom: '15px' }}>
-                  Gestión global de partes registrados. Puedes filtrar por empleado, mes o borrar registros directamente.
+                  Gestión global de partes registrados. Al borrar un registro, se eliminará automáticamente de la app del empleado.
                 </p>
 
                 <div style={{ background: '#e2f0d9', padding: '12px', borderRadius: '8px', marginBottom: '15px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -1328,7 +1303,7 @@ function App() {
                             <button 
                               onClick={() => manejarEliminarParteAdmin(p.id)} 
                               style={{ background: '#ff4d4d', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '5px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
-                              title="Borrar de Supabase y de la memoria"
+                              title="Borrar de Supabase y de la app del empleado"
                             >
                               🗑️ Eliminar
                             </button>
