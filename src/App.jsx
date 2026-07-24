@@ -206,6 +206,21 @@ function App() {
     checkUsuarioYActualizarDatos();
   }, [usuarioConectado]);
 
+  // CARGAR REGISTROS DE PLUSES DE PRODUCTIVIDAD DESDE SUPABASE (Para todos los usuarios conectados)
+  const cargarPluses = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('PLUS PRODUCTIVIDAD')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      if (data) setHistorialPluses(data);
+    } catch (err) {
+      console.error("Error al cargar pluses de productividad:", err);
+    }
+  };
+
   // CARGAR HISTORIAL DE PARTES SEGÚN ROL
   useEffect(() => {
     const cargarPartesDesdeSupabase = async () => {
@@ -267,25 +282,12 @@ function App() {
     }
   };
 
-  // CARGAR REGISTROS DE PLUSES DE PRODUCTIVIDAD DESDE SUPABASE
-  const cargarPluses = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('PLUS PRODUCTIVIDAD')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      if (data) setHistorialPluses(data);
-    } catch (err) {
-      console.error("Error al cargar pluses de productividad:", err);
-    }
-  };
-
   useEffect(() => {
-    if (usuarioConectado && (usuarioConectado === EMAIL_ADMIN_MASTER || posicionUser === 'Técnico de Proyectos')) {
-      cargarEfectivo();
-      cargarPluses();
+    if (usuarioConectado) {
+      cargarPluses(); // Se carga para todos para refrescar sus pluses/horas
+      if (usuarioConectado === EMAIL_ADMIN_MASTER || posicionUser === 'Técnico de Proyectos') {
+        cargarEfectivo();
+      }
     }
   }, [usuarioConectado, posicionUser]);
 
@@ -400,7 +402,7 @@ function App() {
     }
   };
 
-  // REGISTRAR PLUS DE PRODUCTIVIDAD (NOMBRES DE COLUMNAS EN MINÚSCULAS)
+  // REGISTRAR PLUS DE PRODUCTIVIDAD
   const manejarGuardarPlus = async (e) => {
     e.preventDefault();
     if (!montoPlus || isNaN(montoPlus) || Number(montoPlus) <= 0) {
@@ -414,11 +416,11 @@ function App() {
       const { error } = await supabase
         .from('PLUS PRODUCTIVIDAD')
         .insert([{
-          id: Date.now(),                                 // ID numérico para evitar restricción NOT NULL
-          created_at: new Date(fechaPlus).toISOString(),  // Guarda la fecha seleccionada en 'created_at'
-          empleado: empAsignado,                          // Minúsculas
-          importe: parseFloat(montoPlus),                 // Minúsculas
-          concepto: conceptoPlus || 'Plus de Productividad' // Minúsculas
+          id: Date.now(),
+          created_at: new Date(fechaPlus).toISOString(),
+          empleado: empAsignado,
+          importe: parseFloat(montoPlus),
+          concepto: conceptoPlus || 'Plus de Productividad'
         }]);
 
       if (error) {
@@ -744,16 +746,45 @@ function App() {
     ordenPartes === 'asc' ? new Date(a.fecha) - new Date(b.fecha) : new Date(b.fecha) - new Date(a.fecha)
   );
   
-  const extrasFiltradas = horasExtrasHistorial.filter(h => {
-    if (h.empleado !== usuarioConectado) return false;
-    if (filtroExtraMes && h.fecha.substring(0, 7) !== filtroExtraMes) return false;
-    if (filtroExtraSemana && !belongsToCurrentWeek(h.fecha)) return false;
-    return true;
-  });
+  // CÁLCULOS DE HORAS EXTRAS Y PLUSES PARA EL EMPLEADO CONECTADO
+  const extrasDelEmpleado = horasExtrasHistorial.filter(h => h.empleado === usuarioConectado);
+  const totalGeneralExtrasProducidas = extrasDelEmpleado.reduce((sum, h) => sum + h.horas, 0);
 
-  const totalGeneralExtrasProducidas = horasExtrasHistorial
-    .filter(h => h.empleado === usuarioConectado)
-    .reduce((sum, h) => sum + h.horas, 0);
+  const plusesDelEmpleado = historialPluses.filter(p => p.empleado === usuarioConectado);
+  const totalImportePlusesCobrados = plusesDelEmpleado.reduce((sum, p) => sum + Number(p.importe || 0), 0);
+
+  const totalValorExtrasEuros = totalGeneralExtrasProducidas * precioHoraActual;
+  const saldoPendienteEuros = totalValorExtrasEuros - totalImportePlusesCobrados;
+  const horasPendientesEquivalentes = precioHoraActual > 0 ? (saldoPendienteEuros / precioHoraActual) : 0;
+
+  // CONSTRUCCIÓN DEL HISTORIAL COMBINADO DE EXTRAS Y PAGOS (PLUSES)
+  const listaMovimientosExtras = [
+    ...extrasDelEmpleado.map(h => ({
+      id: h.id,
+      tipo: 'hora',
+      fecha: h.fecha,
+      motivo: h.motivo,
+      horas: h.horas,
+      monto: h.horas * precioHoraActual
+    })),
+    ...plusesDelEmpleado.map(p => ({
+      id: 'plus-' + p.id,
+      tipo: 'pago',
+      fecha: p.created_at ? p.created_at.substring(0, 10) : new Date().toISOString().substring(0, 10),
+      motivo: `💸 Pago / Plus: ${p.concepto || 'Productividad'}`,
+      horas: precioHoraActual > 0 ? Number(p.importe || 0) / precioHoraActual : 0,
+      monto: Number(p.importe || 0)
+    }))
+  ];
+
+  // Aplicar filtros de mes y semana al historial unificado
+  const movimientosExtrasFiltrados = listaMovimientosExtras
+    .filter(m => {
+      if (filtroExtraMes && m.fecha.substring(0, 7) !== filtroExtraMes) return false;
+      if (filtroExtraSemana && !belongsToCurrentWeek(m.fecha)) return false;
+      return true;
+    })
+    .sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
 
   // FILTRADO MÁSTER PARA ADMINISTRACIÓN
   const partesAdminFiltrados = todosLosPartesAdmin.filter(p => {
@@ -1036,36 +1067,57 @@ function App() {
               </div>
             )}
 
+            {/* PANTALLA HORAS EXTRAS VINCULADA CON PLUSES */}
             {pantallaActual === 'horas-extras' && (
               <div>
-                <h2 style={{ color: '#043424', fontSize: '20px', marginBottom: '5px' }}>⏰ Control de Horas Extras</h2>
+                <h2 style={{ color: '#043424', fontSize: '20px', marginBottom: '5px' }}>⏰ Balance de Horas Extras y Pluses</h2>
                 <p style={{ margin: '0 0 15px 0', fontSize: '12px', color: '#555' }}>
-                  Las horas extras calculadas son las trabajadas en fines de semana o las que superen las 8h diarias de lunes a viernes.
+                  El saldo acumulado refleja las horas producidas descontando los pluses de productividad abonados.
                 </p>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '20px' }}>
-                  <div style={{ background: '#f2f7f4', padding: '12px', borderRadius: '8px', border: '1px solid #c5d9cc' }}>
-                    <div style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', fontWeight: 'bold' }}>Acumuladas totales</div>
-                    <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#043424' }}>{totalGeneralExtrasProducidas} h</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
+                  <div style={{ background: '#f2f7f4', padding: '12px', borderRadius: '8px', border: '1px solid #c5d9cc', textAlign: 'center' }}>
+                    <div style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', fontWeight: 'bold' }}>Producido Total</div>
+                    <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#043424' }}>{totalGeneralExtrasProducidas} h</div>
+                    <div style={{ fontSize: '11px', color: '#666' }}>({totalValorExtrasEuros.toFixed(2)} €)</div>
                   </div>
-                  <div style={{ background: '#fdf7ec', padding: '12px', borderRadius: '8px', border: '1px solid #f5e4c4' }}>
-                    <div style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', fontWeight: 'bold' }}>Saldo estimado</div>
-                    <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#b27d14' }}>{totalGeneralExtrasProducidas * precioHoraActual} €</div>
+                  <div style={{ background: '#eef9f0', padding: '12px', borderRadius: '8px', border: '1px solid #c3e6cb', textAlign: 'center' }}>
+                    <div style={{ fontSize: '11px', color: '#155724', textTransform: 'uppercase', fontWeight: 'bold' }}>Pluses Cobrados</div>
+                    <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#28a745' }}>{totalImportePlusesCobrados.toFixed(2)} €</div>
+                    <div style={{ fontSize: '11px', color: '#155724' }}>({precioHoraActual > 0 ? (totalImportePlusesCobrados / precioHoraActual).toFixed(1) : 0} h equiv.)</div>
                   </div>
                 </div>
 
+                <div style={{ background: saldoPendienteEuros >= 0 ? '#fdf7ec' : '#f8d7da', padding: '14px', borderRadius: '8px', border: '1px solid #ccc', marginBottom: '20px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#555', textTransform: 'uppercase' }}>Saldo Pendiente Actual</div>
+                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: saldoPendienteEuros >= 0 ? '#b27d14' : '#721c24', margin: '4px 0' }}>
+                    {saldoPendienteEuros.toFixed(2)} €
+                  </div>
+                  <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#444' }}>
+                    Equivalente a: <span style={{ color: '#043424' }}>{horasPendientesEquivalentes.toFixed(1)} Horas Extras</span>
+                  </div>
+                </div>
+
+                <h4 style={{ margin: '0 0 10px 0', color: '#043424', textAlign: 'left' }}>📋 Detalle de Registro de Horas y Pagos:</h4>
                 <div style={{ maxHeight: '280px', overflowY: 'auto', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {extrasFiltradas.length === 0 ? (
-                    <p style={{ textAlign: 'center', color: '#666', fontSize: '13px', padding: '10px' }}>No hay registros de horas extras en este rango.</p>
+                  {movimientosExtrasFiltrados.length === 0 ? (
+                    <p style={{ textAlign: 'center', color: '#666', fontSize: '13px', padding: '10px' }}>No hay registros de horas extras o pluses en este rango.</p>
                   ) : (
-                    extrasFiltradas.map((extra) => (
-                      <div key={extra.id} style={{ border: '1px solid #e2e8f0', padding: '10px', borderRadius: '6px', background: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    movimientosExtrasFiltrados.map((item) => (
+                      <div key={item.id} style={{ border: '1px solid #e2e8f0', padding: '10px', borderRadius: '6px', background: item.tipo === 'pago' ? '#f0fff4' : '#fff', borderLeft: `5px solid ${item.tipo === 'pago' ? '#28a745' : '#b27d14'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
-                          <span style={{ fontWeight: 'bold', fontSize: '13px', color: '#333' }}>📅 {extra.fecha.split('-').reverse().join('/')}</span>
-                          <span style={{ fontSize: '11px', color: '#666', marginLeft: '10px', background: '#edf2f7', padding: '2px 6px', borderRadius: '4px' }}>{extra.motivo}</span>
+                          <span style={{ fontWeight: 'bold', fontSize: '13px', color: '#333' }}>📅 {item.fecha.split('-').reverse().join('/')}</span>
+                          <span style={{ fontSize: '11px', color: item.tipo === 'pago' ? '#1e7e34' : '#666', marginLeft: '10px', background: item.tipo === 'pago' ? '#d4edda' : '#edf2f7', padding: '2px 6px', borderRadius: '4px', fontWeight: item.tipo === 'pago' ? 'bold' : 'normal' }}>
+                            {item.motivo}
+                          </span>
                         </div>
-                        <div style={{ fontWeight: 'bold', color: '#b27d14', fontSize: '15px' }}>
-                          +{extra.horas}h
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontWeight: 'bold', color: item.tipo === 'pago' ? '#dc3545' : '#28a745', fontSize: '15px' }}>
+                            {item.tipo === 'pago' ? '-' : '+'}{item.monto.toFixed(2)} €
+                          </div>
+                          <div style={{ fontSize: '11px', color: '#666' }}>
+                            {item.tipo === 'pago' ? `(-${item.horas.toFixed(1)}h)` : `(+${item.horas}h)`}
+                          </div>
                         </div>
                       </div>
                     ))
