@@ -18,7 +18,7 @@ function App() {
     'proyectos@grupom2m.com': { nombre: 'Paco', apellidos: 'Lopez Moreno', telefono: '600000002', posicion: 'Técnico de Proyectos', dni: '44325886X' },
     'info@grupom2m.com': { nombre: 'Dani', apellidos: 'Moreno Lucas', telefono: '600000003', posicion: 'Encargado General', dni: '43078641D' },
     'domingorodriguezguerrero1@gmail.com': { nombre: 'Domingo Rafael', apellidos: 'Rodríguez Guerrero', telefono: '600000004', posicion: 'Oficial de 1ª', dni: '08855929D' },
-    'jjleonp1981@gmail.com': { nombre: 'Juan José', apellidos: 'León Pérez', telefono: '600000005', posicion: 'Oficial de 1ª', dni: '74862778D' },
+    'jjleonp1891@gmail.com': { nombre: 'Juan José', apellidos: 'León Pérez', telefono: '600000005', posicion: 'Oficial de 1ª', dni: '74862778D' },
     'miguelangellmoreno@gmail.com': { nombre: 'Miguel Ángel', apellidos: 'Moreno López', telefono: '600000006', posicion: 'Oficial de 1ª', dni: '43033001R' },
     'lorenzopereztortosa@gmx.es': { nombre: 'Lorenzo', apellidos: 'Pérez Tortosa', telefono: '600000007', posicion: 'Oficial de 1ª', dni: '26741630J' },
     'florenuritole@gmail.com': { nombre: 'Florencio', apellidos: 'Condori Toledo', telefono: '600000008', posicion: 'Oficial de 1ª', dni: '55085454V' },
@@ -70,9 +70,6 @@ function App() {
   const [notaGeneral, setNotaGeneral] = useState('');
   const [tareasDelDia, setTareasDelDia] = useState([]);
 
-  // ESTADO DE BLOQUEO CONTRA DOBLE ENVÍO
-  const [enviandoParte, setEnviandoParte] = useState(false);
-
   const [filtroParteMes, setFiltroParteMes] = useState('');
   const [filtroParteSemana, setFiltroParteSemana] = useState(false);
   const [ordenPartes, setOrdenPartes] = useState('desc'); 
@@ -93,9 +90,8 @@ function App() {
   const [conceptoEfectivo, setConceptoEfectivo] = useState('');
   const [fechaEfectivo, setFechaEfectivo] = useState(new Date().toISOString().split('T')[0]);
 
-  // ESTADOS DE PAGOS DE HORAS EXTRAS / PLUSES
+  // ESTADOS DE PLUS DE PRODUCTIVIDAD
   const [historialPluses, setHistorialPluses] = useState([]);
-  const [misPluses, setMisPluses] = useState([]);
   const [fechaPlus, setFechaPlus] = useState(new Date().toISOString().split('T')[0]);
   const [empleadoPlus, setEmpleadoPlus] = useState('');
   const [montoPlus, setMontoPlus] = useState('');
@@ -210,68 +206,24 @@ function App() {
     checkUsuarioYActualizarDatos();
   }, [usuarioConectado]);
 
-  // CARGAR HISTORIAL DE PARTES Y SUSCRIPCIÓN REALTIME
+  // CARGAR HISTORIAL DE PARTES SEGÚN ROL
   useEffect(() => {
-    if (!usuarioConectado) return;
-
     const cargarPartesDesdeSupabase = async () => {
-      try {
-        let query = supabase.from('partes_publicos').select('*');
-        
-        const esAdminMaster = usuarioConectado === EMAIL_ADMIN_MASTER;
-        if (!esAdminMaster && posicionUser !== 'Técnico de Proyectos') {
-          query = query.eq('empleado', usuarioConectado);
-        }
-
-        const { data, error } = await query.order('fecha', { ascending: false });
-
-        if (error) {
-          console.error("Error al cargar partes de Supabase:", error);
-        } else if (data) {
-          const partesFormateados = data.map(p => ({
-            id: p.id,
-            empleado: p.empleado,
-            fecha: p.fecha,
-            obra: p.obra,
-            trabajo: p.trabajo,
-            horas: p.horas,
-            horas_extra: p.horas_extra || 0,
-            notes: p.otros_trabajos, 
-            lugarTrabajo: p.lugar_de_trabajo
-          }));
-
-          if (esAdminMaster || posicionUser === 'Técnico de Proyectos') {
-            setTodosLosPartesAdmin(partesFormateados);
-          }
+      if (usuarioConectado) {
+        try {
+          let query = supabase.from('partes_publicos').select('*');
           
-          const misPartes = partesFormateados.filter(p => p.empleado === usuarioConectado);
-          setHistorialPartes(misPartes);
-          localStorage.setItem('m2m_historial_partes', JSON.stringify(misPartes));
-        }
-      } catch (err) {
-        console.error("Error de conexión con Supabase:", err);
-      }
-    };
+          const esAdminMaster = usuarioConectado === EMAIL_ADMIN_MASTER;
+          if (!esAdminMaster && posicionUser !== 'Técnico de Proyectos') {
+            query = query.eq('empleado', usuarioConectado);
+          }
 
-    cargarPartesDesdeSupabase();
+          const { data, error } = await query.order('fecha', { ascending: false });
 
-    const canalPartes = supabase
-      .channel('cambios_partes_publicos')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'partes_publicos' },
-        (payload) => {
-          if (payload.eventType === 'DELETE') {
-            const idEliminado = payload.old.id;
-            setTodosLosPartesAdmin(prev => prev.filter(p => p.id !== idEliminado));
-            setHistorialPartes(prev => {
-              const actualizados = prev.filter(p => p.id !== idEliminado);
-              localStorage.setItem('m2m_historial_partes', JSON.stringify(actualizados));
-              return actualizados;
-            });
-          } else if (payload.eventType === 'INSERT') {
-            const p = payload.new;
-            const nuevoParte = {
+          if (error) {
+            console.error("Error al cargar partes de Supabase:", error);
+          } else if (data) {
+            const partesFormateados = data.map(p => ({
               id: p.id,
               empleado: p.empleado,
               fecha: p.fecha,
@@ -281,25 +233,23 @@ function App() {
               horas_extra: p.horas_extra || 0,
               notes: p.otros_trabajos, 
               lugarTrabajo: p.lugar_de_trabajo
-            };
+            }));
 
-            setTodosLosPartesAdmin(prev => [nuevoParte, ...prev.filter(item => item.id !== p.id)]);
-
-            if (p.empleado === usuarioConectado) {
-              setHistorialPartes(prev => {
-                const actualizados = [nuevoParte, ...prev.filter(item => item.id !== p.id)];
-                localStorage.setItem('m2m_historial_partes', JSON.stringify(actualizados));
-                return actualizados;
-              });
+            if (esAdminMaster || posicionUser === 'Técnico de Proyectos') {
+              setTodosLosPartesAdmin(partesFormateados);
             }
+            
+            const misPartes = partesFormateados.filter(p => p.empleado === usuarioConectado);
+            setHistorialPartes(misPartes);
+            localStorage.setItem('m2m_historial_partes', JSON.stringify(misPartes));
           }
+        } catch (err) {
+          console.error("Error de conexión con Supabase:", err);
         }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(canalPartes);
+      }
     };
+
+    cargarPartesDesdeSupabase();
   }, [usuarioConectado, posicionUser]);
 
   // CARGAR REGISTROS DE EFECTIVO DESDE SUPABASE
@@ -317,7 +267,7 @@ function App() {
     }
   };
 
-  // CARGAR REGISTROS DE PLUSES Y PAGOS REALIZADOS DESDE SUPABASE
+  // CARGAR REGISTROS DE PLUSES DE PRODUCTIVIDAD DESDE SUPABASE
   const cargarPluses = async () => {
     try {
       const { data, error } = await supabase
@@ -326,24 +276,16 @@ function App() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      if (data) {
-        setHistorialPluses(data);
-        if (usuarioConectado) {
-          const misPlusesFiltrados = data.filter(p => p.empleado === usuarioConectado);
-          setMisPluses(misPlusesFiltrados);
-        }
-      }
+      if (data) setHistorialPluses(data);
     } catch (err) {
-      console.error("Error al cargar pagos/pluses:", err);
+      console.error("Error al cargar pluses de productividad:", err);
     }
   };
 
   useEffect(() => {
-    if (usuarioConectado) {
+    if (usuarioConectado && (usuarioConectado === EMAIL_ADMIN_MASTER || posicionUser === 'Técnico de Proyectos')) {
+      cargarEfectivo();
       cargarPluses();
-      if (usuarioConectado === EMAIL_ADMIN_MASTER || posicionUser === 'Técnico de Proyectos') {
-        cargarEfectivo();
-      }
     }
   }, [usuarioConectado, posicionUser]);
 
@@ -401,12 +343,7 @@ function App() {
 
   // ELIMINACIÓN MÁSTER DE PARTES
   const manejarEliminarParteAdmin = async (idParte) => {
-    if (usuarioConectado !== EMAIL_ADMIN_MASTER) {
-      alert('❌ Solo la cuenta máster de Administración puede eliminar partes.');
-      return;
-    }
-
-    if (!window.confirm('⚠️ ¿Estás seguro de que deseas eliminar este parte de forma permanente? Se eliminará automáticamente de la app del empleado.')) {
+    if (!window.confirm('⚠️ ¿Estás seguro de que deseas eliminar este parte de forma permanente?')) {
       return;
     }
 
@@ -418,7 +355,10 @@ function App() {
 
       if (error) throw error;
 
-      alert('🗑️ Parte eliminado correctamente de la base de datos.');
+      setTodosLosPartesAdmin(prev => prev.filter(p => p.id !== idParte));
+      setHistorialPartes(prev => prev.filter(p => p.id !== idParte));
+
+      alert('🗑️ Parte eliminado con éxito de Supabase y de la aplicación.');
     } catch (err) {
       console.error("Error al eliminar el parte:", err);
       alert('❌ Ocurrió un error al intentar eliminar el parte.');
@@ -460,7 +400,7 @@ function App() {
     }
   };
 
-  // REGISTRAR PAGO DE HORAS EXTRAS / PLUS DE PRODUCTIVIDAD
+  // REGISTRAR PLUS DE PRODUCTIVIDAD
   const manejarGuardarPlus = async (e) => {
     e.preventDefault();
     if (!montoPlus || isNaN(montoPlus) || Number(montoPlus) <= 0) {
@@ -478,7 +418,7 @@ function App() {
           created_at: new Date(fechaPlus).toISOString(),
           empleado: empAsignado,
           importe: parseFloat(montoPlus),
-          concepto: conceptoPlus || 'Pago Horas Extras'
+          concepto: conceptoPlus || 'Plus de Productividad'
         }]);
 
       if (error) {
@@ -487,13 +427,13 @@ function App() {
         return;
       }
 
-      alert('✅ Pago registrado con éxito. Se ha descontado del saldo del empleado.');
+      alert('✅ Plus de productividad asignado con éxito.');
       setMontoPlus('');
       setConceptoPlus('');
       setEmpleadoPlus('');
       cargarPluses();
     } catch (err) {
-      console.error("Error al guardar pago:", err);
+      console.error("Error al guardar plus de productividad:", err);
       alert('❌ Ocurrió un error inesperado al intentar guardar.');
     }
   };
@@ -633,11 +573,8 @@ function App() {
     setTareasDelDia(nuevasTareas);
   };
 
-  // FUNCIÓN DE ENVÍO CORREGIDA CON BLOQUEO ANTI-DUPLICADOS
   const manejarEnviarParte = async (e) => {
     e.preventDefault();
-
-    if (enviandoParte) return; // Evita pulsaciones múltiples si ya se está procesando
 
     const yaExisteParte = historialPartes.some(
       (parte) => parte.empleado === usuarioConectado && parte.fecha === fecha
@@ -649,56 +586,77 @@ function App() {
       return;
     }
 
-    setEnviandoParte(true); // Bloquea el botón e indica carga
+    const totalHoras = tareasDelDia.reduce((suma, t) => suma + Number(t.horas), 0);
+    const [ano, mes, dia] = fecha.split('-');
+    const diaSemana = new Date(Date.UTC(ano, mes - 1, dia)).getUTCDay();
+    const esFinDeSemana = diaSemana === 6 || diaSemana === 0;
+    let calculoExtras = esFinDeSemana ? totalHoras : totalHoras > 8 ? totalHoras - 8 : 0;
 
-    try {
-      const totalHoras = tareasDelDia.reduce((suma, t) => suma + Number(t.horas), 0);
-      const [ano, mes, dia] = fecha.split('-');
-      const diaSemana = new Date(Date.UTC(ano, mes - 1, dia)).getUTCDay();
-      const esFinDeSemana = diaSemana === 6 || diaSemana === 0;
-      let calculoExtras = esFinDeSemana ? totalHoras : totalHoras > 8 ? totalHoras - 8 : 0;
+    let tareasInsertadasParaHistorial = [];
 
-      for (const tarea of tareasDelDia) {
-        const nombreCompleto = (nombreEdit || datosEmpleadosPredeterminados[usuarioConectado]?.nombre) + " " + (apellidosEdit || datosEmpleadosPredeterminados[usuarioConectado]?.apellidos);
-        const trabajoRealizado = tarea.trabajo === 'OTROS' ? tarea.especificarOtros : tarea.trabajo;
-        const infoLugar = tarea.obra === 'TRABAJOS CON RODADO' ? (tarea.lugarTrabajo ? tarea.lugarTrabajo.trim() : "No especificado") : "Aplicación Web";
+    for (const tarea of tareasDelDia) {
+      const nombreCompleto = (nombreEdit || datosEmpleadosPredeterminados[usuarioConectado]?.nombre) + " " + (apellidosEdit || datosEmpleadosPredeterminados[usuarioConectado]?.apellidos);
+      const trabajoRealizado = tarea.trabajo === 'OTROS' ? tarea.especificarOtros : tarea.trabajo;
+      const infoLugar = tarea.obra === 'TRABAJOS CON RODADO' ? (tarea.lugarTrabajo ? tarea.lugarTrabajo.trim() : "No especificado") : "Aplicación Web";
 
-        const textoFormateadoBarras = `FECHA: ${fecha.split('-').reverse().join('/')} / EMPLEADO: ${nombreCompleto} / OBRA: ${tarea.obra} / TRABAJO: ${trabajoRealizado} / HORAS: ${tarea.horas}h / HORAS EXTRA: ${calculoExtras}h / LUGAR: ${infoLugar} / OBSERVACIONES: ${notaGeneral || "Ninguna"}`;
+      const textoFormateadoBarras = `FECHA: ${fecha.split('-').reverse().join('/')} / EMPLEADO: ${nombreCompleto} / OBRA: ${tarea.obra} / TRABAJO: ${trabajoRealizado} / HORAS: ${tarea.horas}h / HORAS EXTRA: ${calculoExtras}h / LUGAR: ${infoLugar} / OBSERVACIONES: ${notaGeneral || "Ninguna"}`;
 
-        try {
-          await fetch("https://api.emailjs.com/api/v1.0/email/send", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              service_id: "service_bnpz2dc",
-              template_id: "template_vb8w9pk",
-              user_id: "WNyn-TdoekkCZ0kuY",
-              template_params: {
-                detalle_parte: textoFormateadoBarras
-              }
-            })
-          });
-        } catch (errorMail) {
-          console.error("Error en EmailJS:", errorMail);
-        }
+      try {
+        await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            service_id: "service_bnpz2dc",
+            template_id: "template_vb8w9pk",
+            user_id: "WNyn-TdoekkCZ0kuY",
+            template_params: {
+              detalle_parte: textoFormateadoBarras
+            }
+          })
+        });
 
-        try {
-          await supabase
-            .from('partes_publicos')
-            .insert([{
-              fecha: fecha,
-              empleado: usuarioConectado,
-              obra: tarea.obra,
-              trabajo: trabajoRealizado,
-              horas: Number(tarea.horas),
-              horas_extra: Number(calculoExtras),
-              otros_trabajos: notaGeneral || "",
-              lugar_de_trabajo: infoLugar
-            }]);
-        } catch (errorSupabase) {
-          console.error("Error en BD:", errorSupabase);
-        }
+      } catch (errorMail) {
+        console.error("Error en EmailJS:", errorMail);
       }
+
+      try {
+        const { data: insertData, error: errorSupabase } = await supabase
+          .from('partes_publicos')
+          .insert([{
+            fecha: fecha,
+            empleado: usuarioConectado,
+            obra: tarea.obra,
+            trabajo: trabajoRealizado,
+            horas: Number(tarea.horas),
+            horas_extra: Number(calculoExtras),
+            otros_trabajos: notaGeneral || "",
+            lugar_de_trabajo: infoLugar
+          }])
+          .select();
+
+        if (!errorSupabase && insertData) {
+          const formatoParteHistorial = {
+            id: insertData[0].id,
+            empleado: usuarioConectado,
+            fecha: fecha,
+            obra: tarea.obra,
+            trabajo: trabajoRealizado,
+            horas: tarea.horas,
+            horas_extra: calculoExtras,
+            notes: notaGeneral,
+            lugarTrabajo: tarea.obra === 'TRABAJOS CON RODADO' ? infoLugar : ''
+          };
+          tareasInsertadasParaHistorial.push(formatoParteHistorial);
+        }
+      } catch (errorSupabase) {
+        console.error("Error en BD:", errorSupabase);
+      }
+    }
+
+    if (tareasInsertadasParaHistorial.length > 0) {
+      const nuevoHistorialPartes = [...tareasInsertadasParaHistorial, ...historialPartes];
+      setHistorialPartes(nuevoHistorialPartes);
+      localStorage.setItem('m2m_historial_partes', JSON.stringify(nuevoHistorialPartes));
 
       const obrasTocadasHoy = [...new Set(tareasDelDia.map(t => t.obra))];
       let motivoExtra = diaSemana === 6 ? 'Sábado' : diaSemana === 0 ? 'Domingo' : 'Exceso jornada (>8h)';
@@ -720,18 +678,14 @@ function App() {
       } else {
         alert('🚀 ¡Parte Enviado y Registrado con éxito!');
       }
-
-      setNotaGeneral('');
-      const obraInicial = listaObras[0] || '';
-      setTareasDelDia([{ obra: obraInicial, trabajo: baseDatosObras[obraInicial]?.[0] || 'OTROS', horas: '8', especificarOtros: '', lugarTrabajo: '' }]);
-      setPantallaActual('menu');
-
-    } catch (errorGlobal) {
-      console.error("Error en el envío del parte:", errorGlobal);
-      alert("❌ Ocurrió un error inesperado al enviar el parte.");
-    } finally {
-      setEnviandoParte(false); // Reactiva el botón siempre al terminar
+    } else {
+      alert('❌ Error al procesar el envío del parte.');
     }
+
+    setNotaGeneral('');
+    const obraInicial = listaObras[0] || '';
+    setTareasDelDia([{ obra: obraInicial, trabajo: baseDatosObras[obraInicial]?.[0] || 'OTROS', horas: '8', especificarOtros: '', lugarTrabajo: '' }]);
+    setPantallaActual('menu');
   };
 
   const cerrarSesion = () => { setUsuarioConectado(null); setCorreo(''); setPassword(''); setPantallaActual('menu'); };
@@ -801,11 +755,6 @@ function App() {
     .filter(h => h.empleado === usuarioConectado)
     .reduce((sum, h) => sum + h.horas, 0);
 
-  // CÁLCULO DE PAGOS/PLUSES Y SALDO PENDIENTE
-  const totalPagadosEmpleado = misPluses.reduce((acc, p) => acc + Number(p.importe || 0), 0);
-  const eurosHorasExtrasTotales = totalGeneralExtrasProducidas * precioHoraActual;
-  const saldoPendienteEmpleado = eurosHorasExtrasTotales - totalPagadosEmpleado;
-
   // FILTRADO MÁSTER PARA ADMINISTRACIÓN
   const partesAdminFiltrados = todosLosPartesAdmin.filter(p => {
     if (filtroAdminEmpleado && p.empleado !== filtroAdminEmpleado) return false;
@@ -841,29 +790,74 @@ function App() {
             <h2 style={{ color: '#b27d14', margin: '0 0 10px 0', fontSize: '20px' }}>🔑 Recuperar Contraseña</h2>
             <p style={{ fontSize: '13px', color: '#444', marginBottom: '20px' }}>Paso 1: Escribe tu correo electrónico y tu DNI registrado.</p>
             <form onSubmit={manejarVerificarDatosRecovery} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              <input type="email" placeholder="Correo registrado" value={correoRecovery} onChange={(e) => setCorreoRecovery(e.target.value)} required style={{ padding: '12px', borderRadius: '6px', border: '1px solid #ccc' }} />
-              <input type="text" placeholder="DNI / NIE (Con letra)" value={dniRecovery} onChange={(e) => setDniRecovery(e.target.value)} required style={{ padding: '12px', borderRadius: '6px', border: '1px solid #ccc' }} />
-              <button type="submit" style={{ padding: '12px', fontWeight: 'bold', color: '#fff', background: '#b27d14', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>➡️ Verificar Datos</button>
-              <button type="button" onClick={() => setPantallaActual('login')} style={{ background: 'none', border: 'none', color: '#666', textDecoration: 'underline', cursor: 'pointer' }}>Volver atrás</button>
+              <input type="email" placeholder="Correo registrado" value={correoRecovery} onChange={(e) => setCorreoRecovery(e.target.value)} required style={{ padding: '12px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '15px' }} />
+              <input type="text" placeholder="DNI / NIE (Con letra)" value={dniRecovery} onChange={(e) => setDniRecovery(e.target.value)} required style={{ padding: '12px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '15px' }} />
+              <button 
+                type="submit" 
+                style={{ 
+                  padding: '16px', 
+                  fontWeight: 'bold', 
+                  fontSize: '16px',
+                  color: '#ffffff', 
+                  background: '#b27d14', 
+                  border: 'none', 
+                  borderRadius: '10px', 
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 10px rgba(178, 125, 20, 0.3)'
+                }}
+              >
+                ➡️ Verificar Datos
+              </button>
+              <button type="button" onClick={() => setPantallaActual('login')} style={{ background: 'none', border: 'none', color: '#666', textDecoration: 'underline', cursor: 'pointer', fontSize: '14px', marginTop: '5px' }}>Volver atrás</button>
             </form>
           </div>
         ) : pantallaActual === 'recovery-escribir-pass' ? (
           <div style={{ background: 'rgba(255, 255, 255, 0.95)', padding: '25px', borderRadius: '15px', boxShadow: '0 4px 15px rgba(0,0,0,0.3)', maxWidth: '380px', width: '100%', boxSizing: 'border-box', textAlign: 'center' }}>
             <h2 style={{ color: '#043424', margin: '0 0 10px 0', fontSize: '20px' }}>🔒 Fijar Nueva Contraseña</h2>
             <form onSubmit={manejarGuardarNuevaPasswordRecovery} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              <input type="password" placeholder="NUEVA contraseña" value={passRecoveryNueva} onChange={(e) => setPassRecoveryNueva(e.target.value)} required style={{ padding: '12px', borderRadius: '6px', border: '1px solid #ccc' }} />
-              <input type="password" placeholder="REPITE la contraseña" value={passRecoveryConfirmar} onChange={(e) => setPassRecoveryConfirmar(e.target.value)} required style={{ padding: '12px', borderRadius: '6px', border: '1px solid #ccc' }} />
-              <button type="submit" style={{ padding: '12px', fontWeight: 'bold', color: '#fff', background: '#043424', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>💾 Guardar Contraseña</button>
+              <input type="password" placeholder="NUEVA contraseña" value={passRecoveryNueva} onChange={(e) => setPassRecoveryNueva(e.target.value)} required style={{ padding: '12px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '15px' }} />
+              <input type="password" placeholder="REPITE la contraseña" value={passRecoveryConfirmar} onChange={(e) => setPassRecoveryConfirmar(e.target.value)} required style={{ padding: '12px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '15px' }} />
+              <button 
+                type="submit" 
+                style={{ 
+                  padding: '16px', 
+                  fontWeight: 'bold', 
+                  fontSize: '16px',
+                  color: '#ffffff', 
+                  background: '#043424', 
+                  border: 'none', 
+                  borderRadius: '10px', 
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 10px rgba(4, 52, 36, 0.3)'
+                }}
+              >
+                💾 Guardar Contraseña
+              </button>
             </form>
           </div>
         ) : (
           <div style={{ background: 'rgba(255, 255, 255, 0.95)', padding: '30px 25px', borderRadius: '15px', boxShadow: '0 4px 15px rgba(0,0,0,0.3)', maxWidth: '350px', width: '100%', boxSizing: 'border-box', textAlign: 'center' }}>
             <h2 style={{ color: '#043424', margin: '0 0 15px 0', fontSize: '22px' }}>Iniciar Sesión</h2>
             <form onSubmit={manejarLogin} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              <input type="email" placeholder="Tu correo electrónico" value={correo} onChange={(e) => setCorreo(e.target.value)} required style={{ padding: '12px', borderRadius: '6px', border: '1px solid #ccc' }} />
-              <input type="password" placeholder="Contraseña" value={password} onChange={(e) => setPassword(e.target.value)} required style={{ padding: '12px', borderRadius: '6px', border: '1px solid #ccc' }} />
-              <button type="submit" style={{ padding: '12px', fontWeight: 'bold', color: '#fff', background: '#043424', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>Entrar</button>
-              <button type="button" onClick={() => setPantallaActual('recovery')} style={{ background: 'none', border: 'none', color: '#b27d14', textDecoration: 'underline', cursor: 'pointer' }}>¿Has olvidado tu contraseña?</button>
+              <input type="email" placeholder="Tu correo electrónico" value={correo} onChange={(e) => setCorreo(e.target.value)} required style={{ padding: '12px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '15px' }} />
+              <input type="password" placeholder="Contraseña" value={password} onChange={(e) => setPassword(e.target.value)} required style={{ padding: '12px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '15px' }} />
+              <button 
+                type="submit" 
+                style={{ 
+                  padding: '16px', 
+                  fontWeight: 'bold', 
+                  fontSize: '17px', 
+                  color: '#ffffff', 
+                  background: '#043424', 
+                  border: 'none', 
+                  borderRadius: '10px', 
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(4, 52, 36, 0.35)'
+                }}
+              >
+                Entrar
+              </button>
+              <button type="button" onClick={() => setPantallaActual('recovery')} style={{ background: 'none', border: 'none', color: '#b27d14', textDecoration: 'underline', cursor: 'pointer', fontSize: '14px', marginTop: '5px' }}>¿Has olvidado tu contraseña?</button>
             </form>
           </div>
         )
@@ -871,18 +865,38 @@ function App() {
         <div style={{ maxWidth: '650px', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'stretch', boxSizing: 'border-box' }}>
           
           {pantallaActual !== 'primer-cambio-pass' && (
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '10px', gap: '10px' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '12px', gap: '10px' }}>
               {pantallaActual !== 'menu' ? (
                 <button 
                   onClick={() => setPantallaActual('menu')} 
-                  style={{ padding: '8px 16px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '20px', border: 'none', background: '#666', color: '#fff' }}
+                  style={{ 
+                    padding: '10px 20px', 
+                    fontSize: '14px', 
+                    fontWeight: 'bold', 
+                    cursor: 'pointer', 
+                    borderRadius: '25px', 
+                    border: 'none', 
+                    background: '#444444', 
+                    color: '#ffffff',
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.2)'
+                  }}
                 >
                   ⬅️ Volver al Menú
                 </button>
               ) : (
                 <button 
                   onClick={() => setPantallaActual('mi-cuenta')} 
-                  style={{ padding: '8px 16px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '20px', border: 'none', background: '#c5a059', color: '#fff' }}
+                  style={{ 
+                    padding: '10px 20px', 
+                    fontSize: '14px', 
+                    fontWeight: 'bold', 
+                    cursor: 'pointer', 
+                    borderRadius: '25px', 
+                    border: 'none', 
+                    background: '#c5a059', 
+                    color: '#ffffff',
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.2)'
+                  }}
                 >
                   👤 Mi Cuenta
                 </button>
@@ -897,8 +911,23 @@ function App() {
                 <h2 style={{ color: '#043424', fontSize: '20px' }}>🔑 Seguridad Obligatoria</h2>
                 <p style={{ fontSize: '14px', color: '#333' }}>Es tu primera vez entrando. Por tu privacidad, <strong>debes modificar tu contraseña</strong>.</p>
                 <form onSubmit={manejarChangePassword} style={{ display: 'flex', flexDirection: 'column', gap: '15px', maxWidth: '300px', margin: '0 auto' }}>
-                  <input type="password" placeholder="Nueva contraseña personal" value={nuevaPassword} onChange={(e) => setNuevaPassword(e.target.value)} required style={{ padding: '12px', borderRadius: '6px', border: '1px solid #ccc' }} />
-                  <button type="submit" style={{ padding: '12px', background: '#b27d14', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold' }}>Establecer Contraseña</button>
+                  <input type="password" placeholder="Nueva contraseña personal" value={nuevaPassword} onChange={(e) => setNuevaPassword(e.target.value)} required style={{ padding: '12px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '15px' }} />
+                  <button 
+                    type="submit" 
+                    style={{ 
+                      padding: '16px', 
+                      background: '#b27d14', 
+                      color: '#ffffff', 
+                      border: 'none', 
+                      borderRadius: '10px', 
+                      fontWeight: 'bold', 
+                      fontSize: '16px',
+                      cursor: 'pointer',
+                      boxShadow: '0 4px 10px rgba(178, 125, 20, 0.3)'
+                    }}
+                  >
+                    Establecer Contraseña
+                  </button>
                 </form>
               </div>
             )}
@@ -907,42 +936,150 @@ function App() {
               <div>
                 <h1 style={{ color: '#c5a059', margin: '0 0 8px 0', fontSize: 'clamp(18px, 5vw, 24px)' }}>Construcciones M&M Asociados 2022 SL</h1>
                 <p style={{ color: '#222', fontSize: '12px', margin: '0 0 25px 0', background: '#e2f0d9', padding: '6px 12px', borderRadius: '20px', display: 'inline-block', fontWeight: 'bold' }}>🟢 Bienvenido, {nombreEdit || 'Empleado'} ({posicionUser})</p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  <button onClick={() => setPantallaActual('nuevo-parte')} style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '1px solid #ccc', background: '#f0f0f0' }}>📋 Enviar Nuevo Parte</button>
-                  <button onClick={() => { setPantallaActual('mis-partes'); limpiarFiltrosGeneral(); }} style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '1px solid #ccc', background: '#f0f0f0' }}>📄 Ver Partes Enviados</button>
-                  <button onClick={() => { setPantallaActual('horas-extras'); limpiarFiltrosExtras(); cargarPluses(); }} style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '1px solid #ccc', background: '#f0f0f0' }}>⏰ Mis Horas Extras</button>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {/* BOTÓN PRINCIPAL DE ENVÍO DE PARTE */}
+                  <button 
+                    onClick={() => setPantallaActual('nuevo-parte')} 
+                    style={{ 
+                      padding: '18px 20px', 
+                      fontSize: '17px', 
+                      fontWeight: 'bold', 
+                      cursor: 'pointer', 
+                      borderRadius: '10px', 
+                      border: 'none', 
+                      background: '#043424', 
+                      color: '#ffffff',
+                      boxShadow: '0 4px 10px rgba(4, 52, 36, 0.3)'
+                    }}
+                  >
+                    📋 Enviar Nuevo Parte
+                  </button>
+
+                  {/* VER PARTES ENVIADOS */}
+                  <button 
+                    onClick={() => { setPantallaActual('mis-partes'); limpiarFiltrosGeneral(); }} 
+                    style={{ 
+                      padding: '16px 20px', 
+                      fontSize: '16px', 
+                      fontWeight: 'bold', 
+                      cursor: 'pointer', 
+                      borderRadius: '10px', 
+                      border: '2px solid #043424', 
+                      background: '#ffffff', 
+                      color: '#043424',
+                      boxShadow: '0 3px 8px rgba(0,0,0,0.1)'
+                    }}
+                  >
+                    📄 Ver Partes Enviados
+                  </button>
+
+                  {/* MIS HORAS EXTRAS */}
+                  <button 
+                    onClick={() => { setPantallaActual('horas-extras'); limpiarFiltrosExtras(); }} 
+                    style={{ 
+                      padding: '16px 20px', 
+                      fontSize: '16px', 
+                      fontWeight: 'bold', 
+                      cursor: 'pointer', 
+                      borderRadius: '10px', 
+                      border: '2px solid #b27d14', 
+                      background: '#ffffff', 
+                      color: '#b27d14',
+                      boxShadow: '0 3px 8px rgba(0,0,0,0.1)'
+                    }}
+                  >
+                    ⏰ Mis Horas Extras
+                  </button>
                   
                   {/* BOTÓN CONTROL DE EFECTIVO */}
                   {(usuarioConectado === EMAIL_ADMIN_MASTER || posicionUser === 'Técnico de Proyectos') && (
                     <button 
                       onClick={() => setPantallaActual('gestion-efectivo')} 
-                      style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '2px solid #b27d14', background: '#fdf7ec', color: '#b27d14', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                      style={{ 
+                        padding: '16px 20px', 
+                        fontSize: '16px', 
+                        fontWeight: 'bold', 
+                        cursor: 'pointer', 
+                        borderRadius: '10px', 
+                        border: '2px solid #b27d14', 
+                        background: '#fdf7ec', 
+                        color: '#8c5e00', 
+                        boxShadow: '0 3px 8px rgba(178, 125, 20, 0.2)',
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justify: 'center', 
+                        gap: '8px' 
+                      }}
                     >
                       💵 Gestión de Efectivo
                     </button>
                   )}
 
-                  {/* BOTÓN REGISTRO DE PAGOS DE HORAS EXTRAS */}
+                  {/* BOTÓN PLUS DE PRODUCTIVIDAD */}
                   {(usuarioConectado === EMAIL_ADMIN_MASTER || posicionUser === 'Técnico de Proyectos') && (
                     <button 
                       onClick={() => setPantallaActual('gestion-plus')} 
-                      style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '2px solid #28a745', background: '#eef9f0', color: '#1e7e34', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                      style={{ 
+                        padding: '16px 20px', 
+                        fontSize: '16px', 
+                        fontWeight: 'bold', 
+                        cursor: 'pointer', 
+                        borderRadius: '10px', 
+                        border: '2px solid #28a745', 
+                        background: '#eef9f0', 
+                        color: '#155724', 
+                        boxShadow: '0 3px 8px rgba(40, 167, 69, 0.2)',
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justify: 'center', 
+                        gap: '8px' 
+                      }}
                     >
-                      💵 Pagos / Pluses de Horas Extras
+                      🏆 Plus de Productividad
                     </button>
                   )}
 
-                  {/* BOTÓN CONTROL DE PARTES (EXCLUSIVO ADMINISTRACIÓN MÁSTER) */}
+                  {/* BOTÓN CONTROL DE PARTES (ADMINISTRACIÓN) */}
                   {usuarioConectado === EMAIL_ADMIN_MASTER && (
                     <button 
                       onClick={() => { setPantallaActual('gestion-administracion'); limpiarFiltrosAdmin(); }} 
-                      style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '2px solid #043424', background: '#e2f0d9', color: '#043424', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                      style={{ 
+                        padding: '16px 20px', 
+                        fontSize: '16px', 
+                        fontWeight: 'bold', 
+                        cursor: 'pointer', 
+                        borderRadius: '10px', 
+                        border: '2px solid #043424', 
+                        background: '#e2f0d9', 
+                        color: '#043424', 
+                        boxShadow: '0 3px 8px rgba(4, 52, 36, 0.2)',
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justify: 'center', 
+                        gap: '8px' 
+                      }}
                     >
                       🛡️ Control de Partes (Administración)
                     </button>
                   )}
 
-                  <button onClick={cerrarSesion} style={{ padding: '8px', fontSize: '13px', color: '#888', cursor: 'pointer', border: 'none', background: 'none', textDecoration: 'underline', marginTop: '15px' }}>Cerrar Sesión</button>
+                  <button 
+                    onClick={cerrarSesion} 
+                    style={{ 
+                      padding: '10px', 
+                      fontSize: '14px', 
+                      fontWeight: '600',
+                      color: '#cc0000', 
+                      cursor: 'pointer', 
+                      border: 'none', 
+                      background: 'none', 
+                      textDecoration: 'underline', 
+                      marginTop: '10px' 
+                    }}
+                  >
+                    🚪 Cerrar Sesión
+                  </button>
                 </div>
               </div>
             )}
@@ -955,7 +1092,22 @@ function App() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={{ fontSize: '12px', color: '#666' }}>Precio Hora Extra:</label><input type="text" value={`${precioHoraActual} € / hora`} disabled style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ddd', background: '#e9e9e9' }} /></div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={{ fontSize: '12px', color: '#666' }}>Nombre:</label><input type="text" value={`${nombreEdit} ${apellidosEdit}`} disabled style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ddd', background: '#e9e9e9' }} /></div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={{ fontSize: '12px', fontWeight: 'bold', color: '#043424' }}>📱 Teléfono:</label><input type="tel" value={telefonoEdit} onChange={(e) => setTelefonoEdit(e.target.value)} required style={{ padding: '10px', borderRadius: '6px', border: '1px solid #043424' }} /></div>
-                  <button type="submit" style={{ padding: '12px', background: '#043424', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>💾 Guardar Teléfono</button>
+                  <button 
+                    type="submit" 
+                    style={{ 
+                      padding: '14px', 
+                      background: '#043424', 
+                      color: '#ffffff', 
+                      border: 'none', 
+                      borderRadius: '8px', 
+                      fontWeight: 'bold', 
+                      fontSize: '16px',
+                      cursor: 'pointer',
+                      boxShadow: '0 3px 8px rgba(4, 52, 36, 0.25)'
+                    }}
+                  >
+                    💾 Guardar Teléfono
+                  </button>
                 </form>
               </div>
             )}
@@ -971,7 +1123,7 @@ function App() {
 
                   {tareasDelDia.map((tarea, index) => (
                     <div key={index} style={{ background: '#f9f9f9', padding: '15px', borderRadius: '8px', border: '1px solid #e0e0e0', position: 'relative', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                      {tareasDelDia.length > 1 && <button type="button" onClick={() => eliminarFilaTarea(index)} style={{ position: 'absolute', top: '10px', right: '10px', background: 'none', border: 'none', color: '#cc0000', fontWeight: 'bold', cursor: 'pointer' }}>❌</button>}
+                      {tareasDelDia.length > 1 && <button type="button" onClick={() => eliminarFilaTarea(index)} style={{ position: 'absolute', top: '10px', right: '10px', background: 'none', border: 'none', color: '#cc0000', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer' }}>❌</button>}
                       
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#333' }}>Obra:</label>
@@ -1020,33 +1172,48 @@ function App() {
                     </div>
                   ))}
 
-                  <button type="button" onClick={añadirFilaTarea} style={{ padding: '10px', fontWeight: 'bold', color: '#fff', background: '#043424', border: 'none', borderRadius: '6px', cursor: 'pointer', textAlign: 'center' }}>➕ Añadir Obra / Trabajo</button>
+                  <button 
+                    type="button" 
+                    onClick={añadirFilaTarea} 
+                    style={{ 
+                      padding: '12px', 
+                      fontSize: '15px', 
+                      fontWeight: 'bold', 
+                      color: '#043424', 
+                      background: '#e2f0d9', 
+                      border: '2px solid #043424', 
+                      borderRadius: '8px', 
+                      cursor: 'pointer', 
+                      textAlign: 'center',
+                      boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
+                    }}
+                  >
+                    ➕ Añadir Obra / Trabajo
+                  </button>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <label style={{ fontSize: '13px', color: '#666' }}>Observaciones generales (Opcional):</label>
                     <textarea placeholder="Notas u observaciones sobre la jornada de hoy..." value={notaGeneral} onChange={(e) => setNotaGeneral(e.target.value)} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc', minHeight: '70px', resize: 'vertical' }} />
                   </div>
 
-                  {/* BOTÓN CON ESTADO DE CARGA Y BLOQUEO ANTI-DUPLICADOS */}
                   <div style={{ marginTop: '10px' }}>
                     <button 
                       type="submit" 
-                      disabled={enviandoParte}
                       style={{ 
                         width: '100%', 
-                        padding: '14px', 
-                        background: enviandoParte ? '#888888' : '#043424', 
-                        color: '#fff', 
+                        padding: '16px', 
+                        background: '#043424', 
+                        color: '#ffffff', 
                         border: 'none', 
-                        borderRadius: '6px', 
+                        borderRadius: '8px', 
                         fontWeight: 'bold', 
-                        fontSize: '16px', 
-                        cursor: enviandoParte ? 'not-allowed' : 'pointer', 
+                        fontSize: '18px', 
+                        cursor: 'pointer', 
                         textAlign: 'center',
-                        opacity: enviandoParte ? 0.7 : 1
+                        boxShadow: '0 4px 10px rgba(0,0,0,0.25)'
                       }}
                     >
-                      {enviandoParte ? '⏳ Enviando parte...' : '🚀 Enviar Parte'}
+                      🚀 Enviar Parte
                     </button>
                   </div>
                 </form>
@@ -1073,7 +1240,21 @@ function App() {
                       <option value="asc">Más viejos primero</option>
                     </select>
                   </div>
-                  <button onClick={limpiarFiltrosGeneral} style={{ fontSize: '11px', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer' }}>Limpiar</button>
+                  <button 
+                    onClick={limpiarFiltrosGeneral} 
+                    style={{ 
+                      fontSize: '12px', 
+                      fontWeight: 'bold', 
+                      padding: '6px 12px', 
+                      borderRadius: '6px', 
+                      cursor: 'pointer', 
+                      background: '#043424', 
+                      color: '#ffffff', 
+                      border: 'none' 
+                    }}
+                  >
+                    Limpiar
+                  </button>
                 </div>
 
                 <div style={{ maxHeight: '400px', overflowY: 'auto', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -1108,52 +1289,23 @@ function App() {
 
             {pantallaActual === 'horas-extras' && (
               <div>
-                <h2 style={{ color: '#043424', fontSize: '20px', marginBottom: '5px' }}>⏰ Control de Horas Extras y Pagos</h2>
+                <h2 style={{ color: '#043424', fontSize: '20px', marginBottom: '5px' }}>⏰ Control de Horas Extras</h2>
                 <p style={{ margin: '0 0 15px 0', fontSize: '12px', color: '#555' }}>
-                  Balance general entre tus horas extras acumuladas y los pagos/anticipos abonados.
+                  Las horas extras calculadas son las trabajadas en fines de semana o las que superen las 8h diarias de lunes a viernes.
                 </p>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '15px' }}>
-                  <div style={{ background: '#f2f7f4', padding: '10px', borderRadius: '8px', border: '1px solid #c5d9cc', textAlign: 'center' }}>
-                    <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', fontWeight: 'bold' }}>Horas Extras</div>
-                    <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#043424', marginTop: '4px' }}>{totalGeneralExtrasProducidas} h</div>
-                    <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>({eurosHorasExtrasTotales.toFixed(2)} €)</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '20px' }}>
+                  <div style={{ background: '#f2f7f4', padding: '12px', borderRadius: '8px', border: '1px solid #c5d9cc' }}>
+                    <div style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', fontWeight: 'bold' }}>Acumuladas totales</div>
+                    <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#043424' }}>{totalGeneralExtrasProducidas} h</div>
                   </div>
-                  
-                  <div style={{ background: '#eef9f0', padding: '10px', borderRadius: '8px', border: '1px solid #c3e6cb', textAlign: 'center' }}>
-                    <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', fontWeight: 'bold' }}>Pagos / Cobros</div>
-                    <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#28a745', marginTop: '4px' }}>-{totalPagadosEmpleado.toFixed(2)} €</div>
-                    <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>({misPluses.length} recibidos)</div>
-                  </div>
-
-                  <div style={{ background: saldoPendienteEmpleado >= 0 ? '#fdf7ec' : '#f8d7da', padding: '10px', borderRadius: '8px', border: `1px solid ${saldoPendienteEmpleado >= 0 ? '#f5e4c4' : '#f5c6cb'}`, textAlign: 'center' }}>
-                    <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', fontWeight: 'bold' }}>Saldo Pendiente</div>
-                    <div style={{ fontSize: '18px', fontWeight: 'bold', color: saldoPendienteEmpleado >= 0 ? '#b27d14' : '#721c24', marginTop: '4px' }}>{saldoPendienteEmpleado.toFixed(2)} €</div>
-                    <div style={{ fontSize: '10px', color: '#888', marginTop: '2px' }}>A Cobrar</div>
+                  <div style={{ background: '#fdf7ec', padding: '12px', borderRadius: '8px', border: '1px solid #f5e4c4' }}>
+                    <div style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', fontWeight: 'bold' }}>Saldo estimado</div>
+                    <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#b27d14' }}>{totalGeneralExtrasProducidas * precioHoraActual} €</div>
                   </div>
                 </div>
 
-                {misPluses.length > 0 && (
-                  <div style={{ textAlign: 'left', marginBottom: '15px' }}>
-                    <h4 style={{ margin: '0 0 8px 0', fontSize: '13px', color: '#1e7e34' }}>💵 Pagos / Anticipos Recibidos:</h4>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '120px', overflowY: 'auto' }}>
-                      {misPluses.map((plus) => (
-                        <div key={plus.id} style={{ padding: '8px 10px', background: '#eef9f0', borderRadius: '6px', borderLeft: '4px solid #28a745', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div>
-                            <div style={{ fontWeight: 'bold', fontSize: '12px', color: '#1e7e34' }}>{plus.concepto}</div>
-                            <div style={{ fontSize: '10px', color: '#666' }}>📅 {plus.created_at ? new Date(plus.created_at).toLocaleDateString('es-ES') : ''}</div>
-                          </div>
-                          <div style={{ fontWeight: 'bold', color: '#28a745', fontSize: '14px' }}>
-                            -{Number(plus.importe || 0).toFixed(2)} €
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <h4 style={{ margin: '0 0 8px 0', fontSize: '13px', color: '#043424', textAlign: 'left' }}>⏱️ Registro de Horas Extras Realizadas:</h4>
-                <div style={{ maxHeight: '200px', overflowY: 'auto', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ maxHeight: '280px', overflowY: 'auto', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {extrasFiltradas.length === 0 ? (
                     <p style={{ textAlign: 'center', color: '#666', fontSize: '13px', padding: '10px' }}>No hay registros de horas extras en este rango.</p>
                   ) : (
@@ -1164,7 +1316,7 @@ function App() {
                           <span style={{ fontSize: '11px', color: '#666', marginLeft: '10px', background: '#edf2f7', padding: '2px 6px', borderRadius: '4px' }}>{extra.motivo}</span>
                         </div>
                         <div style={{ fontWeight: 'bold', color: '#b27d14', fontSize: '15px' }}>
-                          +{extra.horas}h ({(extra.horas * precioHoraActual).toFixed(2)} €)
+                          +{extra.horas}h
                         </div>
                       </div>
                     ))
@@ -1173,6 +1325,7 @@ function App() {
               </div>
             )}
 
+            {/* PANTALLA GESTIÓN DE EFECTIVO */}
             {pantallaActual === 'gestion-efectivo' && (usuarioConectado === EMAIL_ADMIN_MASTER || posicionUser === 'Técnico de Proyectos') && (
               <div style={{ textAlign: 'left' }}>
                 <h2 style={{ color: '#b27d14', textAlign: 'center', fontSize: '20px', marginBottom: '5px' }}>💵 Control de Caja / Efectivo</h2>
@@ -1214,7 +1367,21 @@ function App() {
                     <input type="text" placeholder="Ej: Pago de material / Repostaje urgente" value={conceptoEfectivo} onChange={(e) => setConceptoEfectivo(e.target.value)} required style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }} />
                   </div>
 
-                  <button type="submit" style={{ padding: '10px', background: '#b27d14', color: '#fff', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', marginTop: '5px' }}>
+                  <button 
+                    type="submit" 
+                    style={{ 
+                      padding: '14px', 
+                      background: '#b27d14', 
+                      color: '#ffffff', 
+                      border: 'none', 
+                      borderRadius: '8px', 
+                      fontWeight: 'bold', 
+                      fontSize: '16px',
+                      cursor: 'pointer', 
+                      marginTop: '5px',
+                      boxShadow: '0 3px 8px rgba(178, 125, 20, 0.3)'
+                    }}
+                  >
                     💾 Registrar Movimiento
                   </button>
                 </form>
@@ -1240,15 +1407,16 @@ function App() {
               </div>
             )}
 
+            {/* PANTALLA GESTIÓN PLUS DE PRODUCTIVIDAD */}
             {pantallaActual === 'gestion-plus' && (usuarioConectado === EMAIL_ADMIN_MASTER || posicionUser === 'Técnico de Proyectos') && (
               <div style={{ textAlign: 'left' }}>
-                <h2 style={{ color: '#1e7e34', textAlign: 'center', fontSize: '20px', marginBottom: '5px' }}>💵 Pagos / Pluses de Horas Extras</h2>
+                <h2 style={{ color: '#1e7e34', textAlign: 'center', fontSize: '20px', marginBottom: '5px' }}>🏆 Plus de Productividad</h2>
                 <p style={{ fontSize: '12px', color: '#555', textAlign: 'center', marginBottom: '15px' }}>
-                  Registro de pagos realizados a empleados (se restan automáticamente del saldo pendiente de sus horas extras).
+                  Asignación y registro centralizado de gratificaciones de productividad.
                 </p>
 
                 <form onSubmit={manejarGuardarPlus} style={{ background: '#eef9f0', padding: '15px', borderRadius: '8px', border: '1px solid #c3e6cb', display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
-                  <h4 style={{ margin: '0 0 5px 0', color: '#1e7e34' }}>➕ Registrar Nuevo Pago</h4>
+                  <h4 style={{ margin: '0 0 5px 0', color: '#1e7e34' }}>➕ Asignar Nuevo Plus</h4>
                   
                   <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                     <div style={{ flex: '1 1 140px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
@@ -1270,24 +1438,38 @@ function App() {
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <label style={{ fontSize: '11px', fontWeight: 'bold' }}>Importe Pagado (€):</label>
+                    <label style={{ fontSize: '11px', fontWeight: 'bold' }}>Importe (€):</label>
                     <input type="number" step="0.01" min="0.01" placeholder="Ej: 100.00" value={montoPlus} onChange={(e) => setMontoPlus(e.target.value)} required style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }} />
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                     <label style={{ fontSize: '11px', fontWeight: 'bold' }}>Concepto / Motivo:</label>
-                    <input type="text" placeholder="Ej: Pago a cuenta horas extras Julio" value={conceptoPlus} onChange={(e) => setConceptoPlus(e.target.value)} required style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }} />
+                    <input type="text" placeholder="Ej: Plus por rendimiento en Obra X" value={conceptoPlus} onChange={(e) => setConceptoPlus(e.target.value)} required style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }} />
                   </div>
 
-                  <button type="submit" style={{ padding: '10px', background: '#28a745', color: '#fff', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', marginTop: '5px' }}>
-                    💾 Registrar Pago
+                  <button 
+                    type="submit" 
+                    style={{ 
+                      padding: '14px', 
+                      background: '#28a745', 
+                      color: '#ffffff', 
+                      border: 'none', 
+                      borderRadius: '8px', 
+                      fontWeight: 'bold', 
+                      fontSize: '16px',
+                      cursor: 'pointer', 
+                      marginTop: '5px',
+                      boxShadow: '0 3px 8px rgba(40, 167, 69, 0.3)'
+                    }}
+                  >
+                    💾 Guardar Plus
                   </button>
                 </form>
 
-                <h4 style={{ margin: '0 0 10px 0', color: '#043424' }}>📋 Historial de Pagos Realizados:</h4>
+                <h4 style={{ margin: '0 0 10px 0', color: '#043424' }}>📋 Historial de Pluses Asignados:</h4>
                 <div style={{ maxHeight: '250px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {historialPluses.length === 0 ? (
-                    <p style={{ textAlign: 'center', color: '#888', fontSize: '13px' }}>No hay pagos registrados.</p>
+                    <p style={{ textAlign: 'center', color: '#888', fontSize: '13px' }}>No hay pluses registrados.</p>
                   ) : (
                     historialPluses.map((p) => {
                       const empInfo = datosEmpleadosPredeterminados[p.empleado];
@@ -1302,7 +1484,7 @@ function App() {
                             <div style={{ fontSize: '10px', color: '#888' }}>📅 {fechaFormateada}</div>
                           </div>
                           <div style={{ fontWeight: 'bold', fontSize: '16px', color: '#28a745' }}>
-                            -{Number(p.importe || 0).toFixed(2)} €
+                            +{Number(p.importe || 0).toFixed(2)} €
                           </div>
                         </div>
                       );
@@ -1312,11 +1494,12 @@ function App() {
               </div>
             )}
 
+            {/* PANTALLA GESTIÓN ADMINISTRACIÓN MÁSTER */}
             {pantallaActual === 'gestion-administracion' && usuarioConectado === EMAIL_ADMIN_MASTER && (
               <div style={{ textAlign: 'left' }}>
                 <h2 style={{ color: '#043424', textAlign: 'center', fontSize: '20px', marginBottom: '5px' }}>🛡️ Control de Partes (Administración)</h2>
                 <p style={{ fontSize: '12px', color: '#555', textAlign: 'center', marginBottom: '15px' }}>
-                  Gestión global de partes registrados. Al borrar un registro, se eliminará automáticamente de la app del empleado.
+                  Gestión global de partes registrados. Puedes filtrar por empleado, mes o borrar registros directamente.
                 </p>
 
                 <div style={{ background: '#e2f0d9', padding: '12px', borderRadius: '8px', marginBottom: '15px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -1345,9 +1528,21 @@ function App() {
                       placeholder="Buscar por obra o trabajo..." 
                       value={busquedaAdmin} 
                       onChange={(e) => setBusquedaAdmin(e.target.value)} 
-                      style={{ flex: 1, padding: '6px 10px', borderRadius: '4px', border: '1px solid #ccc', fontSize: '12px' }} 
+                      style={{ flex: 1, padding: '8px 10px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '13px' }} 
                     />
-                    <button onClick={limpiarFiltrosAdmin} style={{ padding: '6px 12px', background: '#043424', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '11px', cursor: 'pointer', fontWeight: 'bold' }}>
+                    <button 
+                      onClick={limpiarFiltrosAdmin} 
+                      style={{ 
+                        padding: '8px 14px', 
+                        background: '#043424', 
+                        color: '#ffffff', 
+                        border: 'none', 
+                        borderRadius: '6px', 
+                        fontSize: '12px', 
+                        cursor: 'pointer', 
+                        fontWeight: 'bold' 
+                      }}
+                    >
                       Limpiar
                     </button>
                   </div>
@@ -1371,8 +1566,21 @@ function App() {
                             
                             <button 
                               onClick={() => manejarEliminarParteAdmin(p.id)} 
-                              style={{ background: '#ff4d4d', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '5px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
-                              title="Borrar de Supabase y de la app del empleado"
+                              style={{ 
+                                background: '#dc3545', 
+                                color: '#ffffff', 
+                                border: 'none', 
+                                padding: '8px 12px', 
+                                borderRadius: '6px', 
+                                fontSize: '12px', 
+                                fontWeight: 'bold', 
+                                cursor: 'pointer', 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: '4px',
+                                boxShadow: '0 2px 5px rgba(220, 53, 69, 0.3)'
+                              }}
+                              title="Borrar de Supabase y de la memoria"
                             >
                               🗑️ Eliminar
                             </button>
