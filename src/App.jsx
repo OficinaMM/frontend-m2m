@@ -157,7 +157,7 @@ function App() {
             { 
               obra: primeraObra, 
               trabajo: primerosTrabajos[0], 
-              horas: '8', 
+              horas: '0', 
               especificarOtros: '', 
               lugarTrabajo: '' 
             }
@@ -550,7 +550,7 @@ function App() {
     const obraPorDefecto = listaObras[0] || '';
     setTareasDelDia([
       ...tareasDelDia, 
-      { obra: obraPorDefecto, trabajo: baseDatosObras[obraPorDefecto]?.[0] || 'OTROS', horas: '8', especificarOtros: '', lugarTrabajo: '' }
+      { obra: obraPorDefecto, trabajo: baseDatosObras[obraPorDefecto]?.[0] || 'OTROS', horas: '0', especificarOtros: '', lugarTrabajo: '' }
     ]);
   };
 
@@ -684,7 +684,7 @@ function App() {
 
     setNotaGeneral('');
     const obraInicial = listaObras[0] || '';
-    setTareasDelDia([{ obra: obraInicial, trabajo: baseDatosObras[obraInicial]?.[0] || 'OTROS', horas: '8', especificarOtros: '', lugarTrabajo: '' }]);
+    setTareasDelDia([{ obra: obraInicial, trabajo: baseDatosObras[obraInicial]?.[0] || 'OTROS', horas: '0', especificarOtros: '', lugarTrabajo: '' }]);
     setPantallaActual('menu');
   };
 
@@ -1132,7 +1132,7 @@ function App() {
 
                     <div>
                       <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#555', marginBottom: '3px' }}>Horas Dedicadas:</label>
-                      <input type="number" step="0.5" min="0.5" max="24" value={tarea.horas} onChange={(e) => actualizarCampoTarea(index, 'horas', e.target.value)} required style={{ width: '100%', padding: '9px', borderRadius: '6px', border: '1px solid #ccc', boxSizing: 'border-box' }} />
+                      <input type="number" step="0.5" min="0" max="24" value={tarea.horas} onChange={(e) => actualizarCampoTarea(index, 'horas', e.target.value)} required style={{ width: '100%', padding: '9px', borderRadius: '6px', border: '1px solid #ccc', boxSizing: 'border-box' }} />
                     </div>
                   </div>
                 ))}
