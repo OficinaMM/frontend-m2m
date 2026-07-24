@@ -182,20 +182,20 @@ function App() {
             .eq('correo', usuarioConectado)
             .single();
 
-          const infoPredeterminada = datosEmpleadosPredeterminados[usuarioConectado] || {};
+          const infoPredetermining = datosEmpleadosPredeterminados[usuarioConectado] || {};
 
           if (usuarioDb) {
-            setPosicionUser(usuarioDb.posicion || infoPredeterminada.posicion || 'No Asignada');
-            setNombreEdit(usuarioDb.nombre || infoPredeterminada.nombre || '');
-            setApellidosEdit(usuarioDb.apellidos || infoPredeterminada.apellidos || '');
+            setPosicionUser(usuarioDb.posicion || infoPredetermining.posicion || 'No Asignada');
+            setNombreEdit(usuarioDb.nombre || infoPredetermining.nombre || '');
+            setApellidosEdit(usuarioDb.apellidos || infoPredetermining.apellidos || '');
             
             const telGuardado = localStorage.getItem(`tel_${usuarioConectado}`);
-            setTelefonoEdit(telGuardado || usuarioDb.telefono || infoPredeterminada.telefono || '');
+            setTelefonoEdit(telGuardado || usuarioDb.telefono || infoPredetermining.telefono || '');
           } else {
-            setPosicionUser(infoPredeterminada.posicion || 'No Asignada');
-            setNombreEdit(infoPredeterminada.nombre || '');
-            setApellidosEdit(infoPredeterminada.apellidos || '');
-            setTelefonoEdit(infoPredeterminada.telefono || '');
+            setPosicionUser(infoPredetermining.posicion || 'No Asignada');
+            setNombreEdit(infoPredetermining.nombre || '');
+            setApellidosEdit(infoPredetermining.apellidos || '');
+            setTelefonoEdit(infoPredetermining.telefono || '');
           }
         } catch (err) {
           console.error("Error al refrescar datos de usuario:", err);
@@ -400,7 +400,7 @@ function App() {
     }
   };
 
-  // REGISTRAR PLUS DE PRODUCTIVIDAD (ADAPTADO A COLUMNAS EN MAYÚSCULA DE SUPABASE)
+  // REGISTRAR PLUS DE PRODUCTIVIDAD (NOMBRES DE COLUMNAS EN MINÚSCULAS)
   const manejarGuardarPlus = async (e) => {
     e.preventDefault();
     if (!montoPlus || isNaN(montoPlus) || Number(montoPlus) <= 0) {
@@ -414,11 +414,11 @@ function App() {
       const { error } = await supabase
         .from('PLUS PRODUCTIVIDAD')
         .insert([{
-          id: Date.now(),
-          created_at: new Date(fechaPlus).toISOString(),
-          EMPLEADO: empAsignado,
-          IMPORTE: parseFloat(montoPlus),
-          CONCEPTO: conceptoPlus || 'Plus de Productividad'
+          id: Date.now(),                                 // ID numérico para evitar restricción NOT NULL
+          created_at: new Date(fechaPlus).toISOString(),  // Guarda la fecha seleccionada en 'created_at'
+          empleado: empAsignado,                          // Minúsculas
+          importe: parseFloat(montoPlus),                 // Minúsculas
+          concepto: conceptoPlus || 'Plus de Productividad' // Minúsculas
         }]);
 
       if (error) {
@@ -1193,19 +1193,19 @@ function App() {
                     <p style={{ textAlign: 'center', color: '#888', fontSize: '13px' }}>No hay pluses registrados.</p>
                   ) : (
                     historialPluses.map((p) => {
-                      const empInfo = datosEmpleadosPredeterminados[p.EMPLEADO];
-                      const nombreEmp = empInfo ? `${empInfo.nombre} ${empInfo.apellidos}` : p.EMPLEADO;
+                      const empInfo = datosEmpleadosPredeterminados[p.empleado];
+                      const nombreEmp = empInfo ? `${empInfo.nombre} ${empInfo.apellidos}` : p.empleado;
                       const fechaFormateada = p.created_at ? new Date(p.created_at).toLocaleDateString('es-ES') : '';
 
                       return (
                         <div key={p.id} style={{ padding: '10px', borderRadius: '6px', background: '#fff', borderLeft: '5px solid #28a745', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div>
                             <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#333' }}>👤 {nombreEmp}</div>
-                            <div style={{ fontSize: '11px', color: '#555' }}>📝 {p.CONCEPTO}</div>
+                            <div style={{ fontSize: '11px', color: '#555' }}>📝 {p.concepto}</div>
                             <div style={{ fontSize: '10px', color: '#888' }}>📅 {fechaFormateada}</div>
                           </div>
                           <div style={{ fontWeight: 'bold', fontSize: '16px', color: '#28a745' }}>
-                            +{Number(p.IMPORTE || 0).toFixed(2)} €
+                            +{Number(p.importe || 0).toFixed(2)} €
                           </div>
                         </div>
                       );
