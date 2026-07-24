@@ -1,4 +1,4 @@
- import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import logoEmpresa from './assets/logo.png';
 import { supabase } from './supabaseClient';
 
@@ -90,12 +90,12 @@ function App() {
   const [conceptoEfectivo, setConceptoEfectivo] = useState('');
   const [fechaEfectivo, setFechaEfectivo] = useState(new Date().toISOString().split('T')[0]);
 
-  // ESTADOS DE PLUSES DE PRODUCTIVIDAD
-  const [empleadoPlus, setEmpleadoPlus] = useState('administracion@grupom2m.com');
+  // ESTADOS DE PLUS DE PRODUCTIVIDAD
+  const [historialPluses, setHistorialPluses] = useState([]);
   const [fechaPlus, setFechaPlus] = useState(new Date().toISOString().split('T')[0]);
+  const [empleadoPlus, setEmpleadoPlus] = useState('');
   const [montoPlus, setMontoPlus] = useState('');
   const [conceptoPlus, setConceptoPlus] = useState('');
-  const [historialPluses, setHistorialPluses] = useState([]);
 
   const [horasExtrasHistorial, setHorasExtrasHistorial] = useState(() => {
     const guardado = localStorage.getItem('m2m_horas_extras');
@@ -267,18 +267,18 @@ function App() {
     }
   };
 
-  // CARGAR REGISTROS DE PLUSES DESDE SUPABASE (NOMBRE CON ESPACIO: PLUS PRODUCTIVIDAD)
+  // CARGAR REGISTROS DE PLUSES DE PRODUCTIVIDAD DESDE SUPABASE
   const cargarPluses = async () => {
     try {
       const { data, error } = await supabase
         .from('PLUS PRODUCTIVIDAD')
         .select('*')
-        .order('fecha', { ascending: false });
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
       if (data) setHistorialPluses(data);
     } catch (err) {
-      console.error("Error al cargar pluses:", err);
+      console.error("Error al cargar pluses de productividad:", err);
     }
   };
 
@@ -341,7 +341,7 @@ function App() {
     }
   };
 
-  // ELIMINACIÓN MÁSTER DE PARTES (EXCLUSIVO ADMINISTRACIÓN)
+  // ELIMINACIÓN MÁSTER DE PARTES
   const manejarEliminarParteAdmin = async (idParte) => {
     if (!window.confirm('⚠️ ¿Estás seguro de que deseas eliminar este parte de forma permanente?')) {
       return;
@@ -400,7 +400,7 @@ function App() {
     }
   };
 
-  // REGISTRAR PLUS DE PRODUCTIVIDAD (SE ENVÍA UN ID GENERADO AUTOMÁTICAMENTE PARA EVITAR EL ERROR)
+  // REGISTRAR PLUS DE PRODUCTIVIDAD (ADAPTADO A COLUMNAS EN MAYÚSCULA DE SUPABASE)
   const manejarGuardarPlus = async (e) => {
     e.preventDefault();
     if (!montoPlus || isNaN(montoPlus) || Number(montoPlus) <= 0) {
@@ -408,24 +408,21 @@ function App() {
       return;
     }
 
-    const infoEmp = datosEmpleadosPredeterminados[empleadoPlus] || {};
-    const nombreMostrar = `${infoEmp.nombre || ''} ${infoEmp.apellidos || ''}`.trim() || empleadoPlus;
+    const empAsignado = empleadoPlus || usuarioConectado;
 
     try {
       const { error } = await supabase
         .from('PLUS PRODUCTIVIDAD')
         .insert([{
-          id: Date.now(), // 👈 Genera ID numérico para evitar "null value in column id"
-          fecha: fechaPlus,
-          empleado: empleadoPlus,
-          nombre_empleado: nombreMostrar,
-          importe: parseFloat(montoPlus),
-          concepto: conceptoPlus || 'Plus de Productividad',
-          registrado_por: usuarioConectado
+          id: Date.now(),
+          created_at: new Date(fechaPlus).toISOString(),
+          EMPLEADO: empAsignado,
+          IMPORTE: parseFloat(montoPlus),
+          CONCEPTO: conceptoPlus || 'Plus de Productividad'
         }]);
 
       if (error) {
-        console.error("Error detallado de Supabase:", error);
+        console.error("Error de Supabase:", error);
         alert(`❌ Error de Supabase: ${error.message}`);
         return;
       }
@@ -433,36 +430,11 @@ function App() {
       alert('✅ Plus de productividad asignado con éxito.');
       setMontoPlus('');
       setConceptoPlus('');
+      setEmpleadoPlus('');
       cargarPluses();
     } catch (err) {
       console.error("Error al guardar plus de productividad:", err);
       alert('❌ Ocurrió un error inesperado al intentar guardar.');
-    }
-  };
-
-  // ELIMINAR PLUS DE PRODUCTIVIDAD
-  const manejarEliminarPlus = async (idPlus) => {
-    if (!window.confirm('⚠️ ¿Estás seguro de que deseas eliminar este plus de productividad?')) {
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from('PLUS PRODUCTIVIDAD')
-        .delete()
-        .eq('id', idPlus);
-
-      if (error) {
-        console.error("Error de Supabase al borrar:", error);
-        alert(`❌ Error al eliminar: ${error.message}`);
-        return;
-      }
-
-      setHistorialPluses(prev => prev.filter(p => p.id !== idPlus));
-      alert('🗑️ Plus de productividad eliminado con éxito.');
-    } catch (err) {
-      console.error("Error al eliminar plus:", err);
-      alert('❌ Error al eliminar el plus de productividad.');
     }
   };
 
@@ -852,9 +824,9 @@ function App() {
               {pantallaActual !== 'menu' ? (
                 <button 
                   onClick={() => setPantallaActual('menu')} 
-                  style={{ padding: '8px 16px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '20px', border: 'none', background: '#3b5860', color: '#fff', display: 'flex', alignItems: 'center', gap: '5px' }}
+                  style={{ padding: '8px 16px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '20px', border: 'none', background: '#666', color: '#fff' }}
                 >
-                  ➖ Volver al Menú
+                  ⬅️ Volver al Menú
                 </button>
               ) : (
                 <button 
@@ -888,16 +860,6 @@ function App() {
                   <button onClick={() => setPantallaActual('nuevo-parte')} style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '1px solid #ccc', background: '#f0f0f0' }}>📋 Enviar Nuevo Parte</button>
                   <button onClick={() => { setPantallaActual('mis-partes'); limpiarFiltrosGeneral(); }} style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '1px solid #ccc', background: '#f0f0f0' }}>📄 Ver Partes Enviados</button>
                   <button onClick={() => { setPantallaActual('horas-extras'); limpiarFiltrosExtras(); }} style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '1px solid #ccc', background: '#f0f0f0' }}>⏰ Mis Horas Extras</button>
-
-                  {/* BOTÓN ASIGNAR PLUS DE PRODUCTIVIDAD */}
-                  {(usuarioConectado === EMAIL_ADMIN_MASTER || posicionUser === 'Técnico de Proyectos') && (
-                    <button 
-                      onClick={() => setPantallaActual('asignar-plus')} 
-                      style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '2px solid #28a745', background: '#eafaf1', color: '#1e7e34', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-                    >
-                      💰 Asignar Plus de Productividad
-                    </button>
-                  )}
                   
                   {/* BOTÓN CONTROL DE EFECTIVO */}
                   {(usuarioConectado === EMAIL_ADMIN_MASTER || posicionUser === 'Técnico de Proyectos') && (
@@ -909,7 +871,17 @@ function App() {
                     </button>
                   )}
 
-                  {/* BOTÓN CONTROL DE PARTES / PANEL DE ADMINISTRACIÓN */}
+                  {/* BOTÓN PLUS DE PRODUCTIVIDAD */}
+                  {(usuarioConectado === EMAIL_ADMIN_MASTER || posicionUser === 'Técnico de Proyectos') && (
+                    <button 
+                      onClick={() => setPantallaActual('gestion-plus')} 
+                      style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '2px solid #28a745', background: '#eef9f0', color: '#1e7e34', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                    >
+                      🏆 Plus de Productividad
+                    </button>
+                  )}
+
+                  {/* BOTÓN CONTROL DE PARTES (ADMINISTRACIÓN) */}
                   {usuarioConectado === EMAIL_ADMIN_MASTER && (
                     <button 
                       onClick={() => { setPantallaActual('gestion-administracion'); limpiarFiltrosAdmin(); }} 
@@ -1102,86 +1074,6 @@ function App() {
               </div>
             )}
 
-            {/* PANTALLA ASIGNAR PLUS DE PRODUCTIVIDAD */}
-            {pantallaActual === 'asignar-plus' && (usuarioConectado === EMAIL_ADMIN_MASTER || posicionUser === 'Técnico de Proyectos') && (
-              <div style={{ textAlign: 'left' }}>
-                <h2 style={{ color: '#28a745', textAlign: 'center', fontSize: '20px', marginBottom: '5px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                  💰 Asignar Plus de Productividad
-                </h2>
-                <p style={{ fontSize: '12px', color: '#555', textAlign: 'center', marginBottom: '20px' }}>
-                  Registra abonados de pluses a los empleados.
-                </p>
-
-                {/* FORMULARIO DE ASIGNACIÓN */}
-                <form onSubmit={manejarGuardarPlus} style={{ background: '#f4fbf7', padding: '15px', borderRadius: '10px', border: '1px solid #28a745', display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '25px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#28a745' }}>Seleccionar Empleado:</label>
-                    <select value={empleadoPlus} onChange={(e) => setEmpleadoPlus(e.target.value)} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc', background: '#fff' }}>
-                      {correosAutorizados.map((c, i) => (
-                        <option key={i} value={c}>
-                          {datosEmpleadosPredeterminados[c]?.nombre} {datosEmpleadosPredeterminados[c]?.apellidos} ({c})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#28a745' }}>Fecha de Pago:</label>
-                      <input type="date" value={fechaPlus} onChange={(e) => setFechaPlus(e.target.value)} required style={{ padding: '9px', borderRadius: '6px', border: '1px solid #ccc' }} />
-                    </div>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#28a745' }}>Importe Pagado (€):</label>
-                      <input type="number" step="0.01" min="0.01" placeholder="Ej: 150.00" value={montoPlus} onChange={(e) => setMontoPlus(e.target.value)} required style={{ padding: '9px', borderRadius: '6px', border: '1px solid #ccc' }} />
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#28a745' }}>Concepto / Nota:</label>
-                    <input type="text" placeholder="Ej: Plus de productividad del mes / Adelanto" value={conceptoPlus} onChange={(e) => setConceptoPlus(e.target.value)} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }} />
-                  </div>
-
-                  <button type="submit" style={{ padding: '12px', background: '#28a745', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '14px', cursor: 'pointer', marginTop: '5px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                    💾 Guardar Plus de Productividad
-                  </button>
-                </form>
-
-                {/* HISTORIAL GLOBAL DE PLUSES */}
-                <h3 style={{ fontSize: '16px', color: '#043424', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  📋 Registro Global de Pluses Emitidos:
-                </h3>
-                <div style={{ maxHeight: '250px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {historialPluses.length === 0 ? (
-                    <p style={{ textAlign: 'center', color: '#888', fontSize: '13px' }}>No hay pluses registrados.</p>
-                  ) : (
-                    historialPluses.map((plus) => (
-                      <div key={plus.id} style={{ padding: '10px 12px', borderRadius: '6px', background: '#fff', borderLeft: '5px solid #28a745', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                          <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#333' }}>👤 {plus.nombre_empleado || plus.empleado}</div>
-                          <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>
-                            📅 {plus.fecha ? plus.fecha.split('-').reverse().join('/') : ''} | Concepto: {plus.concepto}
-                          </div>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <span style={{ fontWeight: 'bold', fontSize: '15px', color: '#28a745' }}>
-                            +{Number(plus.importe || 0).toFixed(2)} €
-                          </span>
-                          
-                          <button 
-                            onClick={() => manejarEliminarPlus(plus.id)} 
-                            style={{ background: '#ff4d4d', color: '#fff', border: 'none', padding: '5px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
-                            title="Eliminar este plus"
-                          >
-                            🗑️
-                          </button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
-
             {/* PANTALLA GESTIÓN DE EFECTIVO */}
             {pantallaActual === 'gestion-efectivo' && (usuarioConectado === EMAIL_ADMIN_MASTER || posicionUser === 'Técnico de Proyectos') && (
               <div style={{ textAlign: 'left' }}>
@@ -1190,7 +1082,6 @@ function App() {
                   Registro centralizado de entradas y salidas de efectivo de la caja.
                 </p>
 
-                {/* TARJETA CON SALDO EN VIVO */}
                 <div style={{ background: saldoEfectivoCalculado >= 0 ? '#e2f0d9' : '#f8d7da', padding: '15px', borderRadius: '10px', marginBottom: '20px', border: '1px solid #ccc', textAlign: 'center' }}>
                   <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#333' }}>SALDO ACTUAL EN EFECTIVO:</span>
                   <div style={{ fontSize: '28px', fontWeight: 'bold', color: saldoEfectivoCalculado >= 0 ? '#043424' : '#721c24', marginTop: '5px' }}>
@@ -1198,7 +1089,6 @@ function App() {
                   </div>
                 </div>
 
-                {/* FORMULARIO DE REGISTRO */}
                 <form onSubmit={manejarRegistrarEfectivo} style={{ background: '#fdf7ec', padding: '15px', borderRadius: '8px', border: '1px solid #f5e4c4', display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
                   <h4 style={{ margin: '0 0 5px 0', color: '#b27d14' }}>➕ Añadir Movimiento</h4>
                   
@@ -1231,7 +1121,6 @@ function App() {
                   </button>
                 </form>
 
-                {/* HISTORIAL DE MOVIMIENTOS */}
                 <h4 style={{ margin: '0 0 10px 0', color: '#043424' }}>📋 Historial de Movimientos:</h4>
                 <div style={{ maxHeight: '250px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {movimientosEfectivo.length === 0 ? (
@@ -1253,6 +1142,79 @@ function App() {
               </div>
             )}
 
+            {/* PANTALLA GESTIÓN PLUS DE PRODUCTIVIDAD */}
+            {pantallaActual === 'gestion-plus' && (usuarioConectado === EMAIL_ADMIN_MASTER || posicionUser === 'Técnico de Proyectos') && (
+              <div style={{ textAlign: 'left' }}>
+                <h2 style={{ color: '#1e7e34', textAlign: 'center', fontSize: '20px', marginBottom: '5px' }}>🏆 Plus de Productividad</h2>
+                <p style={{ fontSize: '12px', color: '#555', textAlign: 'center', marginBottom: '15px' }}>
+                  Asignación y registro centralizado de gratificaciones de productividad.
+                </p>
+
+                <form onSubmit={manejarGuardarPlus} style={{ background: '#eef9f0', padding: '15px', borderRadius: '8px', border: '1px solid #c3e6cb', display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+                  <h4 style={{ margin: '0 0 5px 0', color: '#1e7e34' }}>➕ Asignar Nuevo Plus</h4>
+                  
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                    <div style={{ flex: '1 1 140px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                      <label style={{ fontSize: '11px', fontWeight: 'bold' }}>Fecha:</label>
+                      <input type="date" value={fechaPlus} onChange={(e) => setFechaPlus(e.target.value)} required style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }} />
+                    </div>
+
+                    <div style={{ flex: '1 1 180px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                      <label style={{ fontSize: '11px', fontWeight: 'bold' }}>Empleado:</label>
+                      <select value={empleadoPlus} onChange={(e) => setEmpleadoPlus(e.target.value)} required style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}>
+                        <option value="">-- Selecciona un empleado --</option>
+                        {correosAutorizados.map((c, i) => (
+                          <option key={i} value={c}>
+                            {datosEmpleadosPredeterminados[c]?.nombre} {datosEmpleadosPredeterminados[c]?.apellidos}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <label style={{ fontSize: '11px', fontWeight: 'bold' }}>Importe (€):</label>
+                    <input type="number" step="0.01" min="0.01" placeholder="Ej: 100.00" value={montoPlus} onChange={(e) => setMontoPlus(e.target.value)} required style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }} />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <label style={{ fontSize: '11px', fontWeight: 'bold' }}>Concepto / Motivo:</label>
+                    <input type="text" placeholder="Ej: Plus por rendimiento en Obra X" value={conceptoPlus} onChange={(e) => setConceptoPlus(e.target.value)} required style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }} />
+                  </div>
+
+                  <button type="submit" style={{ padding: '10px', background: '#28a745', color: '#fff', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', marginTop: '5px' }}>
+                    💾 Guardar Plus
+                  </button>
+                </form>
+
+                <h4 style={{ margin: '0 0 10px 0', color: '#043424' }}>📋 Historial de Pluses Asignados:</h4>
+                <div style={{ maxHeight: '250px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {historialPluses.length === 0 ? (
+                    <p style={{ textAlign: 'center', color: '#888', fontSize: '13px' }}>No hay pluses registrados.</p>
+                  ) : (
+                    historialPluses.map((p) => {
+                      const empInfo = datosEmpleadosPredeterminados[p.EMPLEADO];
+                      const nombreEmp = empInfo ? `${empInfo.nombre} ${empInfo.apellidos}` : p.EMPLEADO;
+                      const fechaFormateada = p.created_at ? new Date(p.created_at).toLocaleDateString('es-ES') : '';
+
+                      return (
+                        <div key={p.id} style={{ padding: '10px', borderRadius: '6px', background: '#fff', borderLeft: '5px solid #28a745', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#333' }}>👤 {nombreEmp}</div>
+                            <div style={{ fontSize: '11px', color: '#555' }}>📝 {p.CONCEPTO}</div>
+                            <div style={{ fontSize: '10px', color: '#888' }}>📅 {fechaFormateada}</div>
+                          </div>
+                          <div style={{ fontWeight: 'bold', fontSize: '16px', color: '#28a745' }}>
+                            +{Number(p.IMPORTE || 0).toFixed(2)} €
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* PANTALLA GESTIÓN ADMINISTRACIÓN MÁSTER */}
             {pantallaActual === 'gestion-administracion' && usuarioConectado === EMAIL_ADMIN_MASTER && (
               <div style={{ textAlign: 'left' }}>
@@ -1261,7 +1223,6 @@ function App() {
                   Gestión global de partes registrados. Puedes filtrar por empleado, mes o borrar registros directamente.
                 </p>
 
-                {/* FILTROS PANEL DE ADMINISTRACIÓN */}
                 <div style={{ background: '#e2f0d9', padding: '12px', borderRadius: '8px', marginBottom: '15px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                     <div style={{ flex: '1 1 180px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
@@ -1296,7 +1257,6 @@ function App() {
                   </div>
                 </div>
 
-                {/* LISTADO GLOBAL DE PARTES CON OPCIÓN DE BORRADO */}
                 <div style={{ maxHeight: '380px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {partesAdminFiltrados.length === 0 ? (
                     <p style={{ textAlign: 'center', color: '#888', fontSize: '13px' }}>No hay partes registrados con los criterios seleccionados.</p>
