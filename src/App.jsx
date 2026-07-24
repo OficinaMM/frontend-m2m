@@ -267,11 +267,11 @@ function App() {
     }
   };
 
-  // CARGAR REGISTROS DE PLUSES DESDE SUPABASE
+  // CARGAR REGISTROS DE PLUSES DESDE SUPABASE (NOMBRES DE TABLA ACTUALIZADO)
   const cargarPluses = async () => {
     try {
       const { data, error } = await supabase
-        .from('pluses')
+        .from('PLUS PRODUCTIVIDAD')
         .select('*')
         .order('fecha', { ascending: false });
 
@@ -400,7 +400,7 @@ function App() {
     }
   };
 
-  // REGISTRAR PLUS DE PRODUCTIVIDAD (ACTUALIZADO CON DETALLE DE ERROR)
+  // REGISTRAR PLUS DE PRODUCTIVIDAD (TABLA: PLUS PRODUCTIVIDAD)
   const manejarGuardarPlus = async (e) => {
     e.preventDefault();
     if (!montoPlus || isNaN(montoPlus) || Number(montoPlus) <= 0) {
@@ -413,7 +413,7 @@ function App() {
 
     try {
       const { error } = await supabase
-        .from('pluses')
+        .from('PLUS PRODUCTIVIDAD')
         .insert([{
           fecha: fechaPlus,
           empleado: empleadoPlus,
@@ -439,7 +439,7 @@ function App() {
     }
   };
 
-  // ELIMINAR PLUS DE PRODUCTIVIDAD (FUNCIÓN PARA CORREGIR/BORRAR)
+  // ELIMINAR PLUS DE PRODUCTIVIDAD (TABLA: PLUS PRODUCTIVIDAD)
   const manejarEliminarPlus = async (idPlus) => {
     if (!window.confirm('⚠️ ¿Estás seguro de que deseas eliminar este plus de productividad?')) {
       return;
@@ -447,7 +447,7 @@ function App() {
 
     try {
       const { error } = await supabase
-        .from('pluses')
+        .from('PLUS PRODUCTIVIDAD')
         .delete()
         .eq('id', idPlus);
 
