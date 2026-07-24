@@ -1,4 +1,4 @@
- import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import logoEmpresa from './assets/logo.png';
 import { supabase } from './supabaseClient';
 
@@ -267,11 +267,11 @@ function App() {
     }
   };
 
-  // CARGAR REGISTROS DE PLUSES DESDE SUPABASE (NOMBRES DE TABLA ACTUALIZADO)
+  // CARGAR REGISTROS DE PLUSES DESDE SUPABASE (TABLA CORRECTA: PLUS_PRODUCTIVIDAD)
   const cargarPluses = async () => {
     try {
       const { data, error } = await supabase
-        .from('PLUS PRODUCTIVIDAD')
+        .from('PLUS_PRODUCTIVIDAD')
         .select('*')
         .order('fecha', { ascending: false });
 
@@ -400,7 +400,7 @@ function App() {
     }
   };
 
-  // REGISTRAR PLUS DE PRODUCTIVIDAD (TABLA: PLUS PRODUCTIVIDAD)
+  // REGISTRAR PLUS DE PRODUCTIVIDAD (TABLA CORRECTA: PLUS_PRODUCTIVIDAD)
   const manejarGuardarPlus = async (e) => {
     e.preventDefault();
     if (!montoPlus || isNaN(montoPlus) || Number(montoPlus) <= 0) {
@@ -413,7 +413,7 @@ function App() {
 
     try {
       const { error } = await supabase
-        .from('PLUS PRODUCTIVIDAD')
+        .from('PLUS_PRODUCTIVIDAD')
         .insert([{
           fecha: fechaPlus,
           empleado: empleadoPlus,
@@ -439,7 +439,7 @@ function App() {
     }
   };
 
-  // ELIMINAR PLUS DE PRODUCTIVIDAD (TABLA: PLUS PRODUCTIVIDAD)
+  // ELIMINAR PLUS DE PRODUCTIVIDAD (TABLA CORRECTA: PLUS_PRODUCTIVIDAD)
   const manejarEliminarPlus = async (idPlus) => {
     if (!window.confirm('⚠️ ¿Estás seguro de que deseas eliminar este plus de productividad?')) {
       return;
@@ -447,7 +447,7 @@ function App() {
 
     try {
       const { error } = await supabase
-        .from('PLUS PRODUCTIVIDAD')
+        .from('PLUS_PRODUCTIVIDAD')
         .delete()
         .eq('id', idPlus);
 
@@ -1145,7 +1145,7 @@ function App() {
                   </button>
                 </form>
 
-                {/* HISTORIAL GLOBAL DE PLUSES CON BOTÓN DE ELIMINACIÓN 🗑️ */}
+                {/* HISTORIAL GLOBAL DE PLUSES */}
                 <h3 style={{ fontSize: '16px', color: '#043424', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   📋 Registro Global de Pluses Emitidos:
                 </h3>
@@ -1166,7 +1166,6 @@ function App() {
                             +{Number(plus.importe || 0).toFixed(2)} €
                           </span>
                           
-                          {/* BOTÓN PARA BORRAR / CORREGIR EL PLUS */}
                           <button 
                             onClick={() => manejarEliminarPlus(plus.id)} 
                             style={{ background: '#ff4d4d', color: '#fff', border: 'none', padding: '5px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
@@ -1313,7 +1312,6 @@ function App() {
                               <div style={{ fontSize: '11px', color: '#666' }}>📅 {p.fecha.split('-').reverse().join('/')} | 📩 {p.empleado}</div>
                             </div>
                             
-                            {/* BOTÓN DE BORRADO MÁSTER */}
                             <button 
                               onClick={() => manejarEliminarParteAdmin(p.id)} 
                               style={{ background: '#ff4d4d', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '5px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
