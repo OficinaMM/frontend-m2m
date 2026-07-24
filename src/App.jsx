@@ -92,6 +92,7 @@ function App() {
 
   // ESTADOS DE PLUS DE PRODUCTIVIDAD
   const [historialPluses, setHistorialPluses] = useState([]);
+  const [misPluses, setMisPluses] = useState([]); // Pluses del usuario conectado
   const [fechaPlus, setFechaPlus] = useState(new Date().toISOString().split('T')[0]);
   const [empleadoPlus, setEmpleadoPlus] = useState('');
   const [montoPlus, setMontoPlus] = useState('');
@@ -206,7 +207,7 @@ function App() {
     checkUsuarioYActualizarDatos();
   }, [usuarioConectado]);
 
-  // CARGAR HISTORIAL DE PARTES SEGÚN ROL Y ESCUCHAR CAMBIOS EN TIEMPO REAL
+  // CARGAR HISTORIAL DE PARTES Y SUSCRIPCIÓN REALTIME
   useEffect(() => {
     if (!usuarioConectado) return;
 
@@ -260,11 +261,7 @@ function App() {
         (payload) => {
           if (payload.eventType === 'DELETE') {
             const idEliminado = payload.old.id;
-            
-            // Eliminar inmediatamente del panel de control máster
             setTodosLosPartesAdmin(prev => prev.filter(p => p.id !== idEliminado));
-            
-            // Eliminar de las apps de los empleados en tiempo real
             setHistorialPartes(prev => {
               const actualizados = prev.filter(p => p.id !== idEliminado);
               localStorage.setItem('m2m_historial_partes', JSON.stringify(actualizados));
@@ -327,16 +324,24 @@ function App() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      if (data) setHistorialPluses(data);
+      if (data) {
+        setHistorialPluses(data);
+        if (usuarioConectado) {
+          const misPlusesFiltrados = data.filter(p => p.empleado === usuarioConectado);
+          setMisPluses(misPlusesFiltrados);
+        }
+      }
     } catch (err) {
       console.error("Error al cargar pluses de productividad:", err);
     }
   };
 
   useEffect(() => {
-    if (usuarioConectado && (usuarioConectado === EMAIL_ADMIN_MASTER || posicionUser === 'Técnico de Proyectos')) {
-      cargarEfectivo();
+    if (usuarioConectado) {
       cargarPluses();
+      if (usuarioConectado === EMAIL_ADMIN_MASTER || posicionUser === 'Técnico de Proyectos') {
+        cargarEfectivo();
+      }
     }
   }, [usuarioConectado, posicionUser]);
 
@@ -392,7 +397,7 @@ function App() {
     }
   };
 
-  // ELIMINACIÓN MÁSTER DE PARTES (EXCLUSIVO MÁSTER ADMIN)
+  // ELIMINACIÓN MÁSTER DE PARTES
   const manejarEliminarParteAdmin = async (idParte) => {
     if (usuarioConectado !== EMAIL_ADMIN_MASTER) {
       alert('❌ Solo la cuenta máster de Administración puede eliminar partes.');
@@ -480,7 +485,7 @@ function App() {
         return;
       }
 
-      alert('✅ Plus de productividad asignado con éxito.');
+      alert('✅ Plus asignado con éxito y reflejado en el saldo del empleado.');
       setMontoPlus('');
       setConceptoPlus('');
       setEmpleadoPlus('');
@@ -782,6 +787,11 @@ function App() {
     .filter(h => h.empleado === usuarioConectado)
     .reduce((sum, h) => sum + h.horas, 0);
 
+  // CÁLCULO DE PLUSES Y TOTAL COMBINADO PARA EL EMPLEADO
+  const totalPlusesEmpleado = misPluses.reduce((acc, p) => acc + Number(p.importe || 0), 0);
+  const eurosHorasExtras = totalGeneralExtrasProducidas * precioHoraActual;
+  const saldoTotalAcumuladoEmpleado = eurosHorasExtras + totalPlusesEmpleado;
+
   // FILTRADO MÁSTER PARA ADMINISTRACIÓN
   const partesAdminFiltrados = todosLosPartesAdmin.filter(p => {
     if (filtroAdminEmpleado && p.empleado !== filtroAdminEmpleado) return false;
@@ -886,7 +896,7 @@ function App() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   <button onClick={() => setPantallaActual('nuevo-parte')} style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '1px solid #ccc', background: '#f0f0f0' }}>📋 Enviar Nuevo Parte</button>
                   <button onClick={() => { setPantallaActual('mis-partes'); limpiarFiltrosGeneral(); }} style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '1px solid #ccc', background: '#f0f0f0' }}>📄 Ver Partes Enviados</button>
-                  <button onClick={() => { setPantallaActual('horas-extras'); limpiarFiltrosExtras(); }} style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '1px solid #ccc', background: '#f0f0f0' }}>⏰ Mis Horas Extras</button>
+                  <button onClick={() => { setPantallaActual('horas-extras'); limpiarFiltrosExtras(); cargarPluses(); }} style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '1px solid #ccc', background: '#f0f0f0' }}>⏰ Mis Horas Extras</button>
                   
                   {/* BOTÓN CONTROL DE EFECTIVO */}
                   {(usuarioConectado === EMAIL_ADMIN_MASTER || posicionUser === 'Técnico de Proyectos') && (
@@ -1063,25 +1073,57 @@ function App() {
               </div>
             )}
 
+            {/* PANTALLA DE MIS HORAS EXTRAS Y PLUSES DEL EMPLEADO */}
             {pantallaActual === 'horas-extras' && (
               <div>
-                <h2 style={{ color: '#043424', fontSize: '20px', marginBottom: '5px' }}>⏰ Control de Horas Extras</h2>
+                <h2 style={{ color: '#043424', fontSize: '20px', marginBottom: '5px' }}>⏰ Control de Horas Extras y Pluses</h2>
                 <p style={{ margin: '0 0 15px 0', fontSize: '12px', color: '#555' }}>
-                  Las horas extras calculadas son las trabajadas en fines de semana o las que superen las 8h diarias de lunes a viernes.
+                  Resumen de tus horas extras realizadas y pagos adicionales abonados por administración.
                 </p>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '20px' }}>
-                  <div style={{ background: '#f2f7f4', padding: '12px', borderRadius: '8px', border: '1px solid #c5d9cc' }}>
-                    <div style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', fontWeight: 'bold' }}>Acumuladas totales</div>
-                    <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#043424' }}>{totalGeneralExtrasProducidas} h</div>
+                {/* TRES TARJETAS DE INFORMACIÓN */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '15px' }}>
+                  <div style={{ background: '#f2f7f4', padding: '10px', borderRadius: '8px', border: '1px solid #c5d9cc', textAlign: 'center' }}>
+                    <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', fontWeight: 'bold' }}>Horas Extras</div>
+                    <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#043424', marginTop: '4px' }}>{totalGeneralExtrasProducidas} h</div>
+                    <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>({eurosHorasExtras.toFixed(2)} €)</div>
                   </div>
-                  <div style={{ background: '#fdf7ec', padding: '12px', borderRadius: '8px', border: '1px solid #f5e4c4' }}>
-                    <div style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', fontWeight: 'bold' }}>Saldo estimado</div>
-                    <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#b27d14' }}>{totalGeneralExtrasProducidas * precioHoraActual} €</div>
+                  
+                  <div style={{ background: '#eef9f0', padding: '10px', borderRadius: '8px', border: '1px solid #c3e6cb', textAlign: 'center' }}>
+                    <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', fontWeight: 'bold' }}>Pluses / Cobros</div>
+                    <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#28a745', marginTop: '4px' }}>{totalPlusesEmpleado.toFixed(2)} €</div>
+                    <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>({misPluses.length} pagos)</div>
+                  </div>
+
+                  <div style={{ background: '#fdf7ec', padding: '10px', borderRadius: '8px', border: '1px solid #f5e4c4', textAlign: 'center' }}>
+                    <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', fontWeight: 'bold' }}>Total Estimado</div>
+                    <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#b27d14', marginTop: '4px' }}>{saldoTotalAcumuladoEmpleado.toFixed(2)} €</div>
+                    <div style={{ fontSize: '10px', color: '#888', marginTop: '2px' }}>Acumulado</div>
                   </div>
                 </div>
 
-                <div style={{ maxHeight: '280px', overflowY: 'auto', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {/* DESGLOSE DE PLUSES RECIBIDOS */}
+                {misPluses.length > 0 && (
+                  <div style={{ textAlign: 'left', marginBottom: '15px' }}>
+                    <h4 style={{ margin: '0 0 8px 0', fontSize: '13px', color: '#1e7e34' }}>🏆 Pluses de Productividad / Pagos Especiales:</h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '120px', overflowY: 'auto' }}>
+                      {misPluses.map((plus) => (
+                        <div key={plus.id} style={{ padding: '8px 10px', background: '#eef9f0', borderRadius: '6px', borderLeft: '4px solid #28a745', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <div style={{ fontWeight: 'bold', fontSize: '12px', color: '#1e7e34' }}>{plus.concepto}</div>
+                            <div style={{ fontSize: '10px', color: '#666' }}>📅 {plus.created_at ? new Date(plus.created_at).toLocaleDateString('es-ES') : ''}</div>
+                          </div>
+                          <div style={{ fontWeight: 'bold', color: '#28a745', fontSize: '14px' }}>
+                            +{Number(plus.importe || 0).toFixed(2)} €
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <h4 style={{ margin: '0 0 8px 0', fontSize: '13px', color: '#043424', textAlign: 'left' }}>⏱️ Registro de Horas Extras Realizadas:</h4>
+                <div style={{ maxHeight: '200px', overflowY: 'auto', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {extrasFiltradas.length === 0 ? (
                     <p style={{ textAlign: 'center', color: '#666', fontSize: '13px', padding: '10px' }}>No hay registros de horas extras en este rango.</p>
                   ) : (
@@ -1092,7 +1134,7 @@ function App() {
                           <span style={{ fontSize: '11px', color: '#666', marginLeft: '10px', background: '#edf2f7', padding: '2px 6px', borderRadius: '4px' }}>{extra.motivo}</span>
                         </div>
                         <div style={{ fontWeight: 'bold', color: '#b27d14', fontSize: '15px' }}>
-                          +{extra.horas}h
+                          +{extra.horas}h ({(extra.horas * precioHoraActual).toFixed(2)} €)
                         </div>
                       </div>
                     ))
@@ -1174,7 +1216,7 @@ function App() {
               <div style={{ textAlign: 'left' }}>
                 <h2 style={{ color: '#1e7e34', textAlign: 'center', fontSize: '20px', marginBottom: '5px' }}>🏆 Plus de Productividad</h2>
                 <p style={{ fontSize: '12px', color: '#555', textAlign: 'center', marginBottom: '15px' }}>
-                  Asignación y registro centralizado de gratificaciones de productividad.
+                  Asignación y registro centralizado de gratificaciones y pagos de horas extras.
                 </p>
 
                 <form onSubmit={manejarGuardarPlus} style={{ background: '#eef9f0', padding: '15px', borderRadius: '8px', border: '1px solid #c3e6cb', display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
@@ -1206,7 +1248,7 @@ function App() {
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                     <label style={{ fontSize: '11px', fontWeight: 'bold' }}>Concepto / Motivo:</label>
-                    <input type="text" placeholder="Ej: Plus por rendimiento en Obra X" value={conceptoPlus} onChange={(e) => setConceptoPlus(e.target.value)} required style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }} />
+                    <input type="text" placeholder="Ej: Pago de horas extras mes de Julio" value={conceptoPlus} onChange={(e) => setConceptoPlus(e.target.value)} required style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }} />
                   </div>
 
                   <button type="submit" style={{ padding: '10px', background: '#28a745', color: '#fff', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', marginTop: '5px' }}>
