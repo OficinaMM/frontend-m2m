@@ -782,6 +782,23 @@ function App() {
       backgroundImage: `url(${logoEmpresa})`, backgroundPosition: 'top center', backgroundRepeat: 'no-repeat', backgroundSize: 'min(70%, 280px)', backgroundAttachment: 'fixed'
     }}>
       
+      {/* ESTILOS CSS DE EFECTO DE PULSACIÓN / SELECCIÓN EN CADA BOTÓN */}
+      <style>{`
+        button {
+          transition: transform 0.1s ease, filter 0.1s ease, box-shadow 0.1s ease !important;
+          user-select: none;
+          -webkit-tap-highlight-color: transparent;
+        }
+        button:hover {
+          filter: brightness(1.08);
+        }
+        button:active {
+          transform: scale(0.95) translateY(2px) !important;
+          filter: brightness(0.88) !important;
+          box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.3) !important;
+        }
+      `}</style>
+      
       <div style={{ height: 'clamp(180px, 25vh, 260px)', width: '100%' }}></div>
 
       {!usuarioConectado ? (
@@ -869,34 +886,14 @@ function App() {
               {pantallaActual !== 'menu' ? (
                 <button 
                   onClick={() => setPantallaActual('menu')} 
-                  style={{ 
-                    padding: '10px 20px', 
-                    fontSize: '14px', 
-                    fontWeight: 'bold', 
-                    cursor: 'pointer', 
-                    borderRadius: '25px', 
-                    border: 'none', 
-                    background: '#444444', 
-                    color: '#ffffff',
-                    boxShadow: '0 2px 6px rgba(0,0,0,0.2)'
-                  }}
+                  style={{ padding: '10px 20px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '25px', border: 'none', background: '#444444', color: '#ffffff', boxShadow: '0 2px 6px rgba(0,0,0,0.2)' }}
                 >
                   ⬅️ Volver al Menú
                 </button>
               ) : (
                 <button 
                   onClick={() => setPantallaActual('mi-cuenta')} 
-                  style={{ 
-                    padding: '10px 20px', 
-                    fontSize: '14px', 
-                    fontWeight: 'bold', 
-                    cursor: 'pointer', 
-                    borderRadius: '25px', 
-                    border: 'none', 
-                    background: '#c5a059', 
-                    color: '#ffffff',
-                    boxShadow: '0 2px 6px rgba(0,0,0,0.2)'
-                  }}
+                  style={{ padding: '10px 20px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '25px', border: 'none', background: '#c5a059', color: '#ffffff', boxShadow: '0 2px 6px rgba(0,0,0,0.2)' }}
                 >
                   👤 Mi Cuenta
                 </button>
@@ -912,20 +909,7 @@ function App() {
                 <p style={{ fontSize: '14px', color: '#333' }}>Es tu primera vez entrando. Por tu privacidad, <strong>debes modificar tu contraseña</strong>.</p>
                 <form onSubmit={manejarChangePassword} style={{ display: 'flex', flexDirection: 'column', gap: '15px', maxWidth: '300px', margin: '0 auto' }}>
                   <input type="password" placeholder="Nueva contraseña personal" value={nuevaPassword} onChange={(e) => setNuevaPassword(e.target.value)} required style={{ padding: '12px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '15px' }} />
-                  <button 
-                    type="submit" 
-                    style={{ 
-                      padding: '16px', 
-                      background: '#b27d14', 
-                      color: '#ffffff', 
-                      border: 'none', 
-                      borderRadius: '10px', 
-                      fontWeight: 'bold', 
-                      fontSize: '16px',
-                      cursor: 'pointer',
-                      boxShadow: '0 4px 10px rgba(178, 125, 20, 0.3)'
-                    }}
-                  >
+                  <button type="submit" style={{ padding: '16px', background: '#b27d14', color: '#ffffff', border: 'none', borderRadius: '10px', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer', boxShadow: '0 4px 10px rgba(178, 125, 20, 0.3)' }}>
                     Establecer Contraseña
                   </button>
                 </form>
@@ -936,7 +920,7 @@ function App() {
               <div>
                 <h1 style={{ color: '#c5a059', margin: '0 0 8px 0', fontSize: 'clamp(18px, 5vw, 24px)' }}>Construcciones M&M Asociados 2022 SL</h1>
                 <p style={{ color: '#222', fontSize: '12px', margin: '0 0 25px 0', background: '#e2f0d9', padding: '6px 12px', borderRadius: '20px', display: 'inline-block', fontWeight: 'bold' }}>🟢 Bienvenido, {nombreEdit || 'Empleado'} ({posicionUser})</p>
-                
+
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   {/* BOTÓN PRINCIPAL DE ENVÍO DE PARTE */}
                   <button 
@@ -948,9 +932,9 @@ function App() {
                       cursor: 'pointer', 
                       borderRadius: '10px', 
                       border: 'none', 
-                      background: '#043424', 
-                      color: '#ffffff',
-                      boxShadow: '0 4px 10px rgba(4, 52, 36, 0.3)'
+                      background: pantallaActual === 'nuevo-parte' ? '#b27d14' : '#043424', 
+                      color: '#ffffff', 
+                      boxShadow: '0 4px 10px rgba(4, 52, 36, 0.3)' 
                     }}
                   >
                     📋 Enviar Nuevo Parte
@@ -966,9 +950,9 @@ function App() {
                       cursor: 'pointer', 
                       borderRadius: '10px', 
                       border: '2px solid #043424', 
-                      background: '#ffffff', 
-                      color: '#043424',
-                      boxShadow: '0 3px 8px rgba(0,0,0,0.1)'
+                      background: pantallaActual === 'mis-partes' ? '#043424' : '#ffffff', 
+                      color: pantallaActual === 'mis-partes' ? '#ffffff' : '#043424', 
+                      boxShadow: '0 3px 8px rgba(0,0,0,0.1)' 
                     }}
                   >
                     📄 Ver Partes Enviados
@@ -984,14 +968,14 @@ function App() {
                       cursor: 'pointer', 
                       borderRadius: '10px', 
                       border: '2px solid #b27d14', 
-                      background: '#ffffff', 
-                      color: '#b27d14',
-                      boxShadow: '0 3px 8px rgba(0,0,0,0.1)'
+                      background: pantallaActual === 'horas-extras' ? '#b27d14' : '#ffffff', 
+                      color: pantallaActual === 'horas-extras' ? '#ffffff' : '#b27d14', 
+                      boxShadow: '0 3px 8px rgba(0,0,0,0.1)' 
                     }}
                   >
                     ⏰ Mis Horas Extras
                   </button>
-                  
+
                   {/* BOTÓN CONTROL DE EFECTIVO */}
                   {(usuarioConectado === EMAIL_ADMIN_MASTER || posicionUser === 'Técnico de Proyectos') && (
                     <button 
@@ -1003,12 +987,12 @@ function App() {
                         cursor: 'pointer', 
                         borderRadius: '10px', 
                         border: '2px solid #b27d14', 
-                        background: '#fdf7ec', 
-                        color: '#8c5e00', 
-                        boxShadow: '0 3px 8px rgba(178, 125, 20, 0.2)',
+                        background: pantallaActual === 'gestion-efectivo' ? '#b27d14' : '#fdf7ec', 
+                        color: pantallaActual === 'gestion-efectivo' ? '#ffffff' : '#8c5e00', 
+                        boxShadow: '0 3px 8px rgba(178, 125, 20, 0.2)', 
                         display: 'flex', 
                         alignItems: 'center', 
-                        justify: 'center', 
+                        justifyContent: 'center', 
                         gap: '8px' 
                       }}
                     >
@@ -1027,12 +1011,12 @@ function App() {
                         cursor: 'pointer', 
                         borderRadius: '10px', 
                         border: '2px solid #28a745', 
-                        background: '#eef9f0', 
-                        color: '#155724', 
-                        boxShadow: '0 3px 8px rgba(40, 167, 69, 0.2)',
+                        background: pantallaActual === 'gestion-plus' ? '#28a745' : '#eef9f0', 
+                        color: pantallaActual === 'gestion-plus' ? '#ffffff' : '#155724', 
+                        boxShadow: '0 3px 8px rgba(40, 167, 69, 0.2)', 
                         display: 'flex', 
                         alignItems: 'center', 
-                        justify: 'center', 
+                        justifyContent: 'center', 
                         gap: '8px' 
                       }}
                     >
@@ -1041,563 +1025,402 @@ function App() {
                   )}
 
                   {/* BOTÓN CONTROL DE PARTES (ADMINISTRACIÓN) */}
-                  {usuarioConectado === EMAIL_ADMIN_MASTER && (
+                  {(usuarioConectado === EMAIL_ADMIN_MASTER || posicionUser === 'Técnico de Proyectos') && (
                     <button 
-                      onClick={() => { setPantallaActual('gestion-administracion'); limpiarFiltrosAdmin(); }} 
+                      onClick={() => { setPantallaActual('admin-partes'); limpiarFiltrosAdmin(); }} 
                       style={{ 
                         padding: '16px 20px', 
                         fontSize: '16px', 
                         fontWeight: 'bold', 
                         cursor: 'pointer', 
                         borderRadius: '10px', 
-                        border: '2px solid #043424', 
-                        background: '#e2f0d9', 
-                        color: '#043424', 
-                        boxShadow: '0 3px 8px rgba(4, 52, 36, 0.2)',
+                        border: '2px solid #0056b3', 
+                        background: pantallaActual === 'admin-partes' ? '#0056b3' : '#e6f0fa', 
+                        color: pantallaActual === 'admin-partes' ? '#ffffff' : '#0056b3', 
+                        boxShadow: '0 3px 8px rgba(0, 86, 179, 0.2)', 
                         display: 'flex', 
                         alignItems: 'center', 
-                        justify: 'center', 
+                        justifyContent: 'center', 
                         gap: '8px' 
                       }}
                     >
-                      🛡️ Control de Partes (Administración)
+                      📊 Control de Partes (Admin)
                     </button>
                   )}
-
-                  <button 
-                    onClick={cerrarSesion} 
-                    style={{ 
-                      padding: '10px', 
-                      fontSize: '14px', 
-                      fontWeight: '600',
-                      color: '#cc0000', 
-                      cursor: 'pointer', 
-                      border: 'none', 
-                      background: 'none', 
-                      textDecoration: 'underline', 
-                      marginTop: '10px' 
-                    }}
-                  >
-                    🚪 Cerrar Sesión
-                  </button>
                 </div>
               </div>
             )}
 
             {pantallaActual === 'mi-cuenta' && (
               <div style={{ textAlign: 'left' }}>
-                <h2 style={{ color: '#043424', textAlign: 'center', marginBottom: '20px', fontSize: '20px' }}>👤 Configuración de Mi Cuenta</h2>
-                <form onSubmit={manejarGuardarTelefono} style={{ display: 'flex', flexDirection: 'column', gap: '15px', background: '#f9f9f9', padding: '15px', borderRadius: '10px', border: '1px solid #ddd' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={{ fontSize: '12px', fontWeight: 'bold', color: '#666' }}>Categoría:</label><input type="text" value={posicionUser} disabled style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ddd', background: '#e9e9e9' }} /></div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={{ fontSize: '12px', color: '#666' }}>Precio Hora Extra:</label><input type="text" value={`${precioHoraActual} € / hora`} disabled style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ddd', background: '#e9e9e9' }} /></div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={{ fontSize: '12px', color: '#666' }}>Nombre:</label><input type="text" value={`${nombreEdit} ${apellidosEdit}`} disabled style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ddd', background: '#e9e9e9' }} /></div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={{ fontSize: '12px', fontWeight: 'bold', color: '#043424' }}>📱 Teléfono:</label><input type="tel" value={telefonoEdit} onChange={(e) => setTelefonoEdit(e.target.value)} required style={{ padding: '10px', borderRadius: '6px', border: '1px solid #043424' }} /></div>
-                  <button 
-                    type="submit" 
-                    style={{ 
-                      padding: '14px', 
-                      background: '#043424', 
-                      color: '#ffffff', 
-                      border: 'none', 
-                      borderRadius: '8px', 
-                      fontWeight: 'bold', 
-                      fontSize: '16px',
-                      cursor: 'pointer',
-                      boxShadow: '0 3px 8px rgba(4, 52, 36, 0.25)'
-                    }}
-                  >
-                    💾 Guardar Teléfono
-                  </button>
+                <h2 style={{ color: '#043424', borderBottom: '2px solid #c5a059', paddingBottom: '8px', marginTop: 0, fontSize: '20px' }}>👤 Mi Cuenta y Configuración</h2>
+                
+                <div style={{ background: '#f9f9f9', padding: '15px', borderRadius: '8px', marginBottom: '20px', fontSize: '14px', lineHeight: '1.6' }}>
+                  <p style={{ margin: '0 0 5px 0' }}><strong>Usuario / Correo:</strong> {usuarioConectado}</p>
+                  <p style={{ margin: '0 0 5px 0' }}><strong>Nombre completo:</strong> {nombreEdit} {apellidosEdit}</p>
+                  <p style={{ margin: 0 }}><strong>Puesto de trabajo:</strong> <span style={{ color: '#b27d14', fontWeight: 'bold' }}>{posicionUser}</span></p>
+                </div>
+
+                <form onSubmit={manejarGuardarTelefono} style={{ marginBottom: '25px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#333' }}>📞 Actualizar Teléfono de Contacto:</label>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <input type="text" value={telefonoEdit} onChange={(e) => setTelefonoEdit(e.target.value)} placeholder="Tu número de teléfono" style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }} />
+                    <button type="submit" style={{ padding: '10px 15px', background: '#043424', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>Guardar</button>
+                  </div>
                 </form>
+
+                <div style={{ borderTop: '1px solid #eee', paddingTop: '20px', marginBottom: '25px' }}>
+                  <h3 style={{ fontSize: '16px', color: '#333', marginTop: 0 }}>🔒 Cambiar Contraseña</h3>
+                  <form onSubmit={manejarChangePassword} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <input type="password" placeholder="Nueva contraseña personal" value={nuevaPassword} onChange={(e) => setNuevaPassword(e.target.value)} required style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px' }} />
+                    <button type="submit" style={{ padding: '12px', background: '#b27d14', color: '#ffffff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>Actualizar Contraseña</button>
+                  </form>
+                </div>
+
+                <button onClick={cerrarSesion} style={{ width: '100%', padding: '14px', background: '#dc3545', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '15px' }}>
+                  🚪 Cerrar Sesión
+                </button>
               </div>
             )}
 
             {pantallaActual === 'nuevo-parte' && (
-              <div style={{ textAlign: 'left' }}>
-                <h2 style={{ color: '#043424', textAlign: 'center', fontSize: '20px' }}>📋 Nuevo Parte de Trabajo</h2>
-                <form onSubmit={manejarEnviarParte} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#043424' }}>Fecha del parte:</label>
-                    <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} required style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc', maxWidth: '160px' }} />
-                  </div>
+              <form onSubmit={manejarEnviarParte} style={{ textAlign: 'left' }}>
+                <h2 style={{ color: '#043424', borderBottom: '2px solid #c5a059', paddingBottom: '8px', marginTop: 0, fontSize: '20px' }}>📋 Parte de Trabajo Diario</h2>
 
-                  {tareasDelDia.map((tarea, index) => (
-                    <div key={index} style={{ background: '#f9f9f9', padding: '15px', borderRadius: '8px', border: '1px solid #e0e0e0', position: 'relative', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                      {tareasDelDia.length > 1 && <button type="button" onClick={() => eliminarFilaTarea(index)} style={{ position: 'absolute', top: '10px', right: '10px', background: 'none', border: 'none', color: '#cc0000', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer' }}>❌</button>}
-                      
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#333' }}>Obra:</label>
-                        <select value={tarea.obra} onChange={(e) => actualizarObraEnTarea(index, e.target.value)} style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }}>
-                          {listaObras.map((o, i) => <option key={i} value={o}>{o}</option>)}
-                        </select>
-                      </div>
+                <div style={{ marginBottom: '15px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#333', marginBottom: '5px' }}>Fecha:</label>
+                  <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} required style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc', boxSizing: 'border-box' }} />
+                </div>
 
-                      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                        <div style={{ flex: '1 1 200px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#333' }}>Trabajos:</label>
-                          <select value={tarea.trabajo} onChange={(e) => actualizarCampoTarea(index, 'trabajo', e.target.value)} style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }}>
-                            {(baseDatosObras[tarea.obra] || []).map((t, i) => <option key={i} value={t}>{t}</option>)}
-                          </select>
-                        </div>
-                        <div style={{ flex: '1 1 80px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#333' }}>Horas:</label>
-                          <input type="number" min="0.5" max="14" step="0.5" value={tarea.horas} onChange={(e) => actualizarCampoTarea(index, 'horas', e.target.value)} required style={{ padding: '9px', borderRadius: '4px', border: '1px solid #ccc' }} />
-                        </div>
-                      </div>
-
-                      {tarea.trabajo === 'OTROS' && (
-                        <input 
-                          type="text" 
-                          placeholder="Especifica el trabajo..." 
-                          value={tarea.especificarOtros || ''} 
-                          onChange={(e) => actualizarCampoTarea(index, 'especificarOtros', e.target.value)} 
-                          required 
-                          style={{ padding: '10px', borderRadius: '4px', border: '1px solid #b27d14', background: '#ffffe0', marginBottom: '5px' }} 
-                        />
-                      )}
-
-                      {tarea.obra === 'TRABAJOS CON RODADO' && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '5px' }}>
-                          <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#333' }}>Lugar de trabajo:</label>
-                          <input 
-                            type="text" 
-                            placeholder="Indica la zona, tramo o PK..." 
-                            value={tarea.lugarTrabajo || ''} 
-                            onChange={(e) => actualizarCampoTarea(index, 'lugarTrabajo', e.target.value)} 
-                            required 
-                            style={{ padding: '10px', borderRadius: '4px', border: '1px solid #b27d14', background: '#ffffe0' }} 
-                          />
-                        </div>
+                {tareasDelDia.map((tarea, index) => (
+                  <div key={index} style={{ background: '#f4f6f5', padding: '15px', borderRadius: '10px', borderLeft: '4px solid #043424', marginBottom: '15px', position: 'relative' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                      <span style={{ fontWeight: 'bold', fontSize: '14px', color: '#043424' }}>Trabajo #{index + 1}</span>
+                      {tareasDelDia.length > 1 && (
+                        <button type="button" onClick={() => eliminarFilaTarea(index)} style={{ background: '#dc3545', color: '#fff', border: 'none', borderRadius: '4px', padding: '4px 8px', fontSize: '12px', cursor: 'pointer' }}>
+                          🗑️ Eliminar
+                        </button>
                       )}
                     </div>
-                  ))}
 
-                  <button 
-                    type="button" 
-                    onClick={añadirFilaTarea} 
-                    style={{ 
-                      padding: '12px', 
-                      fontSize: '15px', 
-                      fontWeight: 'bold', 
-                      color: '#043424', 
-                      background: '#e2f0d9', 
-                      border: '2px solid #043424', 
-                      borderRadius: '8px', 
-                      cursor: 'pointer', 
-                      textAlign: 'center',
-                      boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
-                    }}
-                  >
-                    ➕ Añadir Obra / Trabajo
-                  </button>
+                    <div style={{ marginBottom: '10px' }}>
+                      <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#555', marginBottom: '3px' }}>Obra:</label>
+                      <select value={tarea.obra} onChange={(e) => actualizarObraEnTarea(index, e.target.value)} style={{ width: '100%', padding: '9px', borderRadius: '6px', border: '1px solid #ccc' }}>
+                        {listaObras.map((o, idx) => <option key={idx} value={o}>{o}</option>)}
+                      </select>
+                    </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <label style={{ fontSize: '13px', color: '#666' }}>Observaciones generales (Opcional):</label>
-                    <textarea placeholder="Notas u observaciones sobre la jornada de hoy..." value={notaGeneral} onChange={(e) => setNotaGeneral(e.target.value)} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc', minHeight: '70px', resize: 'vertical' }} />
+                    {tarea.obra === 'TRABAJOS CON RODADO' && (
+                      <div style={{ marginBottom: '10px' }}>
+                        <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#b27d14', marginBottom: '3px' }}>📍 Especificar lugar de trabajo:</label>
+                        <input type="text" placeholder="Ej: Calle Gran Vía, Valencia / Parcela 14" value={tarea.lugarTrabajo || ''} onChange={(e) => actualizarCampoTarea(index, 'lugarTrabajo', e.target.value)} required style={{ width: '100%', padding: '9px', borderRadius: '6px', border: '1px solid #b27d14', boxSizing: 'border-box', background: '#fff' }} />
+                      </div>
+                    )}
+
+                    <div style={{ marginBottom: '10px' }}>
+                      <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#555', marginBottom: '3px' }}>Trabajo Realizado:</label>
+                      <select value={tarea.trabajo} onChange={(e) => actualizarCampoTarea(index, 'trabajo', e.target.value)} style={{ width: '100%', padding: '9px', borderRadius: '6px', border: '1px solid #ccc' }}>
+                        {(baseDatosObras[tarea.obra] || ['OTROS']).map((t, idx) => <option key={idx} value={t}>{t}</option>)}
+                      </select>
+                    </div>
+
+                    {tarea.trabajo === 'OTROS' && (
+                      <div style={{ marginBottom: '10px' }}>
+                        <input type="text" placeholder="Especifica qué otros trabajos has hecho..." value={tarea.especificarOtros} onChange={(e) => actualizarCampoTarea(index, 'especificarOtros', e.target.value)} required style={{ width: '100%', padding: '9px', borderRadius: '6px', border: '1px solid #ccc', boxSizing: 'border-box' }} />
+                      </div>
+                    )}
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#555', marginBottom: '3px' }}>Horas Dedicadas:</label>
+                      <input type="number" step="0.5" min="0.5" max="24" value={tarea.horas} onChange={(e) => actualizarCampoTarea(index, 'horas', e.target.value)} required style={{ width: '100%', padding: '9px', borderRadius: '6px', border: '1px solid #ccc', boxSizing: 'border-box' }} />
+                    </div>
                   </div>
+                ))}
 
-                  <div style={{ marginTop: '10px' }}>
-                    <button 
-                      type="submit" 
-                      style={{ 
-                        width: '100%', 
-                        padding: '16px', 
-                        background: '#043424', 
-                        color: '#ffffff', 
-                        border: 'none', 
-                        borderRadius: '8px', 
-                        fontWeight: 'bold', 
-                        fontSize: '18px', 
-                        cursor: 'pointer', 
-                        textAlign: 'center',
-                        boxShadow: '0 4px 10px rgba(0,0,0,0.25)'
-                      }}
-                    >
-                      🚀 Enviar Parte
-                    </button>
-                  </div>
-                </form>
-              </div>
+                <button type="button" onClick={añadirFilaTarea} style={{ width: '100%', padding: '12px', background: '#e2f0d9', color: '#043424', border: '1px dashed #043424', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '20px' }}>
+                  ➕ Añadir Otra Obra / Trabajo al Parte
+                </button>
+
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#333', marginBottom: '5px' }}>Observaciones del día (Opcional):</label>
+                  <textarea rows="3" value={notaGeneral} onChange={(e) => setNotaGeneral(e.target.value)} placeholder="Alguna nota extra sobre la jornada..." style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc', boxSizing: 'border-box' }}></textarea>
+                </div>
+
+                <button type="submit" style={{ width: '100%', padding: '16px', background: '#043424', color: '#ffffff', border: 'none', borderRadius: '10px', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer', boxShadow: '0 4px 10px rgba(4, 52, 36, 0.3)' }}>
+                  🚀 Guardar y Enviar Parte
+                </button>
+              </form>
             )}
 
             {pantallaActual === 'mis-partes' && (
-              <div>
-                <h2 style={{ color: '#043424', fontSize: '20px', marginBottom: '15px' }}>📄 Historial de Partes Enviados</h2>
+              <div style={{ textAlign: 'left' }}>
+                <h2 style={{ color: '#043424', borderBottom: '2px solid #c5a059', paddingBottom: '8px', marginTop: 0, fontSize: '20px' }}>📄 Mis Partes Registrados</h2>
                 
-                <div style={{ background: '#f5f5f5', padding: '12px', borderRadius: '8px', marginBottom: '15px', display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <label style={{ fontSize: '12px', fontWeight: 'bold' }}>Mes:</label>
-                    <input type="month" value={filtroParteMes} onChange={(e) => setFiltroParteMes(e.target.value)} style={{ padding: '4px', borderRadius: '4px', border: '1px solid #ccc' }} />
-                  </div>
-                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                    <input type="checkbox" id="chkSemana" checked={filtroParteSemana} onChange={(e) => setFiltroParteSemana(e.target.checked)} />
-                    <label htmlFor="chkSemana" style={{ fontSize: '12px', cursor: 'pointer' }}>Esta semana</label>
-                  </div>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <label style={{ fontSize: '12px', fontWeight: 'bold' }}>Orden:</label>
-                    <select value={ordenPartes} onChange={(e) => setOrdenPartes(e.target.value)} style={{ padding: '4px', borderRadius: '4px', border: '1px solid #ccc' }}>
-                      <option value="desc">Más nuevos primero</option>
-                      <option value="asc">Más viejos primero</option>
-                    </select>
-                  </div>
+                <div style={{ background: '#f8f9fa', padding: '12px', borderRadius: '8px', marginBottom: '15px', display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center' }}>
+                  <input type="month" value={filtroParteMes} onChange={(e) => { setFiltroParteMes(e.target.value); setFiltroParteSemana(false); }} style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #ccc' }} />
                   <button 
-                    onClick={limpiarFiltrosGeneral} 
-                    style={{ 
-                      fontSize: '12px', 
-                      fontWeight: 'bold', 
-                      padding: '6px 12px', 
-                      borderRadius: '6px', 
-                      cursor: 'pointer', 
-                      background: '#043424', 
-                      color: '#ffffff', 
-                      border: 'none' 
-                    }}
+                    onClick={() => { setFiltroParteSemana(!filtroParteSemana); setFiltroParteMes(''); }} 
+                    style={{ padding: '6px 12px', background: filtroParteSemana ? '#043424' : '#eee', color: filtroParteSemana ? '#fff' : '#333', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold' }}
                   >
+                    📅 Esta Semana
+                  </button>
+                  <button onClick={limpiarFiltrosGeneral} style={{ padding: '6px 10px', background: '#6c757d', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
                     Limpiar
                   </button>
                 </div>
 
-                <div style={{ maxHeight: '400px', overflowY: 'auto', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {partesFiltrados.length === 0 ? (
-                    <p style={{ textAlign: 'center', color: '#666', fontSize: '14px' }}>No hay partes que coincidan con los filtros seleccionados.</p>
-                  ) : (
-                    partesFiltrados.map((dia, index) => (
-                      <div key={index} style={{ border: '2px solid #043424', padding: '12px', borderRadius: '6px', background: '#fff' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #eee', paddingBottom: '6px', marginBottom: '8px' }}>
-                          <span style={{ fontWeight: 'bold', color: '#043424', fontSize: '14px' }}>📅 {dia.fecha.split('-').reverse().join('/')}</span>
-                          <span style={{ background: '#b27d14', color: '#fff', padding: '3px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold' }}>
-                            Total: {dia.horasTotales} Horas
-                          </span>
-                        </div>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          {dia.detalles.map((det, i) => (
-                            <div key={i} style={{ background: '#f9f9f9', padding: '6px 10px', borderRadius: '4px', borderLeft: '3px solid #043424', fontSize: '13px' }}>
-                              <p style={{ margin: '2px 0' }}><strong>Obra:</strong> {det.obra}</p>
-                              <p style={{ margin: '2px 0' }}><strong>Trabajo:</strong> {det.trabajo}</p>
-                              {det.lugarTrabajo && <p style={{ margin: '2px 0' }}><strong>Lugar:</strong> {det.lugarTrabajo}</p>}
-                              {det.notes && <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: '#666', fontStyle: 'italic' }}>Obs: {det.notes}</p>}
-                            </div>
-                          ))}
-                        </div>
+                {partesFiltrados.length === 0 ? (
+                  <p style={{ textAlign: 'center', color: '#777', padding: '20px' }}>No hay partes registrados para el filtro seleccionado.</p>
+                ) : (
+                  partesFiltrados.map((item, idx) => (
+                    <div key={idx} style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: '10px', padding: '12px 15px', marginBottom: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee', paddingBottom: '6px', marginBottom: '8px' }}>
+                        <strong style={{ color: '#043424', fontSize: '15px' }}>📅 {item.fecha.split('-').reverse().join('/')}</strong>
+                        <span style={{ background: '#e2f0d9', color: '#043424', fontWeight: 'bold', fontSize: '12px', padding: '3px 8px', borderRadius: '12px' }}>{item.horasTotales}h Totales</span>
                       </div>
-                    ))
-                  )}
-                </div>
+                      {item.detalles.map((d, dIdx) => (
+                        <div key={dIdx} style={{ fontSize: '13px', color: '#444', marginBottom: '6px', paddingLeft: '8px', borderLeft: '3px solid #c5a059' }}>
+                          <div><strong>Obra:</strong> {d.obra}</div>
+                          <div><strong>Trabajo:</strong> {d.trabajo}</div>
+                          {d.lugarTrabajo && <div><strong>Lugar:</strong> {d.lugarTrabajo}</div>}
+                          {d.notes && <div style={{ fontSize: '11px', color: '#666', fontStyle: 'italic' }}>Obs: {d.notes}</div>}
+                        </div>
+                      ))}
+                    </div>
+                  ))
+                )}
               </div>
             )}
 
             {pantallaActual === 'horas-extras' && (
-              <div>
-                <h2 style={{ color: '#043424', fontSize: '20px', marginBottom: '5px' }}>⏰ Control de Horas Extras</h2>
-                <p style={{ margin: '0 0 15px 0', fontSize: '12px', color: '#555' }}>
-                  Las horas extras calculadas son las trabajadas en fines de semana o las que superen las 8h diarias de lunes a viernes.
-                </p>
+              <div style={{ textAlign: 'left' }}>
+                <h2 style={{ color: '#b27d14', borderBottom: '2px solid #b27d14', paddingBottom: '8px', marginTop: 0, fontSize: '20px' }}>⏰ Registro de Horas Extras</h2>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '20px' }}>
-                  <div style={{ background: '#f2f7f4', padding: '12px', borderRadius: '8px', border: '1px solid #c5d9cc' }}>
-                    <div style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', fontWeight: 'bold' }}>Acumuladas totales</div>
-                    <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#043424' }}>{totalGeneralExtrasProducidas} h</div>
+                <div style={{ background: '#fdf7ec', padding: '15px', borderRadius: '10px', border: '1px solid #f5e6c8', marginBottom: '20px', display: 'flex', justifyContent: 'space-around', textAlign: 'center' }}>
+                  <div>
+                    <span style={{ fontSize: '12px', color: '#8c5e00', display: 'block' }}>Total Histórico</span>
+                    <strong style={{ fontSize: '20px', color: '#b27d14' }}>{totalGeneralExtrasProducidas}h</strong>
                   </div>
-                  <div style={{ background: '#fdf7ec', padding: '12px', borderRadius: '8px', border: '1px solid #f5e4c4' }}>
-                    <div style={{ fontSize: '11px', color: '#555', textTransform: 'uppercase', fontWeight: 'bold' }}>Saldo estimado</div>
-                    <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#b27d14' }}>{totalGeneralExtrasProducidas * precioHoraActual} €</div>
+                  <div>
+                    <span style={{ fontSize: '12px', color: '#8c5e00', display: 'block' }}>Estimado Acumulado</span>
+                    <strong style={{ fontSize: '20px', color: '#28a745' }}>{totalGeneralExtrasProducidas * precioHoraActual}€</strong>
                   </div>
                 </div>
 
-                <div style={{ maxHeight: '280px', overflowY: 'auto', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {extrasFiltradas.length === 0 ? (
-                    <p style={{ textAlign: 'center', color: '#666', fontSize: '13px', padding: '10px' }}>No hay registros de horas extras en este rango.</p>
-                  ) : (
-                    extrasFiltradas.map((extra) => (
-                      <div key={extra.id} style={{ border: '1px solid #e2e8f0', padding: '10px', borderRadius: '6px', background: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                          <span style={{ fontWeight: 'bold', fontSize: '13px', color: '#333' }}>📅 {extra.fecha.split('-').reverse().join('/')}</span>
-                          <span style={{ fontSize: '11px', color: '#666', marginLeft: '10px', background: '#edf2f7', padding: '2px 6px', borderRadius: '4px' }}>{extra.motivo}</span>
-                        </div>
-                        <div style={{ fontWeight: 'bold', color: '#b27d14', fontSize: '15px' }}>
-                          +{extra.horas}h
-                        </div>
+                <div style={{ background: '#f8f9fa', padding: '12px', borderRadius: '8px', marginBottom: '15px', display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center' }}>
+                  <input type="month" value={filtroExtraMes} onChange={(e) => { setFiltroExtraMes(e.target.value); setFiltroExtraSemana(false); }} style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #ccc' }} />
+                  <button 
+                    onClick={() => { setFiltroExtraSemana(!filtroExtraSemana); setFiltroExtraMes(''); }} 
+                    style={{ padding: '6px 12px', background: filtroExtraSemana ? '#b27d14' : '#eee', color: filtroExtraSemana ? '#fff' : '#333', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold' }}
+                  >
+                    📅 Esta Semana
+                  </button>
+                  <button onClick={limpiarFiltrosExtras} style={{ padding: '6px 10px', background: '#6c757d', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
+                    Limpiar
+                  </button>
+                </div>
+
+                {extrasFiltradas.length === 0 ? (
+                  <p style={{ textAlign: 'center', color: '#777', padding: '20px' }}>No hay registros de horas extras para las fechas seleccionadas.</p>
+                ) : (
+                  extrasFiltradas.map((ex, idx) => (
+                    <div key={idx} style={{ background: '#fff', border: '1px solid #ebd4a7', borderRadius: '10px', padding: '12px 15px', marginBottom: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.04)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
+                        <strong style={{ color: '#333', fontSize: '14px' }}>📅 {ex.fecha.split('-').reverse().join('/')}</strong>
+                        <span style={{ background: '#b27d14', color: '#fff', fontWeight: 'bold', fontSize: '12px', padding: '2px 8px', borderRadius: '10px' }}>+{ex.horas}h Extras</span>
                       </div>
-                    ))
-                  )}
-                </div>
+                      <div style={{ fontSize: '12px', color: '#666' }}>
+                        <div><strong>Motivo:</strong> {ex.motivo}</div>
+                        {ex.obrasDelDia && <div><strong>Obras:</strong> {ex.obrasDelDia.join(', ')}</div>}
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             )}
 
-            {/* PANTALLA GESTIÓN DE EFECTIVO */}
-            {pantallaActual === 'gestion-efectivo' && (usuarioConectado === EMAIL_ADMIN_MASTER || posicionUser === 'Técnico de Proyectos') && (
+            {pantallaActual === 'gestion-efectivo' && (
               <div style={{ textAlign: 'left' }}>
-                <h2 style={{ color: '#b27d14', textAlign: 'center', fontSize: '20px', marginBottom: '5px' }}>💵 Control de Caja / Efectivo</h2>
-                <p style={{ fontSize: '12px', color: '#555', textAlign: 'center', marginBottom: '15px' }}>
-                  Registro centralizado de entradas y salidas de efectivo de la caja.
-                </p>
+                <h2 style={{ color: '#8c5e00', borderBottom: '2px solid #b27d14', paddingBottom: '8px', marginTop: 0, fontSize: '20px' }}>💵 Gestión de Caja en Efectivo</h2>
 
-                <div style={{ background: saldoEfectivoCalculado >= 0 ? '#e2f0d9' : '#f8d7da', padding: '15px', borderRadius: '10px', marginBottom: '20px', border: '1px solid #ccc', textAlign: 'center' }}>
-                  <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#333' }}>SALDO ACTUAL EN EFECTIVO:</span>
-                  <div style={{ fontSize: '28px', fontWeight: 'bold', color: saldoEfectivoCalculado >= 0 ? '#043424' : '#721c24', marginTop: '5px' }}>
-                    {saldoEfectivoCalculado.toFixed(2)} €
-                  </div>
+                <div style={{ background: saldoEfectivoCalculado >= 0 ? '#eef9f0' : '#fde8e8', border: `1px solid ${saldoEfectivoCalculado >= 0 ? '#c3e6cb' : '#f5c6cb'}`, padding: '15px', borderRadius: '10px', textAlign: 'center', marginBottom: '20px' }}>
+                  <span style={{ fontSize: '13px', color: '#555', display: 'block' }}>Saldo Actual disponible en Caja:</span>
+                  <strong style={{ fontSize: '24px', color: saldoEfectivoCalculado >= 0 ? '#28a745' : '#dc3545' }}>{saldoEfectivoCalculado.toFixed(2)} €</strong>
                 </div>
 
-                <form onSubmit={manejarRegistrarEfectivo} style={{ background: '#fdf7ec', padding: '15px', borderRadius: '8px', border: '1px solid #f5e4c4', display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
-                  <h4 style={{ margin: '0 0 5px 0', color: '#b27d14' }}>➕ Añadir Movimiento</h4>
+                <form onSubmit={manejarRegistrarEfectivo} style={{ background: '#fdf7ec', padding: '15px', borderRadius: '10px', border: '1px solid #ebd4a7', marginBottom: '25px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <h3 style={{ margin: '0 0 5px 0', fontSize: '15px', color: '#8c5e00' }}>Nuevo Movimiento</h3>
                   
                   <div style={{ display: 'flex', gap: '10px' }}>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                      <label style={{ fontSize: '11px', fontWeight: 'bold' }}>Fecha:</label>
-                      <input type="date" value={fechaEfectivo} onChange={(e) => setFechaEfectivo(e.target.value)} required style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }} />
+                    <div style={{ flex: 1 }}>
+                      <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '3px' }}>Fecha:</label>
+                      <input type="date" value={fechaEfectivo} onChange={(e) => setFechaEfectivo(e.target.value)} required style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #ccc', boxSizing: 'border-box' }} />
                     </div>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                      <label style={{ fontSize: '11px', fontWeight: 'bold' }}>Tipo:</label>
-                      <select value={tipoMovEfectivo} onChange={(e) => setTipoMovEfectivo(e.target.value)} style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}>
-                        <option value="entrada">📥 Entrada (Ingreso)</option>
-                        <option value="salida">📤 Salida (Gasto)</option>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '3px' }}>Tipo:</label>
+                      <select value={tipoMovEfectivo} onChange={(e) => setTipoMovEfectivo(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #ccc' }}>
+                        <option value="entrada">📥 Entrada (+)</option>
+                        <option value="salida">📤 Salida (-)</option>
                       </select>
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <label style={{ fontSize: '11px', fontWeight: 'bold' }}>Importe (€):</label>
-                    <input type="number" step="0.01" min="0.01" placeholder="Ej: 50.00" value={montoEfectivo} onChange={(e) => setMontoEfectivo(e.target.value)} required style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }} />
+                  <div>
+                    <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '3px' }}>Importe (€):</label>
+                    <input type="number" step="0.01" min="0.01" placeholder="0.00" value={montoEfectivo} onChange={(e) => setMontoEfectivo(e.target.value)} required style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #ccc', boxSizing: 'border-box' }} />
                   </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <label style={{ fontSize: '11px', fontWeight: 'bold' }}>Concepto / Detalle:</label>
-                    <input type="text" placeholder="Ej: Pago de material / Repostaje urgente" value={conceptoEfectivo} onChange={(e) => setConceptoEfectivo(e.target.value)} required style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }} />
+                  <div>
+                    <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '3px' }}>Concepto / Detalle:</label>
+                    <input type="text" placeholder="Ej: Compra de material / Cobro en mano" value={conceptoEfectivo} onChange={(e) => setConceptoEfectivo(e.target.value)} required style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #ccc', boxSizing: 'border-box' }} />
                   </div>
 
-                  <button 
-                    type="submit" 
-                    style={{ 
-                      padding: '14px', 
-                      background: '#b27d14', 
-                      color: '#ffffff', 
-                      border: 'none', 
-                      borderRadius: '8px', 
-                      fontWeight: 'bold', 
-                      fontSize: '16px',
-                      cursor: 'pointer', 
-                      marginTop: '5px',
-                      boxShadow: '0 3px 8px rgba(178, 125, 20, 0.3)'
-                    }}
-                  >
-                    💾 Registrar Movimiento
+                  <button type="submit" style={{ padding: '12px', background: '#b27d14', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', marginTop: '5px' }}>
+                    Guardar Movimiento
                   </button>
                 </form>
 
-                <h4 style={{ margin: '0 0 10px 0', color: '#043424' }}>📋 Historial de Movimientos:</h4>
-                <div style={{ maxHeight: '250px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {movimientosEfectivo.length === 0 ? (
-                    <p style={{ textAlign: 'center', color: '#888', fontSize: '13px' }}>No hay movimientos registrados.</p>
-                  ) : (
-                    movimientosEfectivo.map((mov) => (
-                      <div key={mov.id} style={{ padding: '10px', borderRadius: '6px', background: '#fff', borderLeft: `5px solid ${mov.tipo === 'entrada' ? '#28a745' : '#dc3545'}`, boxShadow: '0 1px 3px rgba(0,0,0,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                          <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#333' }}>{mov.concepto}</div>
-                          <div style={{ fontSize: '11px', color: '#666' }}>📅 {mov.fecha ? mov.fecha.split('-').reverse().join('/') : ''} | 👤 {mov.registrado_por}</div>
-                        </div>
-                        <div style={{ fontWeight: 'bold', fontSize: '15px', color: mov.tipo === 'entrada' ? '#28a745' : '#dc3545' }}>
-                          {mov.tipo === 'entrada' ? '+' : '-'}{Number(mov.importe || 0).toFixed(2)} €
-                        </div>
+                <h3 style={{ fontSize: '16px', color: '#333', marginBottom: '10px' }}>Historial de Movimientos</h3>
+                {movimientosEfectivo.length === 0 ? (
+                  <p style={{ textAlign: 'center', color: '#777' }}>No hay movimientos de efectivo registrados.</p>
+                ) : (
+                  movimientosEfectivo.map((mov, idx) => (
+                    <div key={idx} style={{ background: '#fff', border: '1px solid #eee', borderRadius: '8px', padding: '10px 12px', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <strong style={{ fontSize: '13px', color: '#333', display: 'block' }}>{mov.concepto}</strong>
+                        <span style={{ fontSize: '11px', color: '#777' }}>📅 {mov.fecha.split('-').reverse().join('/')} | 👤 {mov.registrado_por?.split('@')[0]}</span>
                       </div>
-                    ))
-                  )}
-                </div>
+                      <strong style={{ fontSize: '15px', color: mov.tipo === 'entrada' ? '#28a745' : '#dc3545' }}>
+                        {mov.tipo === 'entrada' ? '+' : '-'}{parseFloat(mov.importe).toFixed(2)} €
+                      </strong>
+                    </div>
+                  ))
+                )}
               </div>
             )}
 
-            {/* PANTALLA GESTIÓN PLUS DE PRODUCTIVIDAD */}
-            {pantallaActual === 'gestion-plus' && (usuarioConectado === EMAIL_ADMIN_MASTER || posicionUser === 'Técnico de Proyectos') && (
+            {pantallaActual === 'gestion-plus' && (
               <div style={{ textAlign: 'left' }}>
-                <h2 style={{ color: '#1e7e34', textAlign: 'center', fontSize: '20px', marginBottom: '5px' }}>🏆 Plus de Productividad</h2>
-                <p style={{ fontSize: '12px', color: '#555', textAlign: 'center', marginBottom: '15px' }}>
-                  Asignación y registro centralizado de gratificaciones de productividad.
-                </p>
+                <h2 style={{ color: '#155724', borderBottom: '2px solid #28a745', paddingBottom: '8px', marginTop: 0, fontSize: '20px' }}>🏆 Asignación de Plus de Productividad</h2>
 
-                <form onSubmit={manejarGuardarPlus} style={{ background: '#eef9f0', padding: '15px', borderRadius: '8px', border: '1px solid #c3e6cb', display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
-                  <h4 style={{ margin: '0 0 5px 0', color: '#1e7e34' }}>➕ Asignar Nuevo Plus</h4>
+                <form onSubmit={manejarGuardarPlus} style={{ background: '#eef9f0', padding: '15px', borderRadius: '10px', border: '1px solid #c3e6cb', marginBottom: '25px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <h3 style={{ margin: '0 0 5px 0', fontSize: '15px', color: '#155724' }}>Asignar Nuevo Plus</h3>
+
+                  <div>
+                    <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '3px' }}>Empleado premiado:</label>
+                    <select value={empleadoPlus} onChange={(e) => setEmpleadoPlus(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #ccc' }}>
+                      <option value="">-- Seleccionar Empleado --</option>
+                      {correosAutorizados.map((c, idx) => {
+                        const emp = datosEmpleadosPredeterminados[c];
+                        return <option key={idx} value={c}>{emp.nombre} {emp.apellidos} ({c})</option>;
+                      })}
+                    </select>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '3px' }}>Fecha:</label>
+                      <input type="date" value={fechaPlus} onChange={(e) => setFechaPlus(e.target.value)} required style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #ccc', boxSizing: 'border-box' }} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '3px' }}>Importe (€):</label>
+                      <input type="number" step="0.01" min="0.01" placeholder="0.00" value={montoPlus} onChange={(e) => setMontoPlus(e.target.value)} required style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #ccc', boxSizing: 'border-box' }} />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '3px' }}>Motivo / Concepto del Plus:</label>
+                    <input type="text" placeholder="Ej: Rendimiento excepcional / Trabajo de fin de semana" value={conceptoPlus} onChange={(e) => setConceptoPlus(e.target.value)} required style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #ccc', boxSizing: 'border-box' }} />
+                  </div>
+
+                  <button type="submit" style={{ padding: '12px', background: '#28a745', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', marginTop: '5px' }}>
+                    Asignar y Guardar Plus
+                  </button>
+                </form>
+
+                <h3 style={{ fontSize: '16px', color: '#333', marginBottom: '10px' }}>Historial de Pluses Otorgados</h3>
+                {historialPluses.length === 0 ? (
+                  <p style={{ textAlign: 'center', color: '#777' }}>No se han otorgado pluses de productividad aún.</p>
+                ) : (
+                  historialPluses.map((p, idx) => (
+                    <div key={idx} style={{ background: '#fff', border: '1px solid #eee', borderRadius: '8px', padding: '10px 12px', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <strong style={{ fontSize: '13px', color: '#333', display: 'block' }}>{p.concepto}</strong>
+                        <span style={{ fontSize: '11px', color: '#777' }}>👤 {p.empleado?.split('@')[0]} | 📅 {new Date(p.created_at).toLocaleDateString('es-ES')}</span>
+                      </div>
+                      <strong style={{ fontSize: '16px', color: '#28a745' }}>+{parseFloat(p.importe).toFixed(2)} €</strong>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {pantallaActual === 'admin-partes' && (
+              <div style={{ textAlign: 'left' }}>
+                <h2 style={{ color: '#0056b3', borderBottom: '2px solid #0056b3', paddingBottom: '8px', marginTop: 0, fontSize: '20px' }}>📊 Control Global de Partes</h2>
+
+                <div style={{ background: '#f8f9fa', padding: '12px', borderRadius: '8px', marginBottom: '15px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <input type="text" placeholder="🔎 Buscar por obra, trabajo o empleado..." value={busquedaAdmin} onChange={(e) => setBusquedaAdmin(e.target.value)} style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #ccc' }} />
                   
                   <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                    <div style={{ flex: '1 1 140px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                      <label style={{ fontSize: '11px', fontWeight: 'bold' }}>Fecha:</label>
-                      <input type="date" value={fechaPlus} onChange={(e) => setFechaPlus(e.target.value)} required style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }} />
-                    </div>
+                    <select value={filtroAdminEmpleado} onChange={(e) => setFiltroAdminEmpleado(e.target.value)} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid #ccc' }}>
+                      <option value="">-- Todos los empleados --</option>
+                      {correosAutorizados.map((c, idx) => <option key={idx} value={c}>{datosEmpleadosPredeterminados[c]?.nombre} ({c})</option>)}
+                    </select>
 
-                    <div style={{ flex: '1 1 180px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                      <label style={{ fontSize: '11px', fontWeight: 'bold' }}>Empleado:</label>
-                      <select value={empleadoPlus} onChange={(e) => setEmpleadoPlus(e.target.value)} required style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}>
-                        <option value="">-- Selecciona un empleado --</option>
-                        {correosAutorizados.map((c, i) => (
-                          <option key={i} value={c}>
-                            {datosEmpleadosPredeterminados[c]?.nombre} {datosEmpleadosPredeterminados[c]?.apellidos}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <label style={{ fontSize: '11px', fontWeight: 'bold' }}>Importe (€):</label>
-                    <input type="number" step="0.01" min="0.01" placeholder="Ej: 100.00" value={montoPlus} onChange={(e) => setMontoPlus(e.target.value)} required style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }} />
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <label style={{ fontSize: '11px', fontWeight: 'bold' }}>Concepto / Motivo:</label>
-                    <input type="text" placeholder="Ej: Plus por rendimiento en Obra X" value={conceptoPlus} onChange={(e) => setConceptoPlus(e.target.value)} required style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }} />
-                  </div>
-
-                  <button 
-                    type="submit" 
-                    style={{ 
-                      padding: '14px', 
-                      background: '#28a745', 
-                      color: '#ffffff', 
-                      border: 'none', 
-                      borderRadius: '8px', 
-                      fontWeight: 'bold', 
-                      fontSize: '16px',
-                      cursor: 'pointer', 
-                      marginTop: '5px',
-                      boxShadow: '0 3px 8px rgba(40, 167, 69, 0.3)'
-                    }}
-                  >
-                    💾 Guardar Plus
-                  </button>
-                </form>
-
-                <h4 style={{ margin: '0 0 10px 0', color: '#043424' }}>📋 Historial de Pluses Asignados:</h4>
-                <div style={{ maxHeight: '250px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {historialPluses.length === 0 ? (
-                    <p style={{ textAlign: 'center', color: '#888', fontSize: '13px' }}>No hay pluses registrados.</p>
-                  ) : (
-                    historialPluses.map((p) => {
-                      const empInfo = datosEmpleadosPredeterminados[p.empleado];
-                      const nombreEmp = empInfo ? `${empInfo.nombre} ${empInfo.apellidos}` : p.empleado;
-                      const fechaFormateada = p.created_at ? new Date(p.created_at).toLocaleDateString('es-ES') : '';
-
-                      return (
-                        <div key={p.id} style={{ padding: '10px', borderRadius: '6px', background: '#fff', borderLeft: '5px solid #28a745', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div>
-                            <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#333' }}>👤 {nombreEmp}</div>
-                            <div style={{ fontSize: '11px', color: '#555' }}>📝 {p.concepto}</div>
-                            <div style={{ fontSize: '10px', color: '#888' }}>📅 {fechaFormateada}</div>
-                          </div>
-                          <div style={{ fontWeight: 'bold', fontSize: '16px', color: '#28a745' }}>
-                            +{Number(p.importe || 0).toFixed(2)} €
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* PANTALLA GESTIÓN ADMINISTRACIÓN MÁSTER */}
-            {pantallaActual === 'gestion-administracion' && usuarioConectado === EMAIL_ADMIN_MASTER && (
-              <div style={{ textAlign: 'left' }}>
-                <h2 style={{ color: '#043424', textAlign: 'center', fontSize: '20px', marginBottom: '5px' }}>🛡️ Control de Partes (Administración)</h2>
-                <p style={{ fontSize: '12px', color: '#555', textAlign: 'center', marginBottom: '15px' }}>
-                  Gestión global de partes registrados. Puedes filtrar por empleado, mes o borrar registros directamente.
-                </p>
-
-                <div style={{ background: '#e2f0d9', padding: '12px', borderRadius: '8px', marginBottom: '15px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                    <div style={{ flex: '1 1 180px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                      <label style={{ fontSize: '11px', fontWeight: 'bold', color: '#043424' }}>Empleado:</label>
-                      <select value={filtroAdminEmpleado} onChange={(e) => setFiltroAdminEmpleado(e.target.value)} style={{ padding: '6px', borderRadius: '4px', border: '1px solid #ccc' }}>
-                        <option value="">-- Todos --</option>
-                        {correosAutorizados.map((c, i) => (
-                          <option key={i} value={c}>
-                            {datosEmpleadosPredeterminados[c]?.nombre} {datosEmpleadosPredeterminados[c]?.apellidos} ({c})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div style={{ flex: '1 1 120px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                      <label style={{ fontSize: '11px', fontWeight: 'bold', color: '#043424' }}>Mes:</label>
-                      <input type="month" value={filtroAdminMes} onChange={(e) => setFiltroAdminMes(e.target.value)} style={{ padding: '5px', borderRadius: '4px', border: '1px solid #ccc' }} />
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                    <input 
-                      type="text" 
-                      placeholder="Buscar por obra o trabajo..." 
-                      value={busquedaAdmin} 
-                      onChange={(e) => setBusquedaAdmin(e.target.value)} 
-                      style={{ flex: 1, padding: '8px 10px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '13px' }} 
-                    />
-                    <button 
-                      onClick={limpiarFiltrosAdmin} 
-                      style={{ 
-                        padding: '8px 14px', 
-                        background: '#043424', 
-                        color: '#ffffff', 
-                        border: 'none', 
-                        borderRadius: '6px', 
-                        fontSize: '12px', 
-                        cursor: 'pointer', 
-                        fontWeight: 'bold' 
-                      }}
-                    >
+                    <input type="month" value={filtroAdminMes} onChange={(e) => setFiltroAdminMes(e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #ccc' }} />
+                    
+                    <button onClick={limpiarFiltrosAdmin} style={{ padding: '8px 12px', background: '#6c757d', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
                       Limpiar
                     </button>
                   </div>
                 </div>
 
-                <div style={{ maxHeight: '380px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {partesAdminFiltrados.length === 0 ? (
-                    <p style={{ textAlign: 'center', color: '#888', fontSize: '13px' }}>No hay partes registrados con los criterios seleccionados.</p>
-                  ) : (
-                    partesAdminFiltrados.map((p) => {
-                      const empInfo = datosEmpleadosPredeterminados[p.empleado];
-                      const nombreMostrar = empInfo ? `${empInfo.nombre} ${empInfo.apellidos}` : p.empleado;
-
-                      return (
-                        <div key={p.id} style={{ padding: '12px', border: '1px solid #ccc', borderRadius: '8px', background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee', paddingBottom: '6px', marginBottom: '6px' }}>
-                            <div>
-                              <span style={{ fontWeight: 'bold', color: '#043424', fontSize: '13px' }}>👤 {nombreMostrar}</span>
-                              <div style={{ fontSize: '11px', color: '#666' }}>📅 {p.fecha.split('-').reverse().join('/')} | 📩 {p.empleado}</div>
-                            </div>
-                            
-                            <button 
-                              onClick={() => manejarEliminarParteAdmin(p.id)} 
-                              style={{ 
-                                background: '#dc3545', 
-                                color: '#ffffff', 
-                                border: 'none', 
-                                padding: '8px 12px', 
-                                borderRadius: '6px', 
-                                fontSize: '12px', 
-                                fontWeight: 'bold', 
-                                cursor: 'pointer', 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                gap: '4px',
-                                boxShadow: '0 2px 5px rgba(220, 53, 69, 0.3)'
-                              }}
-                              title="Borrar de Supabase y de la memoria"
-                            >
-                              🗑️ Eliminar
-                            </button>
+                {partesAdminFiltrados.length === 0 ? (
+                  <p style={{ textAlign: 'center', color: '#777', padding: '20px' }}>No se encontraron partes con los criterios especificados.</p>
+                ) : (
+                  partesAdminFiltrados.map((p, idx) => {
+                    const empInfo = datosEmpleadosPredeterminados[p.empleado] || {};
+                    return (
+                      <div key={idx} style={{ background: '#fff', border: '1px solid #d0e1f9', borderRadius: '10px', padding: '12px 15px', marginBottom: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee', paddingBottom: '6px', marginBottom: '8px' }}>
+                          <div>
+                            <strong style={{ color: '#0056b3', fontSize: '14px', display: 'block' }}>{empInfo.nombre || p.empleado} {empInfo.apellidos || ''}</strong>
+                            <span style={{ fontSize: '11px', color: '#777' }}>📅 {p.fecha.split('-').reverse().join('/')}</span>
                           </div>
-
-                          <div style={{ fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                            <div><strong>Obra:</strong> {p.obra}</div>
-                            <div><strong>Trabajo:</strong> {p.trabajo}</div>
-                            <div><strong>Horas:</strong> {p.horas}h {p.horas_extra > 0 && <span style={{ color: '#b27d14', fontWeight: 'bold' }}>(+{p.horas_extra}h extras)</span>}</div>
-                            {p.lugarTrabajo && <div><strong>Lugar:</strong> {p.lugarTrabajo}</div>}
-                            {p.notes && <div style={{ fontSize: '11px', color: '#555', fontStyle: 'italic', marginTop: '2px' }}>Obs: {p.notes}</div>}
-                          </div>
+                          
+                          <button 
+                            onClick={() => manejarEliminarParteAdmin(p.id)}
+                            style={{ 
+                              background: '#dc3545', 
+                              color: '#fff', 
+                              border: 'none', 
+                              borderRadius: '6px', 
+                              padding: '6px 10px', 
+                              fontSize: '12px', 
+                              cursor: 'pointer', 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              gap: '4px',
+                              boxShadow: '0 2px 5px rgba(220, 53, 69, 0.3)'
+                            }}
+                            title="Borrar de Supabase y de la memoria"
+                          >
+                            🗑️ Eliminar
+                          </button>
                         </div>
-                      );
-                    })
-                  )}
-                </div>
+
+                        <div style={{ fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <div><strong>Obra:</strong> {p.obra}</div>
+                          <div><strong>Trabajo:</strong> {p.trabajo}</div>
+                          <div><strong>Horas:</strong> {p.horas}h {p.horas_extra > 0 && <span style={{ color: '#b27d14', fontWeight: 'bold' }}>(+{p.horas_extra}h extras)</span>}</div>
+                          {p.lugarTrabajo && <div><strong>Lugar:</strong> {p.lugarTrabajo}</div>}
+                          {p.notes && <div style={{ fontSize: '11px', color: '#555', fontStyle: 'italic', marginTop: '2px' }}>Obs: {p.notes}</div>}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             )}
 
