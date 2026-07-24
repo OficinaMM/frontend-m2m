@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+ import React, { useState, useEffect } from 'react';
 import logoEmpresa from './assets/logo.png';
 import { supabase } from './supabaseClient';
 
@@ -267,11 +267,11 @@ function App() {
     }
   };
 
-  // CARGAR REGISTROS DE PLUSES DESDE SUPABASE (TABLA CORRECTA: PLUS_PRODUCTIVIDAD)
+  // CARGAR REGISTROS DE PLUSES DESDE SUPABASE (NOMBRE CON ESPACIO: PLUS PRODUCTIVIDAD)
   const cargarPluses = async () => {
     try {
       const { data, error } = await supabase
-        .from('PLUS_PRODUCTIVIDAD')
+        .from('PLUS PRODUCTIVIDAD')
         .select('*')
         .order('fecha', { ascending: false });
 
@@ -400,7 +400,7 @@ function App() {
     }
   };
 
-  // REGISTRAR PLUS DE PRODUCTIVIDAD (TABLA CORRECTA: PLUS_PRODUCTIVIDAD)
+  // REGISTRAR PLUS DE PRODUCTIVIDAD (SE ENVÍA UN ID GENERADO AUTOMÁTICAMENTE PARA EVITAR EL ERROR)
   const manejarGuardarPlus = async (e) => {
     e.preventDefault();
     if (!montoPlus || isNaN(montoPlus) || Number(montoPlus) <= 0) {
@@ -413,8 +413,9 @@ function App() {
 
     try {
       const { error } = await supabase
-        .from('PLUS_PRODUCTIVIDAD')
+        .from('PLUS PRODUCTIVIDAD')
         .insert([{
+          id: Date.now(), // 👈 Genera ID numérico para evitar "null value in column id"
           fecha: fechaPlus,
           empleado: empleadoPlus,
           nombre_empleado: nombreMostrar,
@@ -439,7 +440,7 @@ function App() {
     }
   };
 
-  // ELIMINAR PLUS DE PRODUCTIVIDAD (TABLA CORRECTA: PLUS_PRODUCTIVIDAD)
+  // ELIMINAR PLUS DE PRODUCTIVIDAD
   const manejarEliminarPlus = async (idPlus) => {
     if (!window.confirm('⚠️ ¿Estás seguro de que deseas eliminar este plus de productividad?')) {
       return;
@@ -447,7 +448,7 @@ function App() {
 
     try {
       const { error } = await supabase
-        .from('PLUS_PRODUCTIVIDAD')
+        .from('PLUS PRODUCTIVIDAD')
         .delete()
         .eq('id', idPlus);
 
@@ -888,7 +889,7 @@ function App() {
                   <button onClick={() => { setPantallaActual('mis-partes'); limpiarFiltrosGeneral(); }} style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '1px solid #ccc', background: '#f0f0f0' }}>📄 Ver Partes Enviados</button>
                   <button onClick={() => { setPantallaActual('horas-extras'); limpiarFiltrosExtras(); }} style={{ padding: '16px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', border: '1px solid #ccc', background: '#f0f0f0' }}>⏰ Mis Horas Extras</button>
 
-                  {/* BOTÓN ASIGNAR PLUS DE PRODUCTIVIDAD (EXCLUSIVO PARA ADMINISTRACIÓN Y TÉCNICO DE PROYECTOS) */}
+                  {/* BOTÓN ASIGNAR PLUS DE PRODUCTIVIDAD */}
                   {(usuarioConectado === EMAIL_ADMIN_MASTER || posicionUser === 'Técnico de Proyectos') && (
                     <button 
                       onClick={() => setPantallaActual('asignar-plus')} 
@@ -898,7 +899,7 @@ function App() {
                     </button>
                   )}
                   
-                  {/* BOTÓN CONTROL DE EFECTIVO (EXCLUSIVO PARA ADMINISTRACIÓN Y TÉCNICO DE PROYECTOS) */}
+                  {/* BOTÓN CONTROL DE EFECTIVO */}
                   {(usuarioConectado === EMAIL_ADMIN_MASTER || posicionUser === 'Técnico de Proyectos') && (
                     <button 
                       onClick={() => setPantallaActual('gestion-efectivo')} 
@@ -908,7 +909,7 @@ function App() {
                     </button>
                   )}
 
-                  {/* BOTÓN CONTROL DE PARTES / PANEL DE ADMINISTRACIÓN (EXCLUSIVO PARA ADMINISTRACIÓN) */}
+                  {/* BOTÓN CONTROL DE PARTES / PANEL DE ADMINISTRACIÓN */}
                   {usuarioConectado === EMAIL_ADMIN_MASTER && (
                     <button 
                       onClick={() => { setPantallaActual('gestion-administracion'); limpiarFiltrosAdmin(); }} 
@@ -1108,7 +1109,7 @@ function App() {
                   💰 Asignar Plus de Productividad
                 </h2>
                 <p style={{ fontSize: '12px', color: '#555', textAlign: 'center', marginBottom: '20px' }}>
-                  Registra abonados de pluses a los empleados. Se descontarán automáticamente de sus horas extras según la tarifa por hora de cada uno.
+                  Registra abonados de pluses a los empleados.
                 </p>
 
                 {/* FORMULARIO DE ASIGNACIÓN */}
