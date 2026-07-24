@@ -400,7 +400,7 @@ function App() {
     }
   };
 
-  // REGISTRAR PLUS DE PRODUCTIVIDAD
+  // REGISTRAR PLUS DE PRODUCTIVIDAD (ACTUALIZADO CON DETALLE DE ERROR)
   const manejarGuardarPlus = async (e) => {
     e.preventDefault();
     if (!montoPlus || isNaN(montoPlus) || Number(montoPlus) <= 0) {
@@ -415,15 +415,19 @@ function App() {
       const { error } = await supabase
         .from('pluses')
         .insert([{
+          fecha: fechaPlus,
           empleado: empleadoPlus,
           nombre_empleado: nombreMostrar,
-          fecha: fechaPlus,
           importe: parseFloat(montoPlus),
           concepto: conceptoPlus || 'Plus de Productividad',
           registrado_por: usuarioConectado
         }]);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error detallado de Supabase:", error);
+        alert(`❌ Error de Supabase: ${error.message}`);
+        return;
+      }
 
       alert('✅ Plus de productividad asignado con éxito.');
       setMontoPlus('');
@@ -431,7 +435,7 @@ function App() {
       cargarPluses();
     } catch (err) {
       console.error("Error al guardar plus de productividad:", err);
-      alert('❌ Ocurrió un error al intentar guardar el plus de productividad.');
+      alert('❌ Ocurrió un error inesperado al intentar guardar.');
     }
   };
 
@@ -447,7 +451,11 @@ function App() {
         .delete()
         .eq('id', idPlus);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error de Supabase al borrar:", error);
+        alert(`❌ Error al eliminar: ${error.message}`);
+        return;
+      }
 
       setHistorialPluses(prev => prev.filter(p => p.id !== idPlus));
       alert('🗑️ Plus de productividad eliminado con éxito.');
