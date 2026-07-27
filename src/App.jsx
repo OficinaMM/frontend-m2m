@@ -1162,7 +1162,7 @@ function App() {
               </div>
             )}
 
-            {/* APARTADO DE MIS HORAS EXTRAS VINCULADO CON LOS PLUSES DE PRODUCTIVIDAD */}
+            {/* APARTADO DE MIS HORAS EXTRAS VINCULADO CON LOS PLUSES Y DESCUENTO DE PAGADO */}
             {pantallaActual === 'horas-extras' && (
               <div style={{ textAlign: 'left' }}>
                 <h2 style={{ color: '#b27d14', marginTop: 0, fontSize: '20px', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>⏳ Mis Horas Extras Acumuladas</h2>
@@ -1192,11 +1192,15 @@ function App() {
                   const misPluses = historialPluses.filter(p => p.empleado === usuarioConectado);
                   const totalPlusesAsignados = misPluses.reduce((acc, p) => acc + Number(p.importe || 0), 0);
 
-                  // Importes base y total sumando los pluses del máster
+                  // Importe total bruto generado por las horas extras
+                  const totalBrutoHoras = totalHorasFiltradas * tarifaAplicada;
+
+                  // Importe pagado registrado en las horas extras
                   const importePagadoBase = Number(extrasFiltradas.reduce((acc, h) => acc + Number(h.importe_pagado || 0), 0));
                   const importePagadoTotal = importePagadoBase + totalPlusesAsignados;
 
-                  const saldoPendiente = (totalHorasFiltradas * tarifaAplicada) - importePagadoBase;
+                  // Saldo pendiente restando lo pagado al total bruto de las horas
+                  const saldoPendiente = totalBrutoHoras - importePagadoBase;
 
                   return (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '20px' }}>
