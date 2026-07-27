@@ -690,7 +690,7 @@ function App() {
 
         setNotaGeneral('');
         const obraInicial = listaObras[0] || '';
-        setTareasDelDia([{ obra: obraInicial, trabajo: baseDatosObras[obraInicial]?.[0] || 'OTROS', horas: '0', especificarOtros: '', lugarTrabajo: '' }]);
+        setTareasDelDia([{ obra: obraInicial, trabalho: baseDatosObras[obraInicial]?.[0] || 'OTROS', horas: '0', especificarOtros: '', lugarTrabajo: '' }]);
         setPantallaActual('menu');
       } else {
         alert('❌ Error al procesar el envío del parte.');
@@ -1259,7 +1259,7 @@ function App() {
                           <div><strong>Obra:</strong> {p.obra}</div>
                           <div><strong>Trabajo:</strong> {p.trabajo}</div>
                           <div>
-                            <strong>Horas Ord.:</strong> {p.horas}h 
+                            <strong>Horas:</strong> {p.horas}h 
                             {p.horas_extra > 0 && <span style={{ color: '#b27d14', fontWeight: 'bold', marginLeft: '6px' }}>(+{p.horas_extra}h extras)</span>}
                           </div>
                           {p.lugarTrabajo && <div><strong>Lugar:</strong> {p.lugarTrabajo}</div>}
