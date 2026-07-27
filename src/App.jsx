@@ -1000,8 +1000,8 @@ function App() {
                     </button>
                   )}
 
-                  {/* BOTÓN PLUS DE PRODUCTIVIDAD */}
-                  {(usuarioConectado === EMAIL_ADMIN_MASTER || posicionUser === 'Técnico de Proyectos') && (
+                  {/* BOTÓN PLUS DE PRODUCTIVIDAD (Exclusivo Administrador Master) */}
+                  {usuarioConectado === EMAIL_ADMIN_MASTER && (
                     <button 
                       onClick={() => setPantallaActual('gestion-plus')} 
                       style={{ 
@@ -1024,8 +1024,8 @@ function App() {
                     </button>
                   )}
 
-                  {/* BOTÓN CONTROL DE PARTES (ADMINISTRACIÓN) */}
-                  {(usuarioConectado === EMAIL_ADMIN_MASTER || posicionUser === 'Técnico de Proyectos') && (
+                  {/* BOTÓN CONTROL DE PARTES ADMINISTRACIÓN (Exclusivo Administrador Master) */}
+                  {usuarioConectado === EMAIL_ADMIN_MASTER && (
                     <button 
                       onClick={() => { setPantallaActual('admin-partes'); limpiarFiltrosAdmin(); }} 
                       style={{ 
