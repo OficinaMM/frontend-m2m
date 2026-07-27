@@ -229,8 +229,8 @@ function App() {
               fecha: p.fecha,
               obra: p.obra,
               trabajo: p.trabajo,
-              horas: p.horas,
-              horas_extra: p.horas_extra || 0,
+              horas: Number(p.horas || 0),
+              horas_extra: Number(p.horas_extra || 0),
               notes: p.otros_trabajos, 
               lugarTrabajo: p.lugar_de_trabajo
             }));
@@ -641,8 +641,8 @@ function App() {
             fecha: fecha,
             obra: tarea.obra,
             trabajo: trabajoRealizado,
-            horas: tarea.horas,
-            horas_extra: calculoExtras,
+            horas: Number(tarea.horas),
+            horas_extra: Number(calculoExtras),
             notes: notaGeneral,
             lugarTrabajo: tarea.obra === 'TRABAJOS CON RODADO' ? infoLugar : ''
           };
@@ -720,6 +720,7 @@ function App() {
     const diaExistente = partesAgrupadosPorDia.find(item => item.fecha === parte.fecha);
     if (diaExistente) {
       diaExistente.horasTotales += Number(parte.horas);
+      diaExistente.horasExtraTotales += Number(parte.horas_extra || 0);
       diaExistente.detalles.push({
         obra: parte.obra,
         trabajo: parte.trabajo,
@@ -730,6 +731,7 @@ function App() {
       partesAgrupadosPorDia.push({
         fecha: parte.fecha,
         horasTotales: Number(parte.horas),
+        horasExtraTotales: Number(parte.horas_extra || 0),
         detalles: [{
           obra: parte.obra,
           trabajo: parte.trabajo,
@@ -753,7 +755,7 @@ function App() {
 
   const totalGeneralExtrasProducidas = horasExtrasHistorial
     .filter(h => h.empleado === usuarioConectado)
-    .reduce((sum, h) => sum + h.horas, 0);
+    .reduce((sum, h) => sum + Number(h.horas || 0), 0);
 
   // FILTRADO MÁSTER PARA ADMINISTRACIÓN
   const partesAdminFiltrados = todosLosPartesAdmin.filter(p => {
@@ -1176,7 +1178,12 @@ function App() {
                     <div key={idx} style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: '10px', padding: '12px 15px', marginBottom: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee', paddingBottom: '6px', marginBottom: '8px' }}>
                         <strong style={{ color: '#043424', fontSize: '15px' }}>📅 {item.fecha.split('-').reverse().join('/')}</strong>
-                        <span style={{ background: '#e2f0d9', color: '#043424', fontWeight: 'bold', fontSize: '12px', padding: '3px 8px', borderRadius: '12px' }}>{item.horasTotales}h Totales</span>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          <span style={{ background: '#e2f0d9', color: '#043424', fontWeight: 'bold', fontSize: '12px', padding: '3px 8px', borderRadius: '12px' }}>{item.horasTotales}h Ord.</span>
+                          {item.horasExtraTotales > 0 && (
+                            <span style={{ background: '#fdf7ec', color: '#b27d14', border: '1px solid #ebd4a7', fontWeight: 'bold', fontSize: '12px', padding: '3px 8px', borderRadius: '12px' }}>+{item.horasExtraTotales}h Extra</span>
+                          )}
+                        </div>
                       </div>
                       {item.detalles.map((d, dIdx) => (
                         <div key={dIdx} style={{ fontSize: '13px', color: '#444', marginBottom: '6px', paddingLeft: '8px', borderLeft: '3px solid #c5a059' }}>
@@ -1413,7 +1420,10 @@ function App() {
                         <div style={{ fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
                           <div><strong>Obra:</strong> {p.obra}</div>
                           <div><strong>Trabajo:</strong> {p.trabajo}</div>
-                          <div><strong>Horas:</strong> {p.horas}h {p.horas_extra > 0 && <span style={{ color: '#b27d14', fontWeight: 'bold' }}>(+{p.horas_extra}h extras)</span>}</div>
+                          <div>
+                            <strong>Horas Ord.:</strong> {p.horas}h 
+                            {p.horas_extra > 0 && <span style={{ color: '#b27d14', fontWeight: 'bold', marginLeft: '6px' }}>(+{p.horas_extra}h extras)</span>}
+                          </div>
                           {p.lugarTrabajo && <div><strong>Lugar:</strong> {p.lugarTrabajo}</div>}
                           {p.notes && <div style={{ fontSize: '11px', color: '#555', fontStyle: 'italic', marginTop: '2px' }}>Obs: {p.notes}</div>}
                         </div>
