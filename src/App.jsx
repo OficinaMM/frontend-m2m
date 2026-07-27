@@ -287,7 +287,7 @@ function App() {
 
   useEffect(() => {
     if (usuarioConectado) {
-      cargarPluses(); // Para que cada empleado pueda consultar sus pluses asignados
+      cargarPluses(); 
       if (usuarioConectado === EMAIL_ADMIN_MASTER || posicionUser === 'Técnico de Proyectos') {
         cargarEfectivo();
       }
@@ -679,7 +679,8 @@ function App() {
             fecha: fecha, 
             horas: calculoExtras, 
             motivo: motivoExtra, 
-            obrasDelDia: obrasTocadasHoy 
+            obrasDelDia: obrasTocadasHoy,
+            importe_pagado: 0 // Inicializamos en 0 para no borrar ni afectar partes
           }, ...horasExtrasHistorial];
           
           setHorasExtrasHistorial(nuevoHistorialExtras);
@@ -1162,7 +1163,7 @@ function App() {
               </div>
             )}
 
-            {/* APARTADO DE MIS HORAS EXTRAS VINCULADO CON LOS PLUSES Y DESCUENTO DE PAGADO */}
+            {/* APARTADO DE MIS HORAS EXTRAS (CÓMPUTO TOTAL BRUTO MENOS IMPORTE PAGADO) */}
             {pantallaActual === 'horas-extras' && (
               <div style={{ textAlign: 'left' }}>
                 <h2 style={{ color: '#b27d14', marginTop: 0, fontSize: '20px', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>⏳ Mis Horas Extras Acumuladas</h2>
@@ -1183,7 +1184,7 @@ function App() {
                   )}
                 </div>
 
-                {/* RESUMEN FINANCIERO DE HORAS EXTRAS Y PLUSES ASIGNADOS */}
+                {/* RESUMEN FINANCIERO DE HORAS EXTRAS (FÓRMULA DIRECTA: TOTAL BRUTO - IMPORTE PAGADO) */}
                 {(() => {
                   const tarifaAplicada = tarifasPorCategoria[posicionUser] || 10;
                   const totalHorasFiltradas = extrasFiltradas.reduce((acc, h) => acc + Number(h.horas || 0), 0);
@@ -1199,7 +1200,7 @@ function App() {
                   const importePagadoBase = Number(extrasFiltradas.reduce((acc, h) => acc + Number(h.importe_pagado || 0), 0));
                   const importePagadoTotal = importePagadoBase + totalPlusesAsignados;
 
-                  // Saldo pendiente restando lo pagado al total bruto de las horas
+                  // Saldo pendiente: Diferencia directa entre el total bruto de horas extras y el importe pagado
                   const saldoPendiente = totalBrutoHoras - importePagadoBase;
 
                   return (
@@ -1388,4 +1389,4 @@ function App() {
   );
 }
 
-export default App;
+exports default App;
