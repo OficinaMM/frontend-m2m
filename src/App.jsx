@@ -206,7 +206,7 @@ function App() {
     checkUsuarioYActualizarDatos();
   }, [usuarioConectado]);
 
-  // CARGAR HISTORIAL DE PARTES SEGÚN ROL
+  // CARGAR HISTORIAL DE PARTES SEGÚN ROL (TODOS PARA ADMIN / TÉCNICO PROYECTOS)
   useEffect(() => {
     const cargarPartesDesdeSupabase = async () => {
       if (usuarioConectado) {
@@ -1000,8 +1000,8 @@ function App() {
                     </button>
                   )}
 
-                  {/* BOTÓN PLUS DE PRODUCTIVIDAD (Exclusivo Administrador Master) */}
-                  {usuarioConectado === EMAIL_ADMIN_MASTER && (
+                  {/* BOTÓN PLUS DE PRODUCTIVIDAD */}
+                  {(usuarioConectado === EMAIL_ADMIN_MASTER || posicionUser === 'Técnico de Proyectos') && (
                     <button 
                       onClick={() => setPantallaActual('gestion-plus')} 
                       style={{ 
@@ -1024,8 +1024,8 @@ function App() {
                     </button>
                   )}
 
-                  {/* BOTÓN CONTROL DE PARTES ADMINISTRACIÓN (Exclusivo Administrador Master) */}
-                  {usuarioConectado === EMAIL_ADMIN_MASTER && (
+                  {/* BOTÓN CONTROL DE PARTES (ADMINISTRACIÓN) */}
+                  {(usuarioConectado === EMAIL_ADMIN_MASTER || posicionUser === 'Técnico de Proyectos') && (
                     <button 
                       onClick={() => { setPantallaActual('admin-partes'); limpiarFiltrosAdmin(); }} 
                       style={{ 
