@@ -209,7 +209,7 @@ function App() {
     checkUsuarioYActualizarDatos();
   }, [usuarioConectado]);
 
-  // CARGAR HISTORIAL DE PARTES SEGÚN ROL (TODOS PARA ADMIN / TÉCNICO PROYECTOS)
+  // CARGAR HISTORIAL DE PARTES SEGÚN ROL
   useEffect(() => {
     const cargarPartesDesdeSupabase = async () => {
       if (usuarioConectado) {
@@ -255,7 +255,6 @@ function App() {
     cargarPartesDesdeSupabase();
   }, [usuarioConectado, posicionUser]);
 
-  // CARGAR REGISTROS DE EFECTIVO DESDE SUPABASE
   const cargarEfectivo = async () => {
     try {
       const { data, error } = await supabase
@@ -270,7 +269,6 @@ function App() {
     }
   };
 
-  // CARGAR REGISTROS DE PLUSES DE PRODUCTIVIDAD DESDE SUPABASE
   const cargarPluses = async () => {
     try {
       const { data, error } = await supabase
@@ -294,7 +292,6 @@ function App() {
 
   const precioHoraActual = tarifasPorCategoria[posicionUser] || 10;
 
-  // LOGIN CON ENCRIPTACIÓN DE CONTRASEÑA
   const manejarLogin = async (e) => {
     e.preventDefault();
 
@@ -344,7 +341,6 @@ function App() {
     }
   };
 
-  // ELIMINACIÓN MÁSTER DE PARTES
   const manejarEliminarParteAdmin = async (idParte) => {
     if (!window.confirm('⚠️ ¿Estás seguro de que deseas eliminar este parte de forma permanente?')) {
       return;
@@ -368,7 +364,6 @@ function App() {
     }
   };
 
-  // REGISTRAR MOVIMIENTO DE EFECTIVO
   const manejarRegistrarEfectivo = async (e) => {
     e.preventDefault();
     if (!montoEfectivo || isNaN(montoEfectivo) || Number(montoEfectivo) <= 0) {
@@ -403,7 +398,6 @@ function App() {
     }
   };
 
-  // REGISTRAR PLUS DE PRODUCTIVIDAD
   const manejarGuardarPlus = async (e) => {
     e.preventDefault();
     if (!montoPlus || isNaN(montoPlus) || Number(montoPlus) <= 0) {
@@ -441,7 +435,6 @@ function App() {
     }
   };
 
-  // CAMBIO DE CONTRASEÑA
   const manejarChangePassword = async (e) => {
     e.preventDefault();
     if (nuevaPassword.trim().length < 4) {
@@ -576,7 +569,6 @@ function App() {
     setTareasDelDia(nuevasTareas);
   };
 
-  // ENVIAR PARTE CON BLOQUEO DE DUPLICADOS Y ESTADO DE CARGA
   const manejarEnviarParte = async (e) => {
     e.preventDefault();
 
@@ -690,7 +682,7 @@ function App() {
 
         setNotaGeneral('');
         const obraInicial = listaObras[0] || '';
-        setTareasDelDia([{ obra: obraInicial, trabalho: baseDatosObras[obraInicial]?.[0] || 'OTROS', horas: '0', especificarOtros: '', lugarTrabajo: '' }]);
+        setTareasDelDia([{ obra: obraInicial, trabajo: baseDatosObras[obraInicial]?.[0] || 'OTROS', horas: '0', especificarOtros: '', lugarTrabajo: '' }]);
         setPantallaActual('menu');
       } else {
         alert('❌ Error al procesar el envío del parte.');
@@ -722,7 +714,6 @@ function App() {
     return fechaParte >= lunesSemana && fechaParte <= domingoSemana;
   };
 
-  // FILTRADO HISTORIAL DE USUARIO
   const partesFiltradosBase = historialPartes.filter(p => {
     if (p.empleado !== usuarioConectado) return false;
     if (filtroParteMes && p.fecha.substring(0, 7) !== filtroParteMes) return false;
@@ -772,7 +763,6 @@ function App() {
     .filter(h => h.empleado === usuarioConectado)
     .reduce((sum, h) => sum + Number(h.horas || 0), 0);
 
-  // FILTRADO MÁSTER PARA ADMINISTRACIÓN
   const partesAdminFiltrados = todosLosPartesAdmin.filter(p => {
     if (filtroAdminEmpleado && p.empleado !== filtroAdminEmpleado) return false;
     if (filtroAdminMes && p.fecha.substring(0, 7) !== filtroAdminMes) return false;
@@ -786,7 +776,6 @@ function App() {
     return true;
   });
 
-  // CÁLCULO DE SALDO DE EFECTIVO
   const saldoEfectivoCalculado = movimientosEfectivo.reduce((acc, mov) => {
     const monto = Number(mov.importe || 0);
     return mov.tipo === 'entrada' ? acc + monto : acc - monto;
@@ -819,8 +808,8 @@ function App() {
 
       {!usuarioConectado ? (
         pantallaActual === 'recovery' ? (
-          <div style={{ background: 'rgba(255, 255, 255, 0.95)', padding: '25px', borderRadius: '15px', boxShadow: '0 4px 15px rgba(0,0,0,0.3)', maxWidth: '380px', width: '100%', boxSizing: 'border-box', textAlign: 'center' }}>
-            <h2 style={{ color: '#b27d14', margin: '0 0 10px 0', fontSize: '20px' }}>🔑 Recuperar Contraseña</h2>
+          <div style={{ background: '#ffffff', padding: '25px', borderRadius: '15px', boxShadow: '0 4px 15px rgba(0,0,0,0.3)', maxWidth: '380px', width: '100%', boxSizing: 'border-box', textAlign: 'center' }}>
+            <h2 style={{ color: '#043424', margin: '0 0 10px 0', fontSize: '20px' }}>🔑 Recuperar Contraseña</h2>
             <p style={{ fontSize: '13px', color: '#444', marginBottom: '20px' }}>Paso 1: Escribe tu correo electrónico y tu DNI registrado.</p>
             <form onSubmit={manejarVerificarDatosRecovery} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               <input type="email" placeholder="Correo registrado" value={correoRecovery} onChange={(e) => setCorreoRecovery(e.target.value)} required style={{ padding: '12px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '15px' }} />
@@ -832,11 +821,11 @@ function App() {
                   fontWeight: 'bold', 
                   fontSize: '16px',
                   color: '#ffffff', 
-                  background: '#b27d14', 
+                  background: '#043424', 
                   border: 'none', 
                   borderRadius: '10px', 
                   cursor: 'pointer',
-                  boxShadow: '0 4px 10px rgba(178, 125, 20, 0.3)'
+                  boxShadow: '0 4px 10px rgba(4, 52, 36, 0.3)'
                 }}
               >
                 ➡️ Verificar Datos
@@ -845,7 +834,7 @@ function App() {
             </form>
           </div>
         ) : pantallaActual === 'recovery-escribir-pass' ? (
-          <div style={{ background: 'rgba(255, 255, 255, 0.95)', padding: '25px', borderRadius: '15px', boxShadow: '0 4px 15px rgba(0,0,0,0.3)', maxWidth: '380px', width: '100%', boxSizing: 'border-box', textAlign: 'center' }}>
+          <div style={{ background: '#ffffff', padding: '25px', borderRadius: '15px', boxShadow: '0 4px 15px rgba(0,0,0,0.3)', maxWidth: '380px', width: '100%', boxSizing: 'border-box', textAlign: 'center' }}>
             <h2 style={{ color: '#043424', margin: '0 0 10px 0', fontSize: '20px' }}>🔒 Fijar Nueva Contraseña</h2>
             <form onSubmit={manejarGuardarNuevaPasswordRecovery} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               <input type="password" placeholder="NUEVA contraseña" value={passRecoveryNueva} onChange={(e) => setPassRecoveryNueva(e.target.value)} required style={{ padding: '12px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '15px' }} />
@@ -869,7 +858,7 @@ function App() {
             </form>
           </div>
         ) : (
-          <div style={{ background: 'rgba(255, 255, 255, 0.95)', padding: '30px 25px', borderRadius: '15px', boxShadow: '0 4px 15px rgba(0,0,0,0.3)', maxWidth: '350px', width: '100%', boxSizing: 'border-box', textAlign: 'center' }}>
+          <div style={{ background: '#ffffff', padding: '30px 25px', borderRadius: '15px', boxShadow: '0 4px 15px rgba(0,0,0,0.3)', maxWidth: '350px', width: '100%', boxSizing: 'border-box', textAlign: 'center' }}>
             <h2 style={{ color: '#043424', margin: '0 0 15px 0', fontSize: '22px' }}>Iniciar Sesión</h2>
             <form onSubmit={manejarLogin} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               <input type="email" placeholder="Tu correo electrónico" value={correo} onChange={(e) => setCorreo(e.target.value)} required style={{ padding: '12px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '15px' }} />
@@ -890,7 +879,7 @@ function App() {
               >
                 Entrar
               </button>
-              <button type="button" onClick={() => setPantallaActual('recovery')} style={{ background: 'none', border: 'none', color: '#b27d14', textDecoration: 'underline', cursor: 'pointer', fontSize: '14px', marginTop: '5px' }}>¿Has olvidado tu contraseña?</button>
+              <button type="button" onClick={() => setPantallaActual('recovery')} style={{ background: 'none', border: 'none', color: '#043424', textDecoration: 'underline', cursor: 'pointer', fontSize: '14px', marginTop: '5px' }}>¿Has olvidado tu contraseña?</button>
             </form>
           </div>
         )
@@ -902,14 +891,14 @@ function App() {
               {pantallaActual !== 'menu' ? (
                 <button 
                   onClick={() => setPantallaActual('menu')}
-                  style={{ padding: '10px 20px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '25px', border: 'none', background: '#444444', color: '#ffffff', boxShadow: '0 2px 6px rgba(0,0,0,0.2)' }}
+                  style={{ padding: '10px 20px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '25px', border: 'none', background: '#043424', color: '#ffffff', boxShadow: '0 2px 6px rgba(0,0,0,0.2)' }}
                 >
                   ⬅️ Volver al Menú
                 </button>
               ) : (
                 <button 
                   onClick={() => setPantallaActual('mi-cuenta')}
-                  style={{ padding: '10px 20px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '25px', border: 'none', background: '#c5a059', color: '#ffffff', boxShadow: '0 2px 6px rgba(0,0,0,0.2)' }}
+                  style={{ padding: '10px 20px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '25px', border: 'none', background: '#043424', color: '#ffffff', boxShadow: '0 2px 6px rgba(0,0,0,0.2)' }}
                 >
                   👤 Mi Cuenta
                 </button>
@@ -917,7 +906,7 @@ function App() {
             </div>
           )}
 
-          <div style={{ background: 'rgba(255, 255, 255, 0.96)', padding: 'clamp(15px, 4vw, 30px)', borderRadius: '15px', boxShadow: '0 4px 15px rgba(0,0,0,0.2)', textAlign: 'center', marginBottom: '40px', boxSizing: 'border-box' }}>
+          <div style={{ background: '#ffffff', padding: 'clamp(15px, 4vw, 30px)', borderRadius: '15px', boxShadow: '0 4px 15px rgba(0,0,0,0.2)', textAlign: 'center', marginBottom: '40px', boxSizing: 'border-box' }}>
             
             {pantallaActual === 'primer-cambio-pass' && (
               <div style={{ textAlign: 'center' }}>
@@ -925,14 +914,14 @@ function App() {
                 <p style={{ fontSize: '14px', color: '#333' }}>Es tu primera vez entrando. Por tu privacidad, <strong>debes modificar tu contraseña</strong>.</p>
                 <form onSubmit={manejarChangePassword} style={{ display: 'flex', flexDirection: 'column', gap: '15px', maxWidth: '300px', margin: '0 auto' }}>
                   <input type="password" placeholder="Nueva contraseña personal" value={nuevaPassword} onChange={(e) => setNuevaPassword(e.target.value)} required style={{ padding: '12px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '15px' }} />
-                  <button type="submit" style={{ padding: '16px', background: '#b27d14', color: '#ffffff', border: 'none', borderRadius: '10px', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer', boxShadow: '0 4px 10px rgba(178, 125, 20, 0.3)' }}> Establecer Contraseña </button>
+                  <button type="submit" style={{ padding: '16px', background: '#043424', color: '#ffffff', border: 'none', borderRadius: '10px', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer', boxShadow: '0 4px 10px rgba(4, 52, 36, 0.3)' }}> Establecer Contraseña </button>
                 </form>
               </div>
             )}
 
             {pantallaActual === 'menu' && (
               <div>
-                <h1 style={{ color: '#c5a059', fontSize: 'clamp(20px, 5vw, 26px)', margin: '0 0 5px 0' }}>¡Hola, {nombreEdit || 'Compañero'}!</h1>
+                <h1 style={{ color: '#043424', fontSize: 'clamp(20px, 5vw, 26px)', margin: '0 0 5px 0' }}>¡Hola, {nombreEdit || 'Compañero'}!</h1>
                 <p style={{ color: '#666', fontSize: '13px', margin: '0 0 25px 0' }}>{posicionUser} | Tarifa: <strong>{precioHoraActual}€/h</strong></p>
                 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -945,14 +934,14 @@ function App() {
 
                   <button 
                     onClick={() => setPantallaActual('historial')}
-                    style={{ padding: '16px', background: '#c5a059', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 3px 10px rgba(197, 160, 89, 0.3)' }}
+                    style={{ padding: '16px', background: '#043424', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 3px 10px rgba(4, 52, 36, 0.3)' }}
                   >
                     📊 Historial de Partes
                   </button>
 
                   <button 
                     onClick={() => setPantallaActual('extras')}
-                    style={{ padding: '16px', background: '#b27d14', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 3px 10px rgba(178, 125, 20, 0.3)' }}
+                    style={{ padding: '16px', background: '#043424', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 3px 10px rgba(4, 52, 36, 0.3)' }}
                   >
                     ⚡ Mis Horas Extras
                   </button>
@@ -963,21 +952,21 @@ function App() {
                       
                       <button 
                         onClick={() => setPantallaActual('admin')}
-                        style={{ padding: '16px', background: '#1976d2', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 3px 10px rgba(25, 118, 210, 0.3)' }}
+                        style={{ padding: '16px', background: '#043424', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 3px 10px rgba(4, 52, 36, 0.3)' }}
                       >
                         🛠️ Panel de Administración Máster
                       </button>
 
                       <button 
                         onClick={() => setPantallaActual('efectivo')}
-                        style={{ padding: '16px', background: '#2e7d32', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 3px 10px rgba(46, 125, 50, 0.3)' }}
+                        style={{ padding: '16px', background: '#043424', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 3px 10px rgba(4, 52, 36, 0.3)' }}
                       >
                         💵 Control de Caja / Efectivo
                       </button>
 
                       <button 
                         onClick={() => setPantallaActual('plus-productividad')}
-                        style={{ padding: '16px', background: '#7b1fa2', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 3px 10px rgba(123, 31, 162, 0.3)' }}
+                        style={{ padding: '16px', background: '#043424', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 3px 10px rgba(4, 52, 36, 0.3)' }}
                       >
                         ⭐ Plus de Productividad
                       </button>
@@ -998,7 +987,7 @@ function App() {
                   </div>
 
                   <div style={{ borderTop: '1px solid #eee', paddingTop: '10px' }}>
-                    <h3 style={{ fontSize: '15px', color: '#c5a059', margin: '0 0 10px 0' }}>Tareas Realizadas</h3>
+                    <h3 style={{ fontSize: '15px', color: '#043424', margin: '0 0 10px 0' }}>Tareas Realizadas</h3>
                     
                     {tareasDelDia.map((tarea, index) => {
                       const trabajosDisponibles = baseDatosObras[tarea.obra] || ['OTROS'];
@@ -1075,7 +1064,7 @@ function App() {
 
             {pantallaActual === 'historial' && (
               <div>
-                <h2 style={{ color: '#c5a059', fontSize: '20px', margin: '0 0 15px 0' }}>📊 Historial de Partes</h2>
+                <h2 style={{ color: '#043424', fontSize: '20px', margin: '0 0 15px 0' }}>📊 Historial de Partes</h2>
                 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: '#f5f5f5', padding: '12px', borderRadius: '8px', marginBottom: '15px' }}>
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -1114,8 +1103,8 @@ function App() {
                       <div key={index} style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: '8px', padding: '12px', marginBottom: '10px', textAlign: 'left', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '6px', marginBottom: '8px', fontSize: '13px' }}>
                           <strong style={{ color: '#043424' }}>📅 {fechaFormateada}</strong>
-                          <span style={{ color: '#c5a059', fontWeight: 'bold' }}>
-                            Total: {item.horasTotales}h {item.horasExtraTotales > 0 && <span style={{ color: '#b27d14' }}>(+{item.horasExtraTotales}h ext)</span>}
+                          <span style={{ color: '#043424', fontWeight: 'bold' }}>
+                            {item.horasTotales}h {item.horasExtraTotales > 0 && <span style={{ color: '#555' }}>(+{item.horasExtraTotales}h)</span>}
                           </span>
                         </div>
 
@@ -1136,7 +1125,7 @@ function App() {
 
             {pantallaActual === 'extras' && (
               <div>
-                <h2 style={{ color: '#b27d14', fontSize: '20px', margin: '0 0 15px 0' }}>⚡ Historial de Horas Extras</h2>
+                <h2 style={{ color: '#043424', fontSize: '20px', margin: '0 0 15px 0' }}>⚡ Historial de Horas Extras</h2>
                 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: '#f5f5f5', padding: '12px', borderRadius: '8px', marginBottom: '15px' }}>
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -1160,8 +1149,8 @@ function App() {
                   )}
                 </div>
 
-                <div style={{ background: '#fff9e6', border: '1px solid #ffeeba', padding: '12px', borderRadius: '8px', marginBottom: '15px', textAlign: 'center' }}>
-                  <span style={{ fontSize: '14px', color: '#856404' }}>Acumulado total de horas extras registradas: <strong>{totalGeneralExtrasProducidas}h</strong></span>
+                <div style={{ background: '#f9f9f9', border: '1px solid #e0e0e0', padding: '12px', borderRadius: '8px', marginBottom: '15px', textAlign: 'center' }}>
+                  <span style={{ fontSize: '14px', color: '#333' }}>Acumulado total de horas extras registradas: <strong>{totalGeneralExtrasProducidas}h</strong></span>
                 </div>
 
                 {extrasFiltradas.length === 0 ? (
@@ -1174,8 +1163,8 @@ function App() {
                     return (
                       <div key={ex.id} style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: '8px', padding: '12px', marginBottom: '10px', textAlign: 'left', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '6px', marginBottom: '6px', fontSize: '13px' }}>
-                          <strong style={{ color: '#b27d14' }}>📅 {fechaFormateada}</strong>
-                          <span style={{ color: '#b27d14', fontWeight: 'bold' }}>+{ex.horas}h extras</span>
+                          <strong style={{ color: '#043424' }}>📅 {fechaFormateada}</strong>
+                          <span style={{ color: '#043424', fontWeight: 'bold' }}>+{ex.horas}h extras</span>
                         </div>
                         <div style={{ fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
                           <div><strong>Motivo:</strong> {ex.motivo}</div>
@@ -1190,7 +1179,7 @@ function App() {
 
             {pantallaActual === 'admin' && (
               <div>
-                <h2 style={{ color: '#1976d2', fontSize: '20px', margin: '0 0 15px 0' }}>🛠️ Panel de Administración Máster</h2>
+                <h2 style={{ color: '#043424', fontSize: '20px', margin: '0 0 15px 0' }}>🛠️ Panel de Administración Máster</h2>
                 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: '#f5f5f5', padding: '12px', borderRadius: '8px', marginBottom: '15px' }}>
                   <input type="text" placeholder="🔍 Buscar por empleado, obra o trabajo..." value={busquedaAdmin} onChange={(e) => setBusquedaAdmin(e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '13px', boxSizing: 'border-box' }} />
@@ -1229,7 +1218,7 @@ function App() {
                     return (
                       <div key={p.id} style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: '8px', padding: '12px', marginBottom: '10px', textAlign: 'left', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee', paddingBottom: '6px', marginBottom: '8px' }}>
-                          <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#1976d2' }}>👤 {nombreEmpleadoCompleto}</span>
+                          <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#043424' }}>👤 {nombreEmpleadoCompleto}</span>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <span style={{ fontSize: '12px', color: '#666' }}>📅 {fechaFormateada}</span>
                             <button 
@@ -1260,7 +1249,7 @@ function App() {
                           <div><strong>Trabajo:</strong> {p.trabajo}</div>
                           <div>
                             <strong>Horas:</strong> {p.horas}h 
-                            {p.horas_extra > 0 && <span style={{ color: '#b27d14', fontWeight: 'bold', marginLeft: '6px' }}>(+{p.horas_extra}h extras)</span>}
+                            {p.horas_extra > 0 && <span style={{ color: '#555', fontWeight: 'bold', marginLeft: '6px' }}>(+{p.horas_extra}h extras)</span>}
                           </div>
                           {p.lugarTrabajo && <div><strong>Lugar:</strong> {p.lugarTrabajo}</div>}
                           {p.notes && <div style={{ fontSize: '11px', color: '#555', fontStyle: 'italic', marginTop: '2px' }}>Obs: {p.notes}</div>}
@@ -1274,17 +1263,17 @@ function App() {
 
             {pantallaActual === 'efectivo' && (
               <div>
-                <h2 style={{ color: '#2e7d32', fontSize: '20px', margin: '0 0 15px 0' }}>💵 Control de Caja / Efectivo</h2>
+                <h2 style={{ color: '#043424', fontSize: '20px', margin: '0 0 15px 0' }}>💵 Control de Caja / Efectivo</h2>
                 
-                <div style={{ background: '#e8f5e9', border: '1px solid #c8e6c9', padding: '15px', borderRadius: '8px', marginBottom: '20px', textAlign: 'center' }}>
-                  <span style={{ fontSize: '14px', color: '#2e7d32', display: 'block', marginBottom: '5px' }}>Saldo Actual en Caja:</span>
-                  <span style={{ fontSize: '24px', fontWeight: 'bold', color: saldoEfectivoCalculado >= 0 ? '#2e7d32' : '#d32f2f' }}>
+                <div style={{ background: '#f5f5f5', border: '1px solid #e0e0e0', padding: '15px', borderRadius: '8px', marginBottom: '20px', textAlign: 'center' }}>
+                  <span style={{ fontSize: '14px', color: '#333', display: 'block', marginBottom: '5px' }}>Saldo Actual en Caja:</span>
+                  <span style={{ fontSize: '24px', fontWeight: 'bold', color: '#043424' }}>
                     {saldoEfectivoCalculado.toFixed(2)} €
                   </span>
                 </div>
 
                 <form onSubmit={manejarRegistrarEfectivo} style={{ display: 'flex', flexDirection: 'column', gap: '12px', textAlign: 'left', marginBottom: '25px', background: '#f9f9f9', padding: '15px', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
-                  <h3 style={{ fontSize: '14px', color: '#2e7d32', margin: '0 0 5px 0' }}>Registrar Nuevo Movimiento</h3>
+                  <h3 style={{ fontSize: '14px', color: '#043424', margin: '0 0 5px 0' }}>Registrar Nuevo Movimiento</h3>
                   
                   <div style={{ display: 'flex', gap: '10px' }}>
                     <div style={{ flex: '1' }}>
@@ -1310,7 +1299,7 @@ function App() {
                     <input type="text" placeholder="Ej: Compra de material, Gasolina..." value={conceptoEfectivo} onChange={(e) => setConceptoEfectivo(e.target.value)} required style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '13px', boxSizing: 'border-box' }} />
                   </div>
 
-                  <button type="submit" style={{ padding: '12px', background: '#2e7d32', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '14px', cursor: 'pointer', marginTop: '5px' }}>💾 Guardar Movimiento</button>
+                  <button type="submit" style={{ padding: '12px', background: '#043424', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '14px', cursor: 'pointer', marginTop: '5px' }}>💾 Guardar Movimiento</button>
                 </form>
 
                 <h3 style={{ fontSize: '15px', color: '#333', textAlign: 'left', margin: '0 0 10px 0' }}>Historial de Movimientos</h3>
@@ -1325,7 +1314,7 @@ function App() {
                     return (
                       <div key={mov.id || mov.created_at} style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: '8px', padding: '12px', marginBottom: '10px', textAlign: 'left', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '6px', marginBottom: '6px', fontSize: '13px' }}>
-                          <strong style={{ color: esEntrada ? '#2e7d32' : '#d32f2f' }}>
+                          <strong style={{ color: '#043424' }}>
                             {esEntrada ? '🟢 Entrada' : '🔴 Salida'} - {fechaFormateada}
                           </strong>
                           <span style={{ fontWeight: 'bold', color: esEntrada ? '#2e7d32' : '#d32f2f' }}>
@@ -1345,10 +1334,10 @@ function App() {
 
             {pantallaActual === 'plus-productividad' && (
               <div>
-                <h2 style={{ color: '#7b1fa2', fontSize: '20px', margin: '0 0 15px 0' }}>⭐ Plus de Productividad</h2>
+                <h2 style={{ color: '#043424', fontSize: '20px', margin: '0 0 15px 0' }}>⭐ Plus de Productividad</h2>
                 
                 <form onSubmit={manejarGuardarPlus} style={{ display: 'flex', flexDirection: 'column', gap: '12px', textAlign: 'left', marginBottom: '25px', background: '#f9f9f9', padding: '15px', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
-                  <h3 style={{ fontSize: '14px', color: '#7b1fa2', margin: '0 0 5px 0' }}>Asignar Plus a Empleado</h3>
+                  <h3 style={{ fontSize: '14px', color: '#043424', margin: '0 0 5px 0' }}>Asignar Plus a Empleado</h3>
                   
                   <div style={{ display: 'flex', gap: '10px' }}>
                     <div style={{ flex: '1' }}>
@@ -1374,7 +1363,7 @@ function App() {
                     <input type="text" placeholder="Ej: Productividad semanal, incentivo..." value={conceptoPlus} onChange={(e) => setConceptoPlus(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '13px', boxSizing: 'border-box' }} />
                   </div>
 
-                  <button type="submit" style={{ padding: '12px', background: '#7b1fa2', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '14px', cursor: 'pointer', marginTop: '5px' }}>💾 Guardar Plus</button>
+                  <button type="submit" style={{ padding: '12px', background: '#043424', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '14px', cursor: 'pointer', marginTop: '5px' }}>💾 Guardar Plus</button>
                 </form>
 
                 <h3 style={{ fontSize: '15px', color: '#333', textAlign: 'left', margin: '0 0 10px 0' }}>Historial de Pluses Asignados</h3>
@@ -1391,8 +1380,8 @@ function App() {
                     return (
                       <div key={pl.id} style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: '8px', padding: '12px', marginBottom: '10px', textAlign: 'left', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '6px', marginBottom: '6px', fontSize: '13px' }}>
-                          <strong style={{ color: '#7b1fa2' }}>⭐ {nombreEmp}</strong>
-                          <span style={{ fontWeight: 'bold', color: '#7b1fa2' }}>+{Number(pl.importe).toFixed(2)} €</span>
+                          <strong style={{ color: '#043424' }}>⭐ {nombreEmp}</strong>
+                          <span style={{ fontWeight: 'bold', color: '#043424' }}>+{Number(pl.importe).toFixed(2)} €</span>
                         </div>
                         <div style={{ fontSize: '12px', color: '#444' }}>
                           <div><strong>Concepto:</strong> {pl.concepto}</div>
@@ -1407,7 +1396,7 @@ function App() {
 
             {pantallaActual === 'mi-cuenta' && (
               <div>
-                <h2 style={{ color: '#c5a059', fontSize: '20px', margin: '0 0 15px 0' }}>👤 Configuración de Mi Cuenta</h2>
+                <h2 style={{ color: '#043424', fontSize: '20px', margin: '0 0 15px 0' }}>👤 Configuración de Mi Cuenta</h2>
                 
                 <div style={{ background: '#f9f9f9', padding: '15px', borderRadius: '8px', border: '1px solid #e0e0e0', textAlign: 'left', marginBottom: '20px' }}>
                   <div style={{ fontSize: '13px', marginBottom: '8px' }}><strong>Correo:</strong> {usuarioConectado}</div>
@@ -1422,9 +1411,9 @@ function App() {
                 </div>
 
                 <form onSubmit={manejarChangePassword} style={{ display: 'flex', flexDirection: 'column', gap: '10px', borderTop: '1px solid #eee', paddingTop: '15px', textAlign: 'left' }}>
-                  <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#b27d14' }}>Cambiar Contraseña:</label>
+                  <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#043424' }}>Cambiar Contraseña:</label>
                   <input type="password" placeholder="Nueva contraseña" value={nuevaPassword} onChange={(e) => setNuevaPassword(e.target.value)} required style={{ padding: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px' }} />
-                  <button type="submit" style={{ padding: '10px', background: '#b27d14', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>🔒 Actualizar Contraseña</button>
+                  <button type="submit" style={{ padding: '10px', background: '#043424', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>🔒 Actualizar Contraseña</button>
                 </form>
 
                 <button 
