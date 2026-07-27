@@ -270,7 +270,7 @@ function App() {
     }
   };
 
-  // CARGAR REGISTROS DE PLUSES DE PRODUCTIVIDAD DESDE SUPABASE (AHORA DISPONIBLE PARA TODOS LOS USUARIOS)
+  // CARGAR REGISTROS DE PLUSES DE PRODUCTIVIDAD DESDE SUPABASE
   const cargarPluses = async () => {
     try {
       const { data, error } = await supabase
@@ -287,7 +287,7 @@ function App() {
 
   useEffect(() => {
     if (usuarioConectado) {
-      cargarPluses(); // Se cargan siempre para que cada empleado vea sus pluses asignados
+      cargarPluses(); // Para que cada empleado pueda consultar sus pluses asignados
       if (usuarioConectado === EMAIL_ADMIN_MASTER || posicionUser === 'Técnico de Proyectos') {
         cargarEfectivo();
       }
@@ -770,10 +770,6 @@ function App() {
     return true;
   });
 
-  const totalGeneralExtrasProducidas = horasExtrasHistorial
-    .filter(h => h.empleado === usuarioConectado)
-    .reduce((sum, h) => sum + Number(h.horas || 0), 0);
-
   // FILTRADO MÁSTER PARA ADMINISTRACIÓN
   const partesAdminFiltrados = todosLosPartesAdmin.filter(p => {
     if (filtroAdminEmpleado && p.empleado !== filtroAdminEmpleado) return false;
@@ -981,14 +977,17 @@ function App() {
                       >
                         💰 Gestión de Efectivo
                       </button>
-
-                      <button 
-                        onClick={() => setPantallaActual('admin-pluses')} 
-                        style={{ padding: '16px 20px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '10px', border: '2px solid #b27d14', background: '#ffffff', color: '#b27d14', boxShadow: '0 3px 8px rgba(0,0,0,0.1)' }}
-                      >
-                        ⭐ Plus de Productividad
-                      </button>
                     </>
+                  )}
+
+                  {/* 5. PLUS DE PRODUCTIVIDAD (EXCLUSIVO ADMINISTRACIÓN MÁSTER) */}
+                  {usuarioConectado === EMAIL_ADMIN_MASTER && (
+                    <button 
+                      onClick={() => setPantallaActual('admin-pluses')} 
+                      style={{ padding: '16px 20px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '10px', border: '2px solid #b27d14', background: '#ffffff', color: '#b27d14', boxShadow: '0 3px 8px rgba(0,0,0,0.1)' }}
+                    >
+                      ⭐ Plus de Productividad
+                    </button>
                   )}
                 </div>
               </div>
