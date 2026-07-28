@@ -1211,7 +1211,7 @@ function App() {
                       </div>
                       
                       <div style={{ background: '#eafaf1', padding: '12px', borderRadius: '8px', borderLeft: '4px solid #2e7d32' }}>
-                        <div style={{ fontSize: '11px', color: '#2e7d32', fontWeight: 'bold' }}>PAGADO + PLUSES ⭐</div>
+                        <div style={{ fontSize: '11px', color: '#2e7d32', fontWeight: 'bold' }}>IMPORTE PAGADO ⭐</div>
                         <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#2e7d32' }}>{importePagadoTotal.toFixed(2)} €</div>
                         <div style={{ fontSize: '10px', color: '#555', marginTop: '2px' }}>(Incluye {totalPlusesAsignados.toFixed(2)}€ de plus)</div>
                       </div>
