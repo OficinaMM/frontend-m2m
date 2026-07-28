@@ -1267,29 +1267,45 @@ function App() {
               <span style={{ fontWeight: 'bold', color: '#043424', fontSize: '13px' }}>👤 {parte.empleado}</span>
               <span style={{ fontSize: '12px', color: '#666' }}>📅 {parte.fecha ? parte.fecha.split('-').reverse().join('/') : ''}</span>
             </div>
-            <div style={{ fontSize: '13px', color: '#333', marginBottom: '4px' }}><strong>Obra:</strong> {parte.obra} ({parte.horas}h)</div>
+            <div style={{ fontSize: '13px', color: '#333', marginBottom: '4px' }}>
+              <strong>Obra:</strong> {parte.obra} ({parte.horas}h {parte.horas_extra > 0 ? `| ⏱️ ${parte.horas_extra}h extra` : ''})
+            </div>
             <div style={{ fontSize: '13px', color: '#444', marginBottom: '8px' }}><strong>Trabajo:</strong> {parte.trabajo}</div>
             
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <button 
-                onClick={() => {
-                  if (window.confirm("¿Seguro que deseas eliminar este parte? Se borrarán también sus horas extras asociadas.")) {
-                    
-                    // 1. Borrar de la lista filtrada o principal usando el estado que alimenta el panel
-                    const nuevosPartes = partesAdminFiltrados.filter(p => p.id !== parte.id);
-                    // Actualizamos el almacenamiento local directamente para forzar el borrado
-                    if (typeof localStorage !== 'undefined') {
-                      const partesGuardados = JSON.parse(localStorage.getItem('partesTrabajo') || '[]');
-                      const partesFiltradosLS = partesGuardados.filter(p => p.id !== parte.id);
-                      localStorage.setItem('partesTrabajo', JSON.stringify(partesFiltradosLS));
+                onClick={async () => {
+                  if (window.confirm("¿Seguro que deseas eliminar este parte y sus horas extras asociadas?")) {
+                    try {
+                      // 1. Borrar la fila correspondiente en la tabla 'partes_publicos' de Supabase
+                      const { error } = await supabase
+                        .from('partes_publicos')
+                        .delete()
+                        .eq('id', parte.id);
 
-                      const extrasGuardadas = JSON.parse(localStorage.getItem('horasExtras') || '[]');
-                      const extrasFiltradasLS = extrasGuardadas.filter(extra => extra.idParteOrigen !== parte.id && extra.fecha !== parte.fecha);
-                      localStorage.setItem('horasExtras', JSON.stringify(extrasFiltradasLS));
+                      if (error) {
+                        console.error("Error al borrar en Supabase:", error.message);
+                        alert("No se pudo eliminar el parte de la base de datos.");
+                        return;
+                      }
+
+                      // 2. Actualizar el estado local para que desaparezca de la pantalla al instante sin recargar la app
+                      if (typeof setPartes === 'function') {
+                        setPartes(prev => prev.filter(p => p.id !== parte.id));
+                      }
+                      
+                      // Si usas alguna función para refrescar la lista general desde Supabase (por ejemplo, un cargarPartes()), puedes llamarla aquí:
+                      if (typeof cargarPartes === 'function') {
+                        cargarPartes();
+                      } else {
+                        // Si no hay función de recarga, forzamos un pequeño cambio de estado o recarga limpia de datos si procede, 
+                        // o simplemente dejamos que el filtro actualice la vista al quitar el elemento del array principal.
+                      }
+
+                      alert("¡Parte y horas extras eliminados correctamente!");
+                    } catch (err) {
+                      console.error("Error inesperado:", err);
                     }
-
-                    // Recargamos la ventana para refrescar todos los estados de golpe y evitar errores de variables no definidas
-                    window.location.reload();
                   }
                 }} 
                 style={{ background: '#d32f2f', color: '#fff', border: 'none', borderRadius: '4px', padding: '4px 10px', fontSize: '11px', cursor: 'pointer', fontWeight: 'bold' }}
