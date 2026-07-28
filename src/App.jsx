@@ -1274,15 +1274,25 @@ function App() {
               <button 
                 onClick={() => {
                   if (window.confirm("¿Seguro que deseas eliminar este parte? Se borrarán también sus horas extras asociadas.")) {
-                    // 1. Borrar el parte de la lista general
+                    
+                    // 1. Borrar el parte de la lista general de partes
                     const nuevosPartes = partes.filter(p => p.id !== parte.id);
                     setPartes(nuevosPartes);
                     if (typeof localStorage !== 'undefined') {
                       localStorage.setItem('partesTrabajo', JSON.stringify(nuevosPartes));
                     }
 
-                    // 2. Borrar las horas extras que correspondan a este parte
-                    const nuevasExtras = horasExtras.filter(extra => extra.idParteOrigen !== parte.id);
+                    // 2. Borrar las horas extras que coincidan por ID de origen, O por empleado + fecha + obra (para partes antiguos)
+                    const nuevasExtras = horasExtras.filter(extra => {
+                      const esMismoOrigen = extra.idParteOrigen === parte.id;
+                      const coincideDatos = extra.empleado === parte.empleado && 
+                                           extra.fecha === parte.fecha && 
+                                           (extra.obrasDelDia?.includes(parte.obra) || parte.obra.includes(parte.obra));
+                      
+                      // Si cumple cualquiera de las dos, se elimina
+                      return !(esMismoOrigen || coincideDatos);
+                    });
+
                     setHorasExtras(nuevasExtras);
                     if (typeof localStorage !== 'undefined') {
                       localStorage.setItem('horasExtras', JSON.stringify(nuevasExtras));
