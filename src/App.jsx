@@ -1265,7 +1265,7 @@ function App() {
           <div key={parte.id} style={{ background: '#fcfcfc', border: '1px solid #e0e0e0', borderRadius: '8px', padding: '12px', boxSizing: 'border-box' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
               <span style={{ fontWeight: 'bold', color: '#043424', fontSize: '13px' }}>👤 {parte.empleado}</span>
-              <span style={{ fontSize: '12px', color: '#666' }}>📅 {parte.fecha.split('-').reverse().join('/')}</span>
+              <span style={{ fontSize: '12px', color: '#666' }}>📅 {parte.fecha ? parte.fecha.split('-').reverse().join('/') : ''}</span>
             </div>
             <div style={{ fontSize: '13px', color: '#333', marginBottom: '4px' }}><strong>Obra:</strong> {parte.obra} ({parte.horas}h)</div>
             <div style={{ fontSize: '13px', color: '#444', marginBottom: '8px' }}><strong>Trabajo:</strong> {parte.trabajo}</div>
