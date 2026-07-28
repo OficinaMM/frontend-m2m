@@ -1163,7 +1163,7 @@ function App() {
               </div>
             )}
 
-     {/* APARTADO DE MIS HORAS EXTRAS */}
+   {/* APARTADO DE MIS HORAS EXTRAS */}
 {pantallaActual === 'horas-extras' && (
   <div style={{ textAlign: 'left' }}>
     <h2 style={{ color: '#b27d14', marginTop: 0, fontSize: '20px', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>⏳ Mis Horas Extras Acumuladas</h2>
@@ -1227,11 +1227,6 @@ function App() {
     ) : (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '55vh', overflowY: 'auto', paddingRight: '4px' }}>
         {extrasFiltradas.map((extra) => {
-          const tarifa = tarifasPorCategoria[posicionUser] || 10;
-          const importeExtra = Number(extra.horas) * tarifa;
-          const pagadoExtra = Number(extra.importe_pagado || 0);
-          const pendienteExtra = importeExtra - pagadoExtra;
-
           return (
             <div key={extra.id} style={{ background: '#fcfcfc', border: '1px solid #e0e0e0', borderRadius: '8px', padding: '14px', boxSizing: 'border-box', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
@@ -1240,12 +1235,8 @@ function App() {
               </div>
               <div style={{ fontSize: '13px', color: '#444', marginBottom: '4px' }}><strong>Motivo:</strong> {extra.motivo}</div>
               {extra.obrasDelDia && extra.obrasDelDia.length > 0 && (
-                <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px' }}><strong>Obra(s):</strong> {extra.obrasDelDia.join(', ')}</div>
+                <div style={{ fontSize: '12px', color: '#666', marginBottom: '0px' }}><strong>Obra(s):</strong> {extra.obrasDelDia.join(', ')}</div>
               )}
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', borderTop: '1px dashed #ddd', paddingTop: '6px', marginTop: '6px' }}>
-                <span style={{ color: '#2e7d32' }}>🟢 Pagado: <strong>{pagadoExtra.toFixed(2)} €</strong></span>
-                <span style={{ color: '#b27d14' }}>🟠 Pendiente: <strong>{pendienteExtra.toFixed(2)} €</strong></span>
-              </div>
             </div>
           );
         })}
