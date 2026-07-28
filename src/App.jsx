@@ -1162,78 +1162,75 @@ function App() {
                 )}
               </div>
             )}
-{/* APARTADO DE MIS HORAS EXTRAS */}
-{pantallaActual === 'horas-extras' && (
-  <div style={{ textAlign: 'left' }}>
-    <h2 style={{ color: '#b27d14', marginTop: 0, fontSize: '20px', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>⏳ Mis Horas Extras Acumuladas</h2>
-    
-    <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap', alignItems: 'center' }}>
-      <div>
-        <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', color: '#555', marginBottom: '4px' }}>Filtrar por Mes:</label>
-        <input type="month" value={filtroExtraMes} onChange={(e) => setFiltroExtraMes(e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px' }} />
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', marginTop: '16px' }}>
-        <label style={{ fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <input type="checkbox" checked={filtroExtraSemana} onChange={(e) => setFiltroExtraSemana(e.target.checked)} style={{ width: '18px', height: '18px', accentColor: '#b27d14' }} />
-          📅 Solo semana actual
-        </label>
-      </div>
-      {(filtroExtraMes || filtroExtraSemana) && (
-        <button onClick={limpiarFiltrosExtras} style={{ marginTop: '16px', padding: '8px 12px', background: '#666', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold' }}>🔄 Ver Todas</button>
-      )}
-    </div>
 
-    {/* RESUMEN FINANCIERO DE HORAS EXTRAS */}
-    {(() => {
-      const tarifaAplicada = tarifasPorCategoria[posicionUser] || 10;
-      const listaExtras = typeof misHorasExtrasFiltradas !== 'undefined' ? misHorasExtrasFiltradas : (typeof extrasFiltradas !== 'undefined' ? extrasFiltradas : []);
-      const totalHorasFiltradas = listaExtras.reduce((acc, h) => acc + Number(h.horas || 0), 0);
+            {/* APARTADO DE MIS HORAS EXTRAS */}
+{pantallaActual === 'horas-extras' && (() => {
+  // Obtenemos la lista filtrada de horas de forma segura a partir de los estados reales de tu app
+  const listaExtras = typeof misHorasExtrasFiltradas !== 'undefined' ? misHorasExtrasFiltradas : (typeof horasExtrasFiltradas !== 'undefined' ? horasExtrasFiltradas : []);
+  const tarifaAplicada = tarifasPorCategoria[posicionUser] || 10;
+  const totalHorasFiltradas = listaExtras.reduce((acc, h) => acc + Number(h.horas || 0), 0);
+  
+  // Pluses del usuario actual (asignados por el administrador máster)
+  const misPluses = historialPluses.filter(p => p.empleado === usuarioConectado);
+  const totalPlusesAsignados = misPluses.reduce((acc, p) => acc + Number(p.importe || 0), 0);
+
+  // Importe total bruto generado por las horas extras (En Euros)
+  const totalBrutoHoras = totalHorasFiltradas * tarifaAplicada;
+
+  // Importes pagados (Suma de lo marcado como pagado en las horas + pluses de productividad)
+  const importePagadoBase = Number(listaExtras.reduce((acc, h) => acc + Number(h.importe_pagado || 0), 0));
+  const importePagadoTotal = importePagadoBase + totalPlusesAsignados;
+
+  // Saldo pendiente: Diferencia exacta entre el total acumulado en euros y los importes pagados totales
+  const saldoPendiente = totalBrutoHoras - importePagadoTotal;
+
+  return (
+    <div style={{ textAlign: 'left' }}>
+      <h2 style={{ color: '#b27d14', marginTop: 0, fontSize: '20px', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>⏳ Mis Horas Extras Acumuladas</h2>
       
-      // Pluses del usuario actual (asignados por el administrador máster)
-      const misPluses = historialPluses.filter(p => p.empleado === usuarioConectado);
-      const totalPlusesAsignados = misPluses.reduce((acc, p) => acc + Number(p.importe || 0), 0);
-
-      // Importe total bruto generado por las horas extras (En Euros)
-      const totalBrutoHoras = totalHorasFiltradas * tarifaAplicada;
-
-      // Importes pagados (Suma de lo marcado como pagado en las horas + pluses de productividad)
-      const importePagadoBase = Number(listaExtras.reduce((acc, h) => acc + Number(h.importe_pagado || 0), 0));
-      const importePagadoTotal = importePagadoBase + totalPlusesAsignados;
-
-      // Saldo pendiente: Diferencia entre el total acumulado en euros y los importes pagados totales
-      const saldoPendiente = totalBrutoHoras - importePagadoTotal;
-
-      return (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '20px' }}>
-          
-          {/* TARJETA 1: TOTAL ACUMULADO */}
-          <div style={{ background: '#f8f9fa', padding: '12px', borderRadius: '8px', borderLeft: '4px solid #b27d14' }}>
-            <div style={{ fontSize: '11px', color: '#666', fontWeight: 'bold' }}>TOTAL ACUMULADO</div>
-            <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>{totalBrutoHoras.toFixed(2)} €</div>
-            <div style={{ fontSize: '11px', color: '#b27d14', fontWeight: 'bold', marginTop: '3px' }}>⏱️ {totalHorasFiltradas} horas acumuladas</div>
-            <div style={{ fontSize: '10px', color: '#777', marginTop: '1px' }}>(Tarifa: {tarifaAplicada}€/h)</div>
-          </div>
-          
-          {/* TARJETA 2: IMPORTES PAGADOS */}
-          <div style={{ background: '#eafaf1', padding: '12px', borderRadius: '8px', borderLeft: '4px solid #2e7d32' }}>
-            <div style={{ fontSize: '11px', color: '#2e7d32', fontWeight: 'bold' }}>IMPORTES PAGADOS ⭐</div>
-            <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#2e7d32' }}>{importePagadoTotal.toFixed(2)} €</div>
-            <div style={{ fontSize: '10px', color: '#555', marginTop: '2px' }}>(Incluye {totalPlusesAsignados.toFixed(2)}€ de plus)</div>
-          </div>
-
-          {/* TARJETA 3: SALDO PENDIENTE */}
-          <div style={{ background: '#fef9e7', padding: '12px', borderRadius: '8px', borderLeft: '4px solid #b27d14' }}>
-            <div style={{ fontSize: '11px', color: '#b27d14', fontWeight: 'bold' }}>SALDO PENDIENTE</div>
-            <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#b27d14' }}>{saldoPendiente.toFixed(2)} €</div>
-          </div>
-
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div>
+          <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', color: '#555', marginBottom: '4px' }}>Filtrar por Mes:</label>
+          <input type="month" value={filtroExtraMes} onChange={(e) => setFiltroExtraMes(e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px' }} />
         </div>
-      );
-    })()}
+        <div style={{ display: 'flex', alignItems: 'center', marginTop: '16px' }}>
+          <label style={{ fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <input type="checkbox" checked={filtroExtraSemana} onChange={(e) => setFiltroExtraSemana(e.target.checked)} style={{ width: '18px', height: '18px', accentColor: '#b27d14' }} />
+            📅 Solo semana actual
+          </label>
+        </div>
+        {(filtroExtraMes || filtroExtraSemana) && (
+          <button onClick={limpiarFiltrosExtras} style={{ marginTop: '16px', padding: '8px 12px', background: '#666', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold' }}>🔄 Ver Todas</button>
+        )}
+      </div>
 
-    {(() => {
-      const listaExtras = typeof misHorasExtrasFiltradas !== 'undefined' ? misHorasExtrasFiltradas : (typeof extrasFiltradas !== 'undefined' ? extrasFiltradas : []);
-      return listaExtras.length === 0 ? (
+      {/* RESUMEN FINANCIERO DE HORAS EXTRAS */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '20px' }}>
+        
+        {/* TARJETA 1: TOTAL ACUMULADO (HORAS Y EUROS UNIFICADOS) */}
+        <div style={{ background: '#f8f9fa', padding: '12px', borderRadius: '8px', borderLeft: '4px solid #b27d14' }}>
+          <div style={{ fontSize: '11px', color: '#666', fontWeight: 'bold' }}>TOTAL ACUMULADO</div>
+          <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>{totalBrutoHoras.toFixed(2)} €</div>
+          <div style={{ fontSize: '11px', color: '#b27d14', fontWeight: 'bold', marginTop: '3px' }}>⏱️ {totalHorasFiltradas} horas acumuladas</div>
+          <div style={{ fontSize: '10px', color: '#777', marginTop: '1px' }}>(Tarifa: {tarifaAplicada}€/h)</div>
+        </div>
+        
+        {/* TARJETA 2: IMPORTES PAGADOS (INCLUYE PAGOS + PLUSES DE PRODUCTIVIDAD) */}
+        <div style={{ background: '#eafaf1', padding: '12px', borderRadius: '8px', borderLeft: '4px solid #2e7d32' }}>
+          <div style={{ fontSize: '11px', color: '#2e7d32', fontWeight: 'bold' }}>IMPORTES PAGADOS ⭐</div>
+          <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#2e7d32' }}>{importePagadoTotal.toFixed(2)} €</div>
+          <div style={{ fontSize: '10px', color: '#555', marginTop: '2px' }}>(Incluye {totalPlusesAsignados.toFixed(2)}€ de plus)</div>
+        </div>
+
+        {/* TARJETA 3: SALDO PENDIENTE (TOTAL ACUMULADO - IMPORTES PAGADOS) */}
+        <div style={{ background: '#fef9e7', padding: '12px', borderRadius: '8px', borderLeft: '4px solid #b27d14' }}>
+          <div style={{ fontSize: '11px', color: '#b27d14', fontWeight: 'bold' }}>SALDO PENDIENTE</div>
+          <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#b27d14' }}>{saldoPendiente.toFixed(2)} €</div>
+        </div>
+
+      </div>
+
+      {listaExtras.length === 0 ? (
         <p style={{ textAlign: 'center', color: '#666', padding: '20px' }}>No hay registros de horas extras para este filtro.</p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '55vh', overflowY: 'auto', paddingRight: '4px' }}>
@@ -1261,10 +1258,10 @@ function App() {
             );
           })}
         </div>
-      );
-    })()}
-  </div>
-)}
+      )}
+    </div>
+  );
+})()}
             {pantallaActual === 'admin-partes' && (
               <div style={{ textAlign: 'left' }}>
                 <h2 style={{ color: '#043424', marginTop: 0, fontSize: '20px', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>🛠️ Panel Admin: Todos los Partes</h2>
