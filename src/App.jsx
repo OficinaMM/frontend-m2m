@@ -1244,41 +1244,62 @@ function App() {
     )}
   </div>
 )}
-            {pantallaActual === 'admin-partes' && (
-              <div style={{ textAlign: 'left' }}>
-                <h2 style={{ color: '#043424', marginTop: 0, fontSize: '20px', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>🛠️ Panel Admin: Todos los Partes</h2>
-                
-                <div style={{ display: 'flex', gap: '10px', marginBottom: '15px', flexWrap: 'wrap' }}>
-                  <input type="text" placeholder="🔍 Buscar por empleado, obra..." value={busquedaAdmin} onChange={(e) => setBusquedaAdmin(e.target.value)} style={{ flex: '1', minWidth: '180px', padding: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px' }} />
-                  <input type="month" value={filtroAdminMes} onChange={(e) => setFiltroAdminMes(e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px' }} />
-                  {(busquedaAdmin || filtroAdminMes) && (
-                    <button onClick={limpiarFiltrosAdmin} style={{ padding: '8px 12px', background: '#666', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold' }}>🔄 Limpiar</button>
-                  )}
-                </div>
+ 
+{pantallaActual === 'admin-partes' && (
+  <div style={{ textAlign: 'left' }}>
+    <h2 style={{ color: '#043424', marginTop: 0, fontSize: '20px', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>🛠️ Panel Admin: Todos los Partes</h2>
+    
+    <div style={{ display: 'flex', gap: '10px', marginBottom: '15px', flexWrap: 'wrap' }}>
+      <input type="text" placeholder="🔍 Buscar por empleado, obra..." value={busquedaAdmin} onChange={(e) => setBusquedaAdmin(e.target.value)} style={{ flex: '1', minWidth: '180px', padding: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px' }} />
+      <input type="month" value={filtroAdminMes} onChange={(e) => setFiltroAdminMes(e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px' }} />
+      {(busquedaAdmin || filtroAdminMes) && (
+        <button onClick={limpiarFiltrosAdmin} style={{ padding: '8px 12px', background: '#666', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold' }}>🔄 Limpiar</button>
+      )}
+    </div>
 
-                {partesAdminFiltrados.length === 0 ? (
-                  <p style={{ textAlign: 'center', color: '#666', padding: '20px' }}>No hay partes registrados con estos criterios.</p>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '55vh', overflowY: 'auto', paddingRight: '4px' }}>
-                    {partesAdminFiltrados.map((parte) => (
-                      <div key={parte.id} style={{ background: '#fcfcfc', border: '1px solid #e0e0e0', borderRadius: '8px', padding: '12px', boxSizing: 'border-box' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                          <span style={{ fontWeight: 'bold', color: '#043424', fontSize: '13px' }}>👤 {parte.empleado}</span>
-                          <span style={{ fontSize: '12px', color: '#666' }}>📅 {parte.fecha.split('-').reverse().join('/')}</span>
-                        </div>
-                        <div style={{ fontSize: '13px', color: '#333', marginBottom: '4px' }}><strong>Obra:</strong> {parte.obra} ({parte.horas}h)</div>
-                        <div style={{ fontSize: '13px', color: '#444', marginBottom: '8px' }}><strong>Trabajo:</strong> {parte.trabajo}</div>
-                        
-                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                          <button onClick={() => manejarEliminarParteAdmin(parte.id)} style={{ background: '#d32f2f', color: '#fff', border: 'none', borderRadius: '4px', padding: '4px 10px', fontSize: '11px', cursor: 'pointer', fontWeight: 'bold' }}>🗑️ Eliminar Parte</button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+    {partesAdminFiltrados.length === 0 ? (
+      <p style={{ textAlign: 'center', color: '#666', padding: '20px' }}>No hay partes registrados con estos criterios.</p>
+    ) : (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '55vh', overflowY: 'auto', paddingRight: '4px' }}>
+        {partesAdminFiltrados.map((parte) => (
+          <div key={parte.id} style={{ background: '#fcfcfc', border: '1px solid #e0e0e0', borderRadius: '8px', padding: '12px', boxSizing: 'border-box' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+              <span style={{ fontWeight: 'bold', color: '#043424', fontSize: '13px' }}>👤 {parte.empleado}</span>
+              <span style={{ fontSize: '12px', color: '#666' }}>📅 {parte.fecha.split('-').reverse().join('/')}</span>
+            </div>
+            <div style={{ fontSize: '13px', color: '#333', marginBottom: '4px' }}><strong>Obra:</strong> {parte.obra} ({parte.horas}h)</div>
+            <div style={{ fontSize: '13px', color: '#444', marginBottom: '8px' }}><strong>Trabajo:</strong> {parte.trabajo}</div>
+            
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button 
+                onClick={() => {
+                  if (window.confirm("¿Seguro que deseas eliminar este parte? Se borrarán también sus horas extras asociadas.")) {
+                    // 1. Borrar el parte de la lista general
+                    const nuevosPartes = partes.filter(p => p.id !== parte.id);
+                    setPartes(nuevosPartes);
+                    if (typeof localStorage !== 'undefined') {
+                      localStorage.setItem('partesTrabajo', JSON.stringify(nuevosPartes));
+                    }
 
+                    // 2. Borrar las horas extras que correspondan a este parte
+                    const nuevasExtras = horasExtras.filter(extra => extra.idParteOrigen !== parte.id);
+                    setHorasExtras(nuevasExtras);
+                    if (typeof localStorage !== 'undefined') {
+                      localStorage.setItem('horasExtras', JSON.stringify(nuevasExtras));
+                    }
+                  }
+                }} 
+                style={{ background: '#d32f2f', color: '#fff', border: 'none', borderRadius: '4px', padding: '4px 10px', fontSize: '11px', cursor: 'pointer', fontWeight: 'bold' }}
+              >
+                🗑️ Eliminar Parte
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+)}
             {pantallaActual === 'admin-efectivo' && (
               <div style={{ textAlign: 'left' }}>
                 <h2 style={{ color: '#b27d14', marginTop: 0, fontSize: '20px', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>💰 Gestión de Efectivo</h2>
