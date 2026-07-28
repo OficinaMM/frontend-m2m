@@ -1244,8 +1244,7 @@ function App() {
     )}
   </div>
 )}
- 
-{pantallaActual === 'admin-partes' && (
+ {pantallaActual === 'admin-partes' && (
   <div style={{ textAlign: 'left' }}>
     <h2 style={{ color: '#043424', marginTop: 0, fontSize: '20px', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>🛠️ Panel Admin: Todos los Partes</h2>
     
@@ -1289,22 +1288,28 @@ function App() {
                         return;
                       }
 
-                      // 2. Actualizar el estado local para que desaparezca de la pantalla al instante sin recargar la app
+                      // 2. Actualizar inmediatamente los estados locales para que desaparezca al instante
                       if (typeof setPartes === 'function') {
                         setPartes(prev => prev.filter(p => p.id !== parte.id));
                       }
-                      
-                      // Si usas alguna función para refrescar la lista general desde Supabase (por ejemplo, un cargarPartes()), puedes llamarla aquí:
-                      if (typeof cargarPartes === 'function') {
-                        cargarPartes();
-                      } else {
-                        // Si no hay función de recarga, forzamos un pequeño cambio de estado o recarga limpia de datos si procede, 
-                        // o simplemente dejamos que el filtro actualice la vista al quitar el elemento del array principal.
+                      if (typeof setPartesAdminFiltrados === 'function') {
+                        setPartesAdminFiltrados(prev => prev.filter(p => p.id !== parte.id));
                       }
 
-                      alert("¡Parte y horas extras eliminados correctamente!");
+                      // 3. Volver a consultar Supabase para asegurar que la lista maestra se refresca con los datos actuales
+                      if (typeof cargarPartes === 'function') {
+                        await cargarPartes();
+                      } else {
+                        // Si no hay una función global 'cargarPartes', actualizamos mediante una consulta rápida de respaldo
+                        const { data: datosActualizados } = await supabase.from('partes_publicos').select('*');
+                        if (datosActualizados && typeof setPartes === 'function') {
+                          setPartes(datosActualizados);
+                        }
+                      }
+
+                      alert("¡Parte y horas extras eliminados correctamente de la base de datos!");
                     } catch (err) {
-                      console.error("Error inesperado:", err);
+                      console.error("Error inesperado al eliminar:", err);
                     }
                   }
                 }} 
@@ -1319,6 +1324,7 @@ function App() {
     )}
   </div>
 )}
+
             {pantallaActual === 'admin-efectivo' && (
               <div style={{ textAlign: 'left' }}>
                 <h2 style={{ color: '#b27d14', marginTop: 0, fontSize: '20px', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>💰 Gestión de Efectivo</h2>
