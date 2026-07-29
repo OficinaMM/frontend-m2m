@@ -798,7 +798,7 @@ function App() {
       backgroundImage: `url(${logoEmpresa})`, backgroundPosition: 'top center', backgroundRepeat: 'no-repeat', backgroundSize: 'min(70%, 280px)', backgroundAttachment: 'fixed'
     }}>
       
-      {/* ESTILOS CSS DE EFECTO DE PULSACIÓN / SELECCIÓN EN CADA BOTÓN */}
+ {/* ESTILOS CSS DE EFECTO DE PULSACIÓN / SELECCIÓN EN CADA BOTÓN */}
       <style>{`
         button {
           transition: transform 0.1s ease, filter 0.1s ease, box-shadow 0.1s ease !important;
@@ -918,7 +918,7 @@ function App() {
           )}
 
           <div style={{ background: 'rgba(255, 255, 255, 0.96)', padding: 'clamp(15px, 4vw, 30px)', borderRadius: '15px', boxShadow: '0 4px 15px rgba(0,0,0,0.2)', textAlign: 'center', marginBottom: '40px', boxSizing: 'border-box' }}>
-
+            
             {pantallaActual === 'primer-cambio-pass' && (
               <div style={{ textAlign: 'center' }}>
                 <h2 style={{ color: '#043424', fontSize: '20px' }}>🔑 Seguridad Obligatoria</h2>
