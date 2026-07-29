@@ -1284,7 +1284,7 @@ function App() {
               </div>
             )}
 
-            {pantallaActual === 'admin-pluses' && (
+{pantallaActual === 'admin-pluses' && (
               <div style={{ textAlign: 'left' }}>
                 <h2 style={{ color: '#b27d14', marginTop: 0, fontSize: '20px', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>⭐ Plus de Productividad</h2>
                 
@@ -1326,10 +1326,12 @@ function App() {
                           onClick={async () => {
                             if (window.confirm("¿Seguro que deseas eliminar este plus de productividad?")) {
                               try {
+                                const idNumerico = Number(plus.id);
+
                                 const { error } = await supabase
                                   .from('PLUS PRODUCTIVITY')
                                   .delete()
-                                  .eq('id', plus.id);
+                                  .eq('id', idNumerico);
 
                                 if (error) {
                                   console.error("Error al borrar el plus:", error.message);
@@ -1338,7 +1340,7 @@ function App() {
                                 }
 
                                 if (typeof setHistorialPluses === 'function') {
-                                  setHistorialPluses(prev => prev.filter(p => p.id !== plus.id));
+                                  setHistorialPluses(prev => prev.filter(p => Number(p.id) !== idNumerico));
                                 }
 
                                 const { data: datosActualizados } = await supabase.from('PLUS PRODUCTIVITY').select('*');
@@ -1349,6 +1351,7 @@ function App() {
                                 alert("¡Plus eliminado correctamente!");
                               } catch (err) {
                                 console.error("Error inesperado al eliminar el plus:", err);
+                                alert("Ocurrió un error inesperado al intentar eliminar el registro.");
                               }
                             }
                           }} 
@@ -1362,7 +1365,6 @@ function App() {
                 )}
               </div>
             )}
-
             {pantallaActual === 'mi-cuenta' && (
               <div style={{ textAlign: 'left' }}>
                 <h2 style={{ color: '#c5a059', marginTop: 0, fontSize: '20px', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>👤 Configuración de Mi Cuenta</h2>
