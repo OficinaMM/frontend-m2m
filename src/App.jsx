@@ -1455,9 +1455,13 @@ function App() {
               🗑️ Eliminar
             </button>
           </div>
+     </div>
+          </div>
         ))}
       </div>
     )}
   </div>
 )}
+
+export default App;
 export default App;
