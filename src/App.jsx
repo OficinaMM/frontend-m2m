@@ -1379,7 +1379,7 @@ function App() {
               </div>
             )}
 
-           {pantallaActual === 'admin-pluses' && (
+{pantallaActual === 'admin-pluses' && (
   <div style={{ textAlign: 'left' }}>
     <h2 style={{ color: '#b27d14', marginTop: 0, fontSize: '20px', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>⭐ Plus de Productividad</h2>
     
@@ -1421,7 +1421,6 @@ function App() {
               onClick={async () => {
                 if (window.confirm("¿Seguro que deseas eliminar este plus de productividad?")) {
                   try {
-                    // 1. Borrar en la tabla de Supabase usando el id del registro
                     const { error } = await supabase
                       .from('PLUS PRODUCTIVITY')
                       .delete()
@@ -1433,12 +1432,10 @@ function App() {
                       return;
                     }
 
-                    // 2. Actualizar el estado local al instante
                     if (typeof setHistorialPluses === 'function') {
                       setHistorialPluses(prev => prev.filter(p => p.id !== plus.id));
                     }
 
-                    // 3. Recargar datos frescos de Supabase para sincronizar
                     const { data: datosActualizados } = await supabase.from('PLUS PRODUCTIVITY').select('*');
                     if (datosActualizados && typeof setHistorialPluses === 'function') {
                       setHistorialPluses(datosActualizados);
@@ -1454,7 +1451,6 @@ function App() {
             >
               🗑️ Eliminar
             </button>
-          </div>
           </div>
         ))}
       </div>
