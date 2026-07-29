@@ -1378,7 +1378,6 @@ function App() {
                 )}
               </div>
             )}
-
 {pantallaActual === 'admin-pluses' && (
   <div style={{ textAlign: 'left' }}>
     <h2 style={{ color: '#b27d14', marginTop: 0, fontSize: '20px', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>⭐ Plus de Productividad</h2>
@@ -1457,4 +1456,5 @@ function App() {
     )}
   </div>
 )}
-            export default app;
+
+export default App;
