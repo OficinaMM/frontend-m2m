@@ -40,11 +40,11 @@ function App() {
     'No Asignada': 10
   };
 
-  const correosAutorizados = Object.keys(datosEmpleadosPredeterminados);
+ const correosAutorizados = Object.keys(datosEmpleadosPredeterminados);
   const PASSWORD_TEMPORAL = 'M2M2026*';
   const EMAIL_ADMIN_MASTER = 'administracion@grupom2m.com';
 
-  // ESTADOS DE OBRAS Y TRABAJOS
+ // ESTADOS DE OBRAS Y TRABAJOS
   const [baseDatosObras, setBaseDatosObras] = useState({});
   const [listaObras, setListaObras] = useState([]);
 
@@ -69,7 +69,7 @@ function App() {
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
   const [notaGeneral, setNotaGeneral] = useState('');
   const [tareasDelDia, setTareasDelDia] = useState([]);
-
+  
   // ESTADO PARA CONTROLAR EL ENVÍO Y EVITAR DUPLICADOS
   const [enviandoParte, setEnviandoParte] = useState(false);
 
@@ -80,7 +80,7 @@ function App() {
   const [filtroExtraMes, setFiltroExtraMes] = useState(''); 
   const [filtroExtraSemana, setFiltroExtraSemana] = useState(false); 
 
-  // ESTADOS EXCLUSIVOS DE ADMINISTRACIÓN MÁSTER
+ // ESTADOS EXCLUSIVOS DE ADMINISTRACIÓN MÁSTER
   const [todosLosPartesAdmin, setTodosLosPartesAdmin] = useState([]);
   const [filtroAdminEmpleado, setFiltroAdminEmpleado] = useState('');
   const [filtroAdminMes, setFiltroAdminMes] = useState('');
@@ -110,7 +110,7 @@ function App() {
     return guardado ? JSON.parse(guardado) : [];
   });
 
-  // CARGAR OBRAS Y TRABAJOS DESDE SUPABASE
+ // CARGAR OBRAS Y TRABAJOS DESDE SUPABASE
   useEffect(() => {
     const cargarObrasYTrabajos = async () => {
       try {
@@ -209,7 +209,7 @@ function App() {
     checkUsuarioYActualizarDatos();
   }, [usuarioConectado]);
 
-  // CARGAR HISTORIAL DE PARTES SEGÚN ROL (TODOS PARA ADMIN / TÉCNICO PROYECTOS)
+ // CARGAR HISTORIAL DE PARTES SEGÚN ROL (TODOS PARA ADMIN / TÉCNICO PROYECTOS)
   useEffect(() => {
     const cargarPartesDesdeSupabase = async () => {
       if (usuarioConectado) {
