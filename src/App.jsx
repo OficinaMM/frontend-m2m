@@ -930,46 +930,49 @@ function App() {
               </div>
             )}
 
-            {pantallaActual === 'menu' && (
-              <div>
-                <h1 style={{ color: '#c5a059', margin: '0 0 8px 0', fontSize: 'clamp(18px, 5vw, 24px)' }}>Construcciones M&M Asociados 2022 SL</h1>
-                <p style={{ color: '#222', fontSize: '12px', margin: '0 0 25px 0', background: '#e2f0d9', padding: '6px 12px', borderRadius: '20px', display: 'inline-block', fontWeight: 'bold' }}>
-                  🟢 Bienvenido, {nombreEdit || 'Empleado'} ({posicionUser})
-                </p>
+          {pantallaActual === 'menu' && (
+  <div>
+    <h1 style={{ color: '#c5a059', margin: '0 0 8px 0', fontSize: 'clamp(18px, 5vw, 24px)' }}>
+      Construcciones M&M Asociados 2022 SL
+    </h1>
+    <p style={{ color: '#222', fontSize: '12px', margin: '0 0 25px 0', background: '#e2f0d9', padding: '6px 12px', borderRadius: '20px', display: 'inline-block', fontWeight: 'bold' }}>
+      🟢 Bienvenido, {nombreEdit || 'Empleado'} ({posicionUser})
+    </p>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  
-                  <button onClick={() => setPantallaActual('nuevo-parte')} style={{ padding: '18px 20px', fontSize: '17px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '10px', border: 'none', background: '#043424', color: '#ffffff', boxShadow: '0 4px 10px rgba(4, 52, 36, 0.3)' }}>
-                    📝 Enviar Nuevo Parte de Trabajo
-                  </button>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      
+      <button onClick={() => setPantallaActual('nuevo-parte')} style={{ padding: '18px 20px', fontSize: '17px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '10px', border: 'none', background: '#043424', color: '#ffffff', boxShadow: '0 4px 10px rgba(4, 52, 36, 0.3)' }}>
+        📝 Enviar Nuevo Parte de Trabajo
+      </button>
 
-                  <button onClick={() => setPantallaActual('historial')} style={{ padding: '16px 20px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '10px', border: 'none', background: '#333333', color: '#ffffff', boxShadow: '0 4px 10px rgba(0, 0, 0, 0.2)' }}>
-                    📊 Ver Mis Partes Enviados
-                  </button>
+      <button onClick={() => setPantallaActual('historial')} style={{ padding: '16px 20px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '10px', border: 'none', background: '#333333', color: '#ffffff', boxShadow: '0 4px 10px rgba(0, 0, 0, 0.2)' }}>
+        📊 Ver Mis Partes Enviados
+      </button>
 
-                  <button onClick={() => setPantallaActual('horas-extras')} style={{ padding: '16px 20px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '10px', border: 'none', background: '#595959', color: '#ffffff', boxShadow: '0 4px 10px rgba(0, 0, 0, 0.2)' }}>
-                    ⏱️ Historial de Horas Extras
-                  </button>
+      <button onClick={() => setPantallaActual('horas-extras')} style={{ padding: '16px 20px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '10px', border: 'none', background: '#595959', color: '#ffffff', boxShadow: '0 4px 10px rgba(0, 0, 0, 0.2)' }}>
+        ⏱️ Historial de Horas Extras
+      </button>
 
-                  {(usuarioConectado === EMAIL_ADMIN_MASTER || posicionUser === 'Técnico de Proyectos') && (
-                    <>
-                      <div style={{ borderTop: '2px dashed #ccc', margin: '10px 0' }}></div>
-                      
-                      <button onClick={() => setPantallaActual('admin-general')} style={{ padding: '16px 20px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '10px', border: 'none', background: '#135c3e', color: '#ffffff', boxShadow: '0 4px 10px rgba(19, 92, 62, 0.3)' }}>
-                        🛠️ Panel de Gestión (Partes de Obra)
-                      </button>
+      {(usuarioConectado === EMAIL_ADMIN_MASTER || posicionUser === 'Técnico de Proyectos') && (
+        <>
+          <div style={{ borderTop: '2px dashed #ccc', margin: '10px 0' }}></div>
+          
+          <button onClick={() => setPantallaActual('admin-general')} style={{ padding: '16px 20px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '10px', border: 'none', background: '#135c3e', color: '#ffffff', boxShadow: '0 4px 10px rgba(19, 92, 62, 0.3)' }}>
+            🛠️ Panel de Gestión (Partes de Obra)
+          </button>
 
-                      <button onClick={() => setPantallaActual('admin-efectivo')} style={{ padding: '16px 20px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '10px', border: 'none', background: '#0b4f6c', color: '#ffffff', boxShadow: '0 4px 10px rgba(11, 79, 108, 0.3)' }}>
-                        💶 Control de Caja / Efectivo
-                      </button>
+          <button onClick={() => setPantallaActual('admin-efectivo')} style={{ padding: '16px 20px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '10px', border: 'none', background: '#0b4f6c', color: '#ffffff', boxShadow: '0 4px 10px rgba(11, 79, 108, 0.3)' }}>
+            💶 Control de Caja / Efectivo
+          </button>
 
-                      <button onClick={() => setPantallaActual('admin-pluses')} style={{ padding: '16px 20px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '10px', border: 'none', background: '#b27d14', color: '#ffffff', boxShadow: '0 4px 10px rgba(178, 125, 20, 0.3)' }}>
-                 ⭐ Plus de Productividad
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
+          <button onClick={() => setPantallaActual('admin-pluses')} style={{ padding: '16px 20px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '10px', border: 'none', background: '#b27d14', color: '#ffffff', boxShadow: '0 4px 10px rgba(178, 125, 20, 0.3)' }}>
+            ⭐ Plus de Productividad
+          </button>
+        </>
+      )}
+    </div>
+  </div>
+)}
                   
             {pantallaActual === 'nuevo-parte' && (
               <div style={{ textAlign: 'left' }}>
