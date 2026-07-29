@@ -942,7 +942,7 @@ function App() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       
       <button onClick={() => setPantallaActual('nuevo-parte')} style={{ padding: '18px 20px', fontSize: '17px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '10px', background: '#ffffff', color: '#000000', border: '2px solid #043424', boxShadow: '0 4px 10px rgba(0, 0, 0, 0.08)' }}>
-        📝 Enviar Nuevo Parte de Trabajo
+        📝 Enviar Parte de Trabajo
       </button>
 
       <button onClick={() => setPantallaActual('historial')} style={{ padding: '16px 20px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '10px', background: '#ffffff', color: '#000000', border: '2px solid #333333', boxShadow: '0 4px 10px rgba(0, 0, 0, 0.08)' }}>
