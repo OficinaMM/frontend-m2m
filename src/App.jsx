@@ -1449,16 +1449,13 @@ function App() {
               style={{ background: '#d32f2f', color: '#fff', border: 'none', borderRadius: '4px', padding: '6px 10px', fontSize: '11px', cursor: 'pointer', fontWeight: 'bold', height: 'fit-content' }}
             >
               🗑️ Eliminar
-            </button>
+     </button>
           </div>
         ))}
       </div>
     )}
   </div>
-)}
-</div>
-</div>
 );
 }
 
-export default App;
+export default App;     
