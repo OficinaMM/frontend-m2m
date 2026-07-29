@@ -680,7 +680,7 @@ function App() {
             horas: calculoExtras, 
             motivo: motivoExtra, 
             obrasDelDia: obrasTocadasHoy,
-            importe_pagado: 0 
+            importe_pagado: 0 // Inicializamos en 0 para no borrar ni afectar partes
           }, ...horasExtrasHistorial];
           
           setHorasExtrasHistorial(nuevoHistorialExtras);
