@@ -941,15 +941,15 @@ function App() {
 
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       
-      <button onClick={() => setPantallaActual('nuevo-parte')} style={{ padding: '18px 20px', fontSize: '17px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '10px', border: '1px solid #c5a059', background: '#043424', color: '#ffffff', boxShadow: '0 4px 10px rgba(4, 52, 36, 0.3)' }}>
-        📝 <span style={{ color: '#c5a059' }}>Enviar</span> Nuevo Parte de Trabajo
+      <button onClick={() => setPantallaActual('nuevo-parte')} style={{ padding: '18px 20px', fontSize: '17px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '10px', background: '#ffffff', color: '#000000', border: '2px solid #043424', boxShadow: '0 4px 10px rgba(0, 0, 0, 0.08)' }}>
+        📝 Enviar Nuevo Parte de Trabajo
       </button>
 
-      <button onClick={() => setPantallaActual('historial')} style={{ padding: '16px 20px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '10px', border: 'none', background: '#333333', color: '#ffffff', boxShadow: '0 4px 10px rgba(0, 0, 0, 0.2)' }}>
+      <button onClick={() => setPantallaActual('historial')} style={{ padding: '16px 20px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '10px', background: '#ffffff', color: '#000000', border: '2px solid #333333', boxShadow: '0 4px 10px rgba(0, 0, 0, 0.08)' }}>
         📊 Ver Mis Partes Enviados
       </button>
 
-      <button onClick={() => setPantallaActual('horas-extras')} style={{ padding: '16px 20px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '10px', border: 'none', background: '#595959', color: '#ffffff', boxShadow: '0 4px 10px rgba(0, 0, 0, 0.2)' }}>
+      <button onClick={() => setPantallaActual('horas-extras')} style={{ padding: '16px 20px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '10px', background: '#ffffff', color: '#000000', border: '2px solid #595959', boxShadow: '0 4px 10px rgba(0, 0, 0, 0.08)' }}>
         ⏱️ Historial de Horas Extras
       </button>
 
@@ -957,22 +957,22 @@ function App() {
         <>
           <div style={{ borderTop: '2px dashed #ccc', margin: '10px 0' }}></div>
           
-          <button onClick={() => setPantallaActual('admin-general')} style={{ padding: '16px 20px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '10px', border: '1px solid #c5a059', background: '#135c3e', color: '#ffffff', boxShadow: '0 4px 10px rgba(19, 92, 62, 0.3)' }}>
-            🛠️ Panel de <span style={{ color: '#c5a059' }}>Gestión</span> (Partes de Obra)
+          <button onClick={() => setPantallaActual('admin-general')} style={{ padding: '16px 20px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '10px', background: '#ffffff', color: '#000000', border: '2px solid #135c3e', boxShadow: '0 4px 10px rgba(0, 0, 0, 0.08)' }}>
+            🛠️ Panel de Gestión (Partes de Obra)
           </button>
 
-          <button onClick={() => setPantallaActual('admin-efectivo')} style={{ padding: '16px 20px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '10px', border: 'none', background: '#0b4f6c', color: '#ffffff', boxShadow: '0 4px 10px rgba(11, 79, 108, 0.3)' }}>
+          <button onClick={() => setPantallaActual('admin-efectivo')} style={{ padding: '16px 20px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '10px', background: '#ffffff', color: '#000000', border: '2px solid #0b4f6c', boxShadow: '0 4px 10px rgba(0, 0, 0, 0.08)' }}>
             💶 Control de Caja / Efectivo
           </button>
 
-          <button onClick={() => setPantallaActual('admin-pluses')} style={{ padding: '16px 20px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '10px', border: 'none', background: '#b27d14', color: '#ffffff', boxShadow: '0 4px 10px rgba(178, 125, 20, 0.3)' }}>
-            ⭐ <span style={{ color: '#043424' }}>Plus de Productividad</span>
+          <button onClick={() => setPantallaActual('admin-pluses')} style={{ padding: '16px 20px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '10px', background: '#ffffff', color: '#000000', border: '2px solid #b27d14', boxShadow: '0 4px 10px rgba(0, 0, 0, 0.08)' }}>
+            ⭐ Plus de Productividad
           </button>
         </>
       )}
     </div>
   </div>
-)}   
+)}
             {pantallaActual === 'nuevo-parte' && (
               <div style={{ textAlign: 'left' }}>
                 <h2 style={{ color: '#043424', marginTop: 0, fontSize: '20px', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>📝 Nuevo Parte de Trabajo</h2>
