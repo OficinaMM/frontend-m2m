@@ -270,7 +270,7 @@ function App() {
     }
   };
 
-  // CARGAR REGISTROS DE PLUSES DE PRODUCTIVIDAD DESDE SUPABASE
+ // CARGAR REGISTROS DE PLUSES DE PRODUCTIVIDAD DESDE SUPABASE
   const cargarPluses = async () => {
     try {
       const { data, error } = await supabase
@@ -295,7 +295,7 @@ function App() {
   }, [usuarioConectado, posicionUser]);
 
   const precioHoraActual = tarifasPorCategoria[posicionUser] || 10;
-
+  
   // LOGIN CON ENCRIPTACIÓN DE CONTRASEÑA
   const manejarLogin = async (e) => {
     e.preventDefault();
@@ -346,7 +346,7 @@ function App() {
     }
   };
 
-  // ELIMINACIÓN MÁSTER DE PARTES
+ // ELIMINACIÓN MÁSTER DE PARTES
   const manejarEliminarParteAdmin = async (idParte) => {
     if (!window.confirm('⚠️ ¿Estás seguro de que deseas eliminar este parte de forma permanente?')) {
       return;
@@ -405,7 +405,7 @@ function App() {
     }
   };
 
-  // REGISTRAR PLUS DE PRODUCTIVIDAD
+// REGISTRAR PLUS DE PRODUCTIVIDAD
   const manejarGuardarPlus = async (e) => {
     e.preventDefault();
     if (!montoPlus || isNaN(montoPlus) || Number(montoPlus) <= 0) {
@@ -443,7 +443,7 @@ function App() {
     }
   };
 
-  // CAMBIO DE CONTRASEÑA
+ // CAMBIO DE CONTRASEÑA
   const manejarChangePassword = async (e) => {
     e.preventDefault();
     if (nuevaPassword.trim().length < 4) {
