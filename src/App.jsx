@@ -1244,7 +1244,7 @@ function App() {
     )}
   </div>
 )}
- {pantallaActual === 'admin-partes' && (
+{pantallaActual === 'admin-partes' && (
   <div style={{ textAlign: 'left' }}>
     <h2 style={{ color: '#043424', marginTop: 0, fontSize: '20px', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>🛠️ Panel Admin: Todos los Partes</h2>
     
@@ -1296,14 +1296,22 @@ function App() {
                         setPartesAdminFiltrados(prev => prev.filter(p => p.id !== parte.id));
                       }
 
-                      // 3. Volver a consultar Supabase para asegurar que la lista maestra se refresca con los datos actuales
+                      // 3. Volver a consultar Supabase para asegurar que la lista maestra y los filtros se refrescan con los datos actuales
                       if (typeof cargarPartes === 'function') {
                         await cargarPartes();
                       } else {
-                        // Si no hay una función global 'cargarPartes', actualizamos mediante una consulta rápida de respaldo
                         const { data: datosActualizados } = await supabase.from('partes_publicos').select('*');
-                        if (datosActualizados && typeof setPartes === 'function') {
-                          setPartes(datosActualizados);
+                        if (datosActualizados) {
+                          if (typeof setPartes === 'function') setPartes(datosActualizados);
+                          if (typeof setPartesAdminFiltrados === 'function') {
+                            // Mantiene la sincronización aplicando de nuevo los filtros actuales si procede
+                            setPartesAdminFiltrados(datosActualizados.filter(p => {
+                              const matchBusqueda = busquedaAdmin ? 
+                                (p.empleado?.toLowerCase().includes(busquedaAdmin.toLowerCase()) || p.obra?.toLowerCase().includes(busquedaAdmin.toLowerCase())) : true;
+                              const matchMes = filtroAdminMes ? p.fecha?.startsWith(filtroAdminMes) : true;
+                              return matchBusqueda && matchMes;
+                            }));
+                          }
                         }
                       }
 
@@ -1324,7 +1332,6 @@ function App() {
     )}
   </div>
 )}
-
             {pantallaActual === 'admin-efectivo' && (
               <div style={{ textAlign: 'left' }}>
                 <h2 style={{ color: '#b27d14', marginTop: 0, fontSize: '20px', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>💰 Gestión de Efectivo</h2>
