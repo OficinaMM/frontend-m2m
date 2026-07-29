@@ -930,7 +930,7 @@ function App() {
               </div>
             )}
 
-          {pantallaActual === 'menu' && (
+{pantallaActual === 'menu' && (
   <div>
     <h1 style={{ color: '#c5a059', margin: '0 0 8px 0', fontSize: 'clamp(18px, 5vw, 24px)' }}>
       Construcciones M&M Asociados 2022 SL
@@ -941,8 +941,8 @@ function App() {
 
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       
-      <button onClick={() => setPantallaActual('nuevo-parte')} style={{ padding: '18px 20px', fontSize: '17px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '10px', border: 'none', background: '#043424', color: '#ffffff', boxShadow: '0 4px 10px rgba(4, 52, 36, 0.3)' }}>
-        📝 Enviar Nuevo Parte de Trabajo
+      <button onClick={() => setPantallaActual('nuevo-parte')} style={{ padding: '18px 20px', fontSize: '17px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '10px', border: '1px solid #c5a059', background: '#043424', color: '#ffffff', boxShadow: '0 4px 10px rgba(4, 52, 36, 0.3)' }}>
+        📝 <span style={{ color: '#c5a059' }}>Enviar</span> Nuevo Parte de Trabajo
       </button>
 
       <button onClick={() => setPantallaActual('historial')} style={{ padding: '16px 20px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '10px', border: 'none', background: '#333333', color: '#ffffff', boxShadow: '0 4px 10px rgba(0, 0, 0, 0.2)' }}>
@@ -957,8 +957,8 @@ function App() {
         <>
           <div style={{ borderTop: '2px dashed #ccc', margin: '10px 0' }}></div>
           
-          <button onClick={() => setPantallaActual('admin-general')} style={{ padding: '16px 20px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '10px', border: 'none', background: '#135c3e', color: '#ffffff', boxShadow: '0 4px 10px rgba(19, 92, 62, 0.3)' }}>
-            🛠️ Panel de Gestión (Partes de Obra)
+          <button onClick={() => setPantallaActual('admin-general')} style={{ padding: '16px 20px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '10px', border: '1px solid #c5a059', background: '#135c3e', color: '#ffffff', boxShadow: '0 4px 10px rgba(19, 92, 62, 0.3)' }}>
+            🛠️ Panel de <span style={{ color: '#c5a059' }}>Gestión</span> (Partes de Obra)
           </button>
 
           <button onClick={() => setPantallaActual('admin-efectivo')} style={{ padding: '16px 20px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '10px', border: 'none', background: '#0b4f6c', color: '#ffffff', boxShadow: '0 4px 10px rgba(11, 79, 108, 0.3)' }}>
@@ -966,14 +966,13 @@ function App() {
           </button>
 
           <button onClick={() => setPantallaActual('admin-pluses')} style={{ padding: '16px 20px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '10px', border: 'none', background: '#b27d14', color: '#ffffff', boxShadow: '0 4px 10px rgba(178, 125, 20, 0.3)' }}>
-            ⭐ Plus de Productividad
+            ⭐ <span style={{ color: '#043424' }}>Plus de Productividad</span>
           </button>
         </>
       )}
     </div>
   </div>
-)}
-                  
+)}   
             {pantallaActual === 'nuevo-parte' && (
               <div style={{ textAlign: 'left' }}>
                 <h2 style={{ color: '#043424', marginTop: 0, fontSize: '20px', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>📝 Nuevo Parte de Trabajo</h2>
