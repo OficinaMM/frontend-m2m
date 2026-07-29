@@ -964,21 +964,13 @@ function App() {
                       </button>
 
                       <button onClick={() => setPantallaActual('admin-pluses')} style={{ padding: '16px 20px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '10px', border: 'none', background: '#b27d14', color: '#ffffff', boxShadow: '0 4px 10px rgba(178, 125, 20, 0.3)' }}>
-                        ⭐ Gestión de Pluses de Productividad
-                      </button>
-                    </>
+                 ⭐ Plus de Productividad
+                    </button>
                   )}
-
-                  <div style={{ borderTop: '1px solid #eee', margin: '5px 0' }}></div>
-
-                  <button onClick={cerrarSesion} style={{ padding: '14px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '10px', border: 'none', background: '#d32f2f', color: '#ffffff', boxShadow: '0 4px 10px rgba(211, 47, 47, 0.3)' }}>
-                    🚪 Cerrar Sesión
-                  </button>
-
                 </div>
               </div>
             )}
-
+                  
             {pantallaActual === 'nuevo-parte' && (
               <div style={{ textAlign: 'left' }}>
                 <h2 style={{ color: '#043424', marginTop: 0, fontSize: '20px', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>📝 Nuevo Parte de Trabajo</h2>
