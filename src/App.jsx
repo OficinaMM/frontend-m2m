@@ -1286,10 +1286,10 @@ function App() {
 
 {pantallaActual === 'admin-pluses' && (
               <div style={{ textAlign: 'left' }}>
-                <h2 style={{ color: '#b27d14', marginTop: 0, fontSize: '20px', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>⭐ Plus de Productividad y Ajustes</h2>
+                <h2 style={{ color: '#b27d14', marginTop: 0, fontSize: '20px', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>⭐ Plus o Ajuste de Productividad</h2>
                 
                 <form onSubmit={manejarGuardarPlus} style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '25px', background: '#fcfcfc', padding: '15px', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
-                  <h3 style={{ margin: '0 0 5px 0', fontSize: '15px', color: '#043424' }}>Asignar Plus o Ajuste a Empleado</h3>
+                  <h3 style={{ margin: '0 0 5px 0', fontSize: '15px', color: '#043424' }}>Asignar Plus o Descuento a Empleado</h3>
                   
                   <select value={empleadoPlus} onChange={(e) => setEmpleadoPlus(e.target.value)} required style={{ padding: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px' }}>
                     <option value="">Selecciona un empleado...</option>
@@ -1299,28 +1299,39 @@ function App() {
                   </select>
 
                   <div style={{ display: 'flex', gap: '10px' }}>
-                    <input type="number" step="0.01" placeholder="Importe (€) (Usa - para restar)" value={montoPlus} onChange={(e) => setMontoPlus(e.target.value)} required style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px' }} />
+                    {/* CAMBIO AQUÍ: step="any" permite decimales y números negativos libremente */}
+                    <input 
+                      type="number" 
+                      step="any" 
+                      placeholder="Importe (€) [Ej: 50 o -20]" 
+                      value={montoPlus} 
+                      onChange={(e) => setMontoPlus(e.target.value)} 
+                      required 
+                      style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px' }} 
+                    />
                     <input type="date" value={fechaPlus} onChange={(e) => setFechaPlus(e.target.value)} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px' }} />
                   </div>
 
-                  <input type="text" placeholder="Concepto (Ej: Productividad o Ajuste/Deuda)..." value={conceptoPlus} onChange={(e) => setConceptoPlus(e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px', boxSizing: 'border-box' }} />
+                  <input type="text" placeholder="Concepto (Ej: Productividad mensual o Penalización)..." value={conceptoPlus} onChange={(e) => setConceptoPlus(e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px', boxSizing: 'border-box' }} />
 
-                  <button type="submit" style={{ padding: '12px', background: '#b27d14', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>💾 Asignar Plus / Ajuste</button>
+                  <button type="submit" style={{ padding: '12px', background: '#b27d14', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>💾 Guardar Registro</button>
                 </form>
 
                 <h3 style={{ fontSize: '15px', color: '#333', marginBottom: '10px' }}>Historial de Pluses y Ajustes Asignados</h3>
                 {historialPluses.length === 0 ? (
-                  <p style={{ textAlign: 'center', color: '#666', padding: '15px' }}>No hay pluses registrados.</p>
+                  <p style={{ textAlign: 'center', color: '#666', padding: '15px' }}>No hay registros guardados.</p>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '35vh', overflowY: 'auto', paddingRight: '4px' }}>
                     {historialPluses.map((plus) => {
                       const importeNum = Number(plus.importe);
                       const esNegativo = importeNum < 0;
+
                       return (
                         <div key={plus.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: '#fff', border: '1px solid #eee', borderRadius: '6px', fontSize: '13px' }}>
                           <div>
+                            {/* CAMBIO AQUÍ: Estilo condicional para resaltar los negativos en rojo y positivos en el color original */}
                             <div style={{ fontWeight: 'bold', color: esNegativo ? '#d32f2f' : '#b27d14' }}>
-                              ⭐ {esNegativo ? `${importeNum.toFixed(2)} €` : `+${importeNum.toFixed(2)} €`}
+                              ⭐ {importeNum.toFixed(2)} €
                             </div>
                             <div style={{ color: '#444' }}><strong>Empleado:</strong> {plus.empleado}</div>
                             <div style={{ color: '#666' }}>{plus.concepto}</div>
@@ -1339,7 +1350,7 @@ function App() {
                                     .eq('id', idNumerico);
 
                                   if (error) {
-                                    console.error("Error al borrar el plus:", error.message);
+                                    console.error("Error al borrar el registro:", error.message);
                                     alert("No se pudo eliminar el registro de la base de datos.");
                                     return;
                                   }
@@ -1355,7 +1366,7 @@ function App() {
 
                                   alert("¡Registro eliminado correctamente!");
                                 } catch (err) {
-                                  console.error("Error inesperado al eliminar el registro:", err);
+                                  console.error("Error inesperado al eliminar:", err);
                                   alert("Ocurrió un error inesperado al intentar eliminar el registro.");
                                 }
                               }
