@@ -408,7 +408,7 @@ function App() {
 // REGISTRAR PLUS DE PRODUCTIVIDAD
   const manejarGuardarPlus = async (e) => {
     e.preventDefault();
-    if (!montoPlus || isNaN(montoPlus) || Number(montoPlus) <= 0) {
+    if (!montoPlus || isNaN(montoPlus) ||  {
       alert('⚠️ Por favor, introduce un importe válido.');
       return;
     }
