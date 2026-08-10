@@ -1125,51 +1125,89 @@ function App() {
               </div>
             )}
 
-            {pantallaActual === 'horas-extras' && (
-              <div style={{ textAlign: 'left' }}>
-                <h2 style={{ color: '#043424', marginTop: 0, fontSize: '20px', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>⏱️ Historial de Horas Extras</h2>
-                
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: '#f5f5f5', padding: '12px', borderRadius: '8px', marginBottom: '15px' }}>
-                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                    <div style={{ flex: 1, minWidth: '150px' }}>
-                      <label style={{ fontSize: '11px', color: '#555', display: 'block', marginBottom: '3px' }}>Filtrar por Mes:</label>
-                      <input type="month" value={filtroExtraMes} onChange={(e) => setFiltroExtraMes(e.target.value)} style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '13px', boxSizing: 'border-box' }} />
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-                      {(filtroExtraMes || filtroExtraSemana) && (
-                        <button onClick={limpiarFiltrosExtras} style={{ background: '#d32f2f', color: '#fff', border: 'none', borderRadius: '6px', padding: '7px 12px', fontSize: '12px', cursor: 'pointer', height: 'fit-content' }}>Limpiar filtros</button>
-                      )}
-                    </div>
-                  </div>
+           {pantallaActual === 'horas-extras' && (
+  <div style={{ textAlign: 'left' }}>
+    <h2 style={{ color: '#043424', marginTop: 0, fontSize: '20px', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>⏱️ Historial y Resumen de Horas Extras</h2>
+    
+    {/* 📊 CUADRÍCULA / TARJETA DE RESUMEN (Acumulado, Pagos y Saldo) */}
+    {(() => {
+      // 1. Calculamos el total de horas extras de la lista filtrada actual
+      const totalHorasAcumuladas = extrasFiltradas.reduce((acc, curr) => acc + Number(curr.horas || 0), 0);
+      
+      // 2. Buscamos los pluses/pagos/deudas asociados al usuario conectado (o empleado seleccionado si es admin)
+      const empleadoEnRevision = usuarioConectado === EMAIL_ADMIN_MASTER ? (empleadoPlus || correosAutorizados[0]) : usuarioConectado;
+      const misRegistrosPluses = historialPluses.filter(p => p.empleado && p.empleado.toLowerCase() === empleadoEnRevision.toLowerCase());
+      
+      // Sumamos los importes (positivos como pagos/pluses y negativos como deudas)
+      const totalPagosYPluses = misRegistrosPluses.reduce((acc, curr) => acc + Number(curr.importe || 0), 0);
+      
+      // Saldo pendiente genérico o calculado (puedes adaptarlo si manejas precio por hora extra)
+      // Aquí mostramos el balance total de los pluses/deudas o un cálculo combinando horas y pagos
+      const saldoPendiente = totalPagosYPluses;
 
-                  <div>
-                    <label style={{ fontSize: '13px', color: '#333', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                      <input type="checkbox" checked={filtroExtraSemana} onChange={(e) => setFiltroExtraSemana(e.target.checked)} style={{ width: '16px', height: '16px' }} />
-                      Ver solo esta semana
-                    </label>
-                  </div>
-                </div>
+      return (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', marginBottom: '20px', background: '#f9f9f9', padding: '15px', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
+          <div style={{ background: '#fff', padding: '10px', borderRadius: '6px', border: '1px solid #ddd', textAlign: 'center' }}>
+            <div style={{ fontSize: '11px', color: '#666', fontWeight: 'bold', textTransform: 'uppercase' }}>Total Horas</div>
+            <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#043424', marginTop: '4px' }}>{totalHorasAcumuladas.toFixed(1)} h</div>
+          </div>
 
-                {extrasFiltradas.length === 0 ? (
-                  <p style={{ textAlign: 'center', color: '#666', padding: '20px' }}>No hay horas extras registradas con estos filtros.</p>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '50vh', overflowY: 'auto', paddingRight: '4px' }}>
-                    {extrasFiltradas.map((extra) => (
-                      <div key={extra.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: '#fff', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px' }}>
-                        <div>
-                          <div style={{ fontWeight: 'bold', color: '#043424' }}>📅 {extra.fecha.split('-').reverse().join('/')}</div>
-                          <div style={{ color: '#555' }}>Motivo: <strong>{extra.motivo}</strong></div>
-                          {extra.obrasDelDia && <div style={{ fontSize: '11px', color: '#777' }}>Obras: {extra.obrasDelDia.join(', ')}</div>}
-                        </div>
-                        <div style={{ background: '#b27d14', color: '#fff', padding: '4px 10px', borderRadius: '12px', fontWeight: 'bold', fontSize: '13px' }}>
-                          +{extra.horas}h
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+          <div style={{ background: '#fff', padding: '10px', borderRadius: '6px', border: '1px solid #ddd', textAlign: 'center' }}>
+            <div style={{ fontSize: '11px', color: '#666', fontWeight: 'bold', textTransform: 'uppercase' }}>Pagos / Pluses</div>
+            <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#b27d14', marginTop: '4px' }}>{totalPagosYPluses.toFixed(2)} €</div>
+          </div>
+
+          <div style={{ background: '#fff', padding: '10px', borderRadius: '6px', border: '1px solid #ddd', textAlign: 'center' }}>
+            <div style={{ fontSize: '11px', color: '#666', fontWeight: 'bold', textTransform: 'uppercase' }}>Saldo / Deuda</div>
+            <div style={{ fontSize: '18px', fontWeight: 'bold', color: saldoPendiente < 0 ? '#d32f2f' : '#2e7d32', marginTop: '4px' }}>
+              {saldoPendiente.toFixed(2)} €
+            </div>
+          </div>
+        </div>
+      );
+    })()}
+
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: '#f5f5f5', padding: '12px', borderRadius: '8px', marginBottom: '15px' }}>
+      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+        <div style={{ flex: 1, minWidth: '150px' }}>
+          <label style={{ fontSize: '11px', color: '#555', display: 'block', marginBottom: '3px' }}>Filtrar por Mes:</label>
+          <input type="month" value={filtroExtraMes} onChange={(e) => setFiltroExtraMes(e.target.value)} style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '13px', boxSizing: 'border-box' }} />
+        </div>
+        <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+          {(filtroExtraMes || filtroExtraSemana) && (
+            <button onClick={limpiarFiltrosExtras} style={{ background: '#d32f2f', color: '#fff', border: 'none', borderRadius: '6px', padding: '7px 12px', fontSize: '12px', cursor: 'pointer', height: 'fit-content' }}>Limpiar filtros</button>
+          )}
+        </div>
+      </div>
+
+      <div>
+        <label style={{ fontSize: '13px', color: '#333', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+          <input type="checkbox" checked={filtroExtraSemana} onChange={(e) => setFiltroExtraSemana(e.target.checked)} style={{ width: '16px', height: '16px' }} />
+          Ver solo esta semana
+        </label>
+      </div>
+    </div>
+
+    {extrasFiltradas.length === 0 ? (
+      <p style={{ textAlign: 'center', color: '#666', padding: '20px' }}>No hay horas extras registradas con estos filtros.</p>
+    ) : (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '50vh', overflowY: 'auto', paddingRight: '4px' }}>
+        {extrasFiltradas.map((extra) => (
+          <div key={extra.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: '#fff', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px' }}>
+            <div>
+              <div style={{ fontWeight: 'bold', color: '#043424' }}>📅 {extra.fecha.split('-').reverse().join('/')}</div>
+              <div style={{ color: '#555' }}>Motivo: <strong>{extra.motivo}</strong></div>
+              {extra.obrasDelDia && <div style={{ fontSize: '11px', color: '#777' }}>Obras: {extra.obrasDelDia.join(', ')}</div>}
+            </div>
+            <div style={{ background: '#b27d14', color: '#fff', padding: '4px 10px', borderRadius: '12px', fontWeight: 'bold', fontSize: '13px' }}>
+              +{extra.horas}h
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+)}
 
             {pantallaActual === 'admin-general' && (
               <div style={{ textAlign: 'left' }}>
