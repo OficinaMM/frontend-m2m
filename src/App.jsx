@@ -1339,87 +1339,172 @@ function App() {
               </div>
             )}
 
-{pantallaActual === 'admin-pluses' && (
-              <div style={{ textAlign: 'left' }}>
-                <h2 style={{ color: '#b27d14', marginTop: 0, fontSize: '20px', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>⭐ Plus de Productividad</h2>
-                
-                <form onSubmit={manejarGuardarPlus} style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '25px', background: '#fcfcfc', padding: '15px', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
-                  <h3 style={{ margin: '0 0 5px 0', fontSize: '15px', color: '#043424' }}>Asignar Plus a Empleado</h3>
-                  
-                  <select value={empleadoPlus} onChange={(e) => setEmpleadoPlus(e.target.value)} required style={{ padding: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px' }}>
-                    <option value="">Selecciona un empleado...</option>
-                    {correosAutorizados.map(correoEmp => (
-                      <option key={correoEmp} value={correoEmp}>{datosEmpleadosPredeterminados[correoEmp].nombre} {datosEmpleadosPredeterminados[correoEmp].apellidos} ({correoEmp})</option>
-                    ))}
-                  </select>
+{pantallaActual === 'admin-pluses' && (() => {
+  // 1. Obtener la lista única de empleados que tienen pluses registrados en el historial
+  // (O si prefieres que salgan TODOS los correos autorizados, puedes usar 'correosAutorizados')
+  const empleadosConPluses = [...new Set(historialPluses.map(p => p.empleado))];
+  
+  // 2. Estado local para la pestaña activa (si no hay ninguna seleccionada, cogemos la primera o una por defecto)
+  // Nota: Como estamos dentro de un IIFE, podemos declarar un estado o usar un useState fuera. 
+  // Para hacerlo seguro en React, lo ideal es declarar el estado 'empleadoTabActivo' arriba en tu componente principal App, 
+  // pero aquí te muestro cómo integrarlo con una variable de estado que deberías añadir a tu componente App:
+  // [empleadoTabActivo, setEmpleadoTabActivo] = useState('todos')
+  
+  // Si prefieres gestionarlo con un estado llamado 'empleadoTabActivo', asegúrate de tenerlo definido en tu componente App.
+  // Aquí asumimos que 'empleadoTabActivo' existe (por defecto 'todos' o el primer empleado).
+  const tabActual = typeof empleadoTabActivo !== 'undefined' ? empleadoTabActivo : 'todos';
+  const cambiarTab = typeof setEmpleadoTabActivo === 'function' ? setEmpleadoTabActivo : () => {};
 
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <input type="number" step="0.01" placeholder="Importe (€)" value={montoPlus} onChange={(e) => setMontoPlus(e.target.value)} required style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px' }} />
-                    <input type="date" value={fechaPlus} onChange={(e) => setFechaPlus(e.target.value)} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px' }} />
-                  </div>
+  // 3. Filtrar el historial según la pestaña activa
+  const historialFiltrado = tabActual === 'todos' 
+    ? historialPluses 
+    : historialPluses.filter(p => p.empleado === tabActual);
 
-                  <input type="text" placeholder="Concepto (Ej: Productividad mensual)..." value={conceptoPlus} onChange={(e) => setConceptoPlus(e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px', boxSizing: 'border-box' }} />
+  // Calcular el total de la vista actual
+  const totalImporteFiltrado = historialFiltrado.reduce((acc, curr) => acc + Number(curr.importe || 0), 0);
 
-                  <button type="submit" style={{ padding: '12px', background: '#b27d14', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>💾 Asignar Plus</button>
-                </form>
+  return (
+    <div style={{ textAlign: 'left' }}>
+      <h2 style={{ color: '#b27d14', marginTop: 0, fontSize: '20px', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>⭐ Plus de Productividad</h2>
+      
+      <form onSubmit={manejarGuardarPlus} style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '25px', background: '#fcfcfc', padding: '15px', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
+        <h3 style={{ margin: '0 0 5px 0', fontSize: '15px', color: '#043424' }}>Asignar Plus a Empleado</h3>
+        
+        <select value={empleadoPlus} onChange={(e) => setEmpleadoPlus(e.target.value)} required style={{ padding: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px' }}>
+          <option value="">Selecciona un empleado...</option>
+          {correosAutorizados.map(correoEmp => (
+            <option key={correoEmp} value={correoEmp}>{datosEmpleadosPredeterminados[correoEmp]?.nombre || correoEmp} {datosEmpleadosPredeterminados[correoEmp]?.apellidos || ''} ({correoEmp})</option>
+          ))}
+        </select>
 
-                <h3 style={{ fontSize: '15px', color: '#333', marginBottom: '10px' }}>Historial de Pluses Asignados</h3>
-                {historialPluses.length === 0 ? (
-                  <p style={{ textAlign: 'center', color: '#666', padding: '15px' }}>No hay pluses registrados.</p>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '35vh', overflowY: 'auto', paddingRight: '4px' }}>
-                    {historialPluses.map((plus) => (
-                      <div key={plus.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: '#fff', border: '1px solid #eee', borderRadius: '6px', fontSize: '13px' }}>
-                        <div>
-                          <div style={{ fontWeight: 'bold', color: '#b27d14' }}>⭐ {Number(plus.importe).toFixed(2)} €</div>
-                          <div style={{ color: '#444' }}><strong>Empleado:</strong> {plus.empleado}</div>
-                          <div style={{ color: '#666' }}>{plus.concepto}</div>
-                          <div style={{ fontSize: '11px', color: '#888' }}>{new Date(plus.created_at).toLocaleDateString()}</div>
-                        </div>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <input type="number" step="0.01" placeholder="Importe (€)" value={montoPlus} onChange={(e) => setMontoPlus(e.target.value)} required style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px' }} />
+          <input type="date" value={fechaPlus} onChange={(e) => setFechaPlus(e.target.value)} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px' }} />
+        </div>
 
-                        <button 
-                          onClick={async () => {
-                            if (window.confirm("¿Seguro que deseas eliminar este plus de productividad?")) {
-                              try {
-                                const idNumerico = Number(plus.id);
+        <input type="text" placeholder="Concepto (Ej: Productividad mensual)..." value={conceptoPlus} onChange={(e) => setConceptoPlus(e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px', boxSizing: 'border-box' }} />
 
-                                const { error } = await supabase
-                                  .from('PLUS PRODUCTIVITY')
-                                  .delete()
-                                  .eq('id', idNumerico);
+        <button type="submit" style={{ padding: '12px', background: '#b27d14', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>💾 Asignar Plus</button>
+      </form>
 
-                                if (error) {
-                                  console.error("Error al borrar el plus:", error.message);
-                                  alert("No se pudo eliminar el plus de la base de datos.");
-                                  return;
-                                }
+      {/* SECCIÓN DE HISTORIAL CON PESTAÑAS POR EMPLEADO */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+        <h3 style={{ fontSize: '15px', color: '#333', margin: 0 }}>Historial de Pluses Asignados</h3>
+        {historialFiltrado.length > 0 && (
+          <span style={{ fontSize: '13px', background: '#fef3c7', color: '#92400e', padding: '4px 10px', borderRadius: '12px', fontWeight: 'bold' }}>
+            Total Filtrado: {totalImporteFiltrado.toFixed(2)} €
+          </span>
+        )}
+      </div>
 
-                                if (typeof setHistorialPluses === 'function') {
-                                  setHistorialPluses(prev => prev.filter(p => Number(p.id) !== idNumerico));
-                                }
+      {/* Barra de pestañas */}
+      <div style={{ display: 'flex', gap: '5px', overflowX: 'auto', borderBottom: '2px solid #b27d14', paddingBottom: '0px', marginBottom: '15px' }}>
+        <button
+          type="button"
+          onClick={() => cambiarTab('todos')}
+          style={{
+            padding: '8px 14px',
+            borderRadius: '6px 6px 0 0',
+            border: 'none',
+            background: tabActual === 'todos' ? '#b27d14' : '#e5e7eb',
+            color: tabActual === 'todos' ? '#fff' : '#374151',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            fontSize: '13px',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          📋 Todos ({historialPluses.length})
+        </button>
 
-                                const { data: datosActualizados } = await supabase.from('PLUS PRODUCTIVITY').select('*');
-                                if (datosActualizados && typeof setHistorialPluses === 'function') {
-                                  setHistorialPluses(datosActualizados);
-                                }
+        {empleadosConPluses.map((correo) => {
+          // Intentamos buscar el nombre bonito del empleado, si no, mostramos el correo
+          const nombreEmpleado = datosEmpleadosPredeterminados[correo]?.nombre || correo;
+          const cantidadPlusesEmp = historialPluses.filter(p => p.empleado === correo).length;
 
-                                alert("¡Plus eliminado correctamente!");
-                              } catch (err) {
-                                console.error("Error inesperado al eliminar el plus:", err);
-                                alert("Ocurrió un error inesperado al intentar eliminar el registro.");
-                              }
-                            }
-                          }} 
-                          style={{ background: '#d32f2f', color: '#fff', border: 'none', borderRadius: '4px', padding: '6px 10px', fontSize: '11px', cursor: 'pointer', fontWeight: 'bold', height: 'fit-content' }}
-                        >
-                          🗑️ Eliminar
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+          return (
+            <button
+              key={correo}
+              type="button"
+              onClick={() => cambiarTab(correo)}
+              style={{
+                padding: '8px 14px',
+                borderRadius: '6px 6px 0 0',
+                border: 'none',
+                background: tabActual === correo ? '#b27d14' : '#e5e7eb',
+                color: tabActual === correo ? '#fff' : '#374151',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                fontSize: '13px',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              👤 {nombreEmpleado} ({cantidadPlusesEmp})
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Contenido de la pestaña activa */}
+      {historialFiltrado.length === 0 ? (
+        <p style={{ textAlign: 'center', color: '#666', padding: '15px', background: '#fafafa', borderRadius: '6px', border: '1px solid #eee' }}>
+          No hay pluses registrados para esta selección.
+        </p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '35vh', overflowY: 'auto', paddingRight: '4px' }}>
+          {historialFiltrado.map((plus) => (
+            <div key={plus.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: '#fff', border: '1px solid #eee', borderRadius: '6px', fontSize: '13px' }}>
+              <div>
+                <div style={{ fontWeight: 'bold', color: '#b27d14' }}>⭐ {Number(plus.importe).toFixed(2)} €</div>
+                <div style={{ color: '#444' }}><strong>Empleado:</strong> {plus.empleado}</div>
+                <div style={{ color: '#666' }}>{plus.concepto}</div>
+                <div style={{ fontSize: '11px', color: '#888' }}>{new Date(plus.created_at).toLocaleDateString()}</div>
               </div>
-            )}
+
+              <button 
+                onClick={async () => {
+                  if (window.confirm("¿Seguro que deseas eliminar este plus de productividad?")) {
+                    try {
+                      const idNumerico = Number(plus.id);
+
+                      const { error } = await supabase
+                        .from('PLUS PRODUCTIVITY')
+                        .delete()
+                        .eq('id', idNumerico);
+
+                      if (error) {
+                        console.error("Error al borrar el plus:", error.message);
+                        alert("No se pudo eliminar el plus de la base de datos.");
+                        return;
+                      }
+
+                      if (typeof setHistorialPluses === 'function') {
+                        setHistorialPluses(prev => prev.filter(p => Number(p.id) !== idNumerico));
+                      }
+
+                      const { data: datosActualizados } = await supabase.from('PLUS PRODUCTIVITY').select('*');
+                      if (datosActualizados && typeof setHistorialPluses === 'function') {
+                        setHistorialPluses(datosActualizados);
+                      }
+
+                      alert("¡Plus eliminado correctamente!");
+                    } catch (err) {
+                      console.error("Error inesperado al eliminar el plus:", err);
+                      alert("Ocurrió un error inesperado al intentar eliminar el registro.");
+                    }
+                  }
+                }} 
+                style={{ background: '#d32f2f', color: '#fff', border: 'none', borderRadius: '4px', padding: '6px 10px', fontSize: '11px', cursor: 'pointer', fontWeight: 'bold', height: 'fit-content' }}
+              >
+                🗑️ Eliminar
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+})()}
             {pantallaActual === 'mi-cuenta' && (
               <div style={{ textAlign: 'left' }}>
                 <h2 style={{ color: '#c5a059', marginTop: 0, fontSize: '20px', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>👤 Configuración de Mi Cuenta</h2>
