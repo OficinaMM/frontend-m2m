@@ -408,7 +408,7 @@ function App() {
 // REGISTRAR PLUS DE PRODUCTIVIDAD
   const manejarGuardarPlus = async (e) => {
     e.preventDefault();
-    if (!montoPlus || isNaN(montoPlus) ||  {
+    if (!montoPlus || isNaN(montoPlus)) {
       alert('⚠️ Por favor, introduce un importe válido.');
       return;
     }
@@ -442,7 +442,6 @@ function App() {
       alert('❌ Ocurrió un error inesperado al intentar guardar.');
     }
   };
-
  // CAMBIO DE CONTRASEÑA
   const manejarChangePassword = async (e) => {
     e.preventDefault();
