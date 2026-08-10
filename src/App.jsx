@@ -1124,49 +1124,67 @@ function App() {
                 )}
               </div>
             )}
-
-           {pantallaActual === 'horas-extras' && (
+{pantallaActual === 'horas-extras' && (
   <div style={{ textAlign: 'left' }}>
     <h2 style={{ color: '#043424', marginTop: 0, fontSize: '20px', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>⏱️ Historial y Resumen de Horas Extras</h2>
     
-    {/* 📊 CUADRÍCULA / TARJETA DE RESUMEN (Acumulado, Pagos y Saldo) */}
+    {/* 📊 CUADRÍCULA / TARJETA DE RESUMEN CON TARIFA REAL DE TU APP */}
     {(() => {
-      // 1. Calculamos el total de horas extras de la lista filtrada actual
+      // 1. Identificamos al empleado en revisión (si es admin o el propio usuario)
+      const empleadoEnRevision = usuarioConectado === EMAIL_ADMIN_MASTER ? (empleadoPlus || correosAutorizados[0]) : usuarioConectado;
+      
+      // Obtenemos los datos de su categoría
+      const infoEmpleado = datosEmpleadosPredeterminados[empleadoEnRevision] || {};
+      const posicion = infoEmpleado.posicion || 'No Asignada';
+
+      // 2. Buscamos su tarifa por hora usando tu objeto tarifasPorCategoria (por defecto 10 si no se encuentra)
+      const tarifaHoraExtra = tarifasPorCategoria[posicion] || 10;
+
+      // 3. Calculamos el total de horas extras filtradas
       const totalHorasAcumuladas = extrasFiltradas.reduce((acc, curr) => acc + Number(curr.horas || 0), 0);
       
-      // 2. Buscamos los pluses/pagos/deudas asociados al usuario conectado (o empleado seleccionado si es admin)
-      const empleadoEnRevision = usuarioConectado === EMAIL_ADMIN_MASTER ? (empleadoPlus || correosAutorizados[0]) : usuarioConectado;
+      // 4. Total en dinero (Horas * Tarifa real de la categoría)
+      const totalDineroHoras = totalHorasAcumuladas * tarifaHoraExtra;
+
+      // 5. Buscamos los pluses / pagos / deudas del empleado
       const misRegistrosPluses = historialPluses.filter(p => p.empleado && p.empleado.toLowerCase() === empleadoEnRevision.toLowerCase());
-      
-      // Sumamos los importes (positivos como pagos/pluses y negativos como deudas)
       const totalPagosYPluses = misRegistrosPluses.reduce((acc, curr) => acc + Number(curr.importe || 0), 0);
-      
-      // Saldo pendiente genérico o calculado (puedes adaptarlo si manejas precio por hora extra)
-      // Aquí mostramos el balance total de los pluses/deudas o un cálculo combinando horas y pagos
-      const saldoPendiente = totalPagosYPluses;
+
+      // 6. Saldo pendiente final (Dinero de horas + pluses/deudas)
+      const saldoPendiente = totalDineroHoras + totalPagosYPluses;
 
       return (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', marginBottom: '20px', background: '#f9f9f9', padding: '15px', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
+          
           <div style={{ background: '#fff', padding: '10px', borderRadius: '6px', border: '1px solid #ddd', textAlign: 'center' }}>
             <div style={{ fontSize: '11px', color: '#666', fontWeight: 'bold', textTransform: 'uppercase' }}>Total Horas</div>
             <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#043424', marginTop: '4px' }}>{totalHorasAcumuladas.toFixed(1)} h</div>
           </div>
 
           <div style={{ background: '#fff', padding: '10px', borderRadius: '6px', border: '1px solid #ddd', textAlign: 'center' }}>
-            <div style={{ fontSize: '11px', color: '#666', fontWeight: 'bold', textTransform: 'uppercase' }}>Pagos / Pluses</div>
-            <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#b27d14', marginTop: '4px' }}>{totalPagosYPluses.toFixed(2)} €</div>
+            <div style={{ fontSize: '11px', color: '#666', fontWeight: 'bold', textTransform: 'uppercase' }}>Importe (€) [{tarifaHoraExtra}€/h]</div>
+            <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#043424', marginTop: '4px' }}>{totalDineroHoras.toFixed(2)} €</div>
           </div>
 
           <div style={{ background: '#fff', padding: '10px', borderRadius: '6px', border: '1px solid #ddd', textAlign: 'center' }}>
-            <div style={{ fontSize: '11px', color: '#666', fontWeight: 'bold', textTransform: 'uppercase' }}>Saldo / Deuda</div>
+            <div style={{ fontSize: '11px', color: '#666', fontWeight: 'bold', textTransform: 'uppercase' }}>Pluses / Deudas</div>
+            <div style={{ fontSize: '18px', fontWeight: 'bold', color: totalPagosYPluses < 0 ? '#d32f2f' : '#b27d14', marginTop: '4px' }}>
+              {totalPagosYPluses.toFixed(2)} €
+            </div>
+          </div>
+
+          <div style={{ background: '#fff', padding: '10px', borderRadius: '6px', border: '1px solid #ddd', textAlign: 'center' }}>
+            <div style={{ fontSize: '11px', color: '#666', fontWeight: 'bold', textTransform: 'uppercase' }}>Saldo Pendiente</div>
             <div style={{ fontSize: '18px', fontWeight: 'bold', color: saldoPendiente < 0 ? '#d32f2f' : '#2e7d32', marginTop: '4px' }}>
               {saldoPendiente.toFixed(2)} €
             </div>
           </div>
+
         </div>
       );
     })()}
 
+    {/* Filtros y listado de horas extras */}
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: '#f5f5f5', padding: '12px', borderRadius: '8px', marginBottom: '15px' }}>
       <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
         <div style={{ flex: 1, minWidth: '150px' }}>
@@ -1208,7 +1226,7 @@ function App() {
     )}
   </div>
 )}
-
+     
             {pantallaActual === 'admin-general' && (
               <div style={{ textAlign: 'left' }}>
                 <h2 style={{ color: '#135c3e', marginTop: 0, fontSize: '20px', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>🛠️ Panel de Gestión (Partes de Obra)</h2>
