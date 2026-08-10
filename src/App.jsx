@@ -1151,7 +1151,7 @@ function App() {
       const totalPagosYPluses = misRegistrosPluses.reduce((acc, curr) => acc + Number(curr.importe || 0), 0);
 
       // 6. Saldo pendiente final (Dinero de horas + pluses/deudas)
-      const saldoPendiente = totalDineroHoras + totalPagosYPluses;
+      const saldoPendiente = totalDineroHoras - totalPagosYPluses;
 
       return (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', marginBottom: '20px', background: '#f9f9f9', padding: '15px', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
