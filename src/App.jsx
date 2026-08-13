@@ -1024,12 +1024,12 @@ function App() {
                           </div>
                         )}
 
-                        {tarea.obra === 'TRABAJOS CON RODADO' && (
-                          <div>
-                            <label style={{ fontSize: '11px', color: '#b27d14', fontWeight: 'bold', display: 'block', marginBottom: '3px' }}>Lugar exacto del trabajo:</label>
-                            <input type="text" placeholder="Ej: Calle Principal / Localización..." value={tarea.lugarTrabajo} onChange={(e) => actualizarCampoTarea(index, 'lugarTrabajo', e.target.value)} required style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #b27d14', fontSize: '13px', boxSizing: 'border-box', background: '#fffdf5' }} />
-                          </div>
-                        )}
+                   {['TRABAJOS CON RODADO', 'TIENDAS', 'VARIOS'].includes(tarea.obra?.toUpperCase()) && (
+  <div>
+    <label style={{ fontSize: '11px', color: '#b27d14', fontWeight: 'bold', display: 'block', marginBottom: '3px' }}>Lugar exacto del trabajo:</label>
+    <input type="text" placeholder="Ej: Calle Principal / Localización..." value={tarea.lugarTrabajo} onChange={(e) => actualizarCampoTarea(index, 'lugarTrabajo', e.target.value)} required style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #b27d14', fontSize: '13px', boxSizing: 'border-box', background: '#fffdf5' }} />
+  </div>
+)}
 
                         {tareasDelDia.length > 1 && (
                           <div style={{ textAlign: 'right' }}>
