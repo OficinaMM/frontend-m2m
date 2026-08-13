@@ -660,7 +660,7 @@ const infoLugar = requiereLugar
               horas: Number(tarea.horas),
               horas_extra: Number(calculoExtras),
               notes: notaGeneral,
-              lugarTrabajo: tarea.obra === 'TRABAJOS CON RODADO' ? infoLugar : ''
+             lugarTrabajo: requiereLugar ? infoLugar : ''
             };
             tareasInsertadasParaHistorial.push(formatoParteHistorial);
           }
