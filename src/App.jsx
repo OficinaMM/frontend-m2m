@@ -12,6 +12,7 @@ async function hashPassword(str) {
 }
 
 function App() {
+  const [empleadoTabActivo, setEmpleadoTabActivo] = useState('todos');
   // 1. BASE DE DATOS DE EMPLEADOS PREDETERMINADOS
   const datosEmpleadosPredeterminados = {
     'administracion@grupom2m.com': { nombre: 'Fanny', apellidos: 'Rodríguez', telefono: '600000001', posicion: 'Administración', dni: '43220225M' },
@@ -1346,22 +1347,13 @@ const infoLugar = requiereLugar
             )}
 
 {pantallaActual === 'admin-pluses' && (() => {
-  // 1. Obtener la lista única de empleados que tienen pluses registrados en el historial
-  // (O si prefieres que salgan TODOS los correos autorizados, puedes usar 'correosAutorizados')
+  // 1. Obtener la lista única de empleados con pluses
   const empleadosConPluses = [...new Set(historialPluses.map(p => p.empleado))];
   
-  // 2. Estado local para la pestaña activa (si no hay ninguna seleccionada, cogemos la primera o una por defecto)
-  // Nota: Como estamos dentro de un IIFE, podemos declarar un estado o usar un useState fuera. 
-  // Para hacerlo seguro en React, lo ideal es declarar el estado 'empleadoTabActivo' arriba en tu componente principal App, 
-  // pero aquí te muestro cómo integrarlo con una variable de estado que deberías añadir a tu componente App:
-  // [empleadoTabActivo, setEmpleadoTabActivo] = useState('todos')
-  
-  // Si prefieres gestionarlo con un estado llamado 'empleadoTabActivo', asegúrate de tenerlo definido en tu componente App.
-  // Aquí asumimos que 'empleadoTabActivo' existe (por defecto 'todos' o el primer empleado).
-  const tabActual = typeof empleadoTabActivo !== 'undefined' ? empleadoTabActivo : 'todos';
-  const cambiarTab = typeof setEmpleadoTabActivo === 'function' ? setEmpleadoTabActivo : () => {};
+  const tabActual = empleadoTabActivo;
+  const cambiarTab = setEmpleadoTabActivo;
 
-  // 3. Filtrar el historial según la pestaña activa
+  // 2. Filtrar el historial según la pestaña activa
   const historialFiltrado = tabActual === 'todos' 
     ? historialPluses 
     : historialPluses.filter(p => p.empleado === tabActual);
@@ -1424,7 +1416,6 @@ const infoLugar = requiereLugar
         </button>
 
         {empleadosConPluses.map((correo) => {
-          // Intentamos buscar el nombre bonito del empleado, si no, mostramos el correo
           const nombreEmpleado = datosEmpleadosPredeterminados[correo]?.nombre || correo;
           const cantidadPlusesEmp = historialPluses.filter(p => p.empleado === correo).length;
 
