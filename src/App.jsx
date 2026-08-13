@@ -608,7 +608,12 @@ function App() {
       for (const tarea of tareasDelDia) {
         const nombreCompleto = (nombreEdit || datosEmpleadosPredeterminados[usuarioConectado]?.nombre) + " " + (apellidosEdit || datosEmpleadosPredeterminados[usuarioConectado]?.apellidos);
         const trabajoRealizado = tarea.trabajo === 'OTROS' ? tarea.especificarOtros : tarea.trabajo;
-        const infoLugar = tarea.obra === 'TRABAJOS CON RODADO' ? (tarea.lugarTrabajo ? tarea.lugarTrabajo.trim() : "No especificado") : "Aplicación Web";
+      const obraUpper = tarea.obra ? tarea.obra.toUpperCase() : '';
+const requiereLugar = ['TRABAJOS CON RODADO', 'TIENDAS', 'VARIOS'].includes(obraUpper);
+
+const infoLugar = requiereLugar 
+  ? (tarea.lugarTrabajo ? tarea.lugarTrabajo.trim() : "No especificado") 
+  : "Aplicación Web";
 
         const textoFormateadoBarras = `FECHA: ${fecha.split('-').reverse().join('/')} / EMPLEADO: ${nombreCompleto} / OBRA: ${tarea.obra} / TRABAJO: ${trabajoRealizado} / HORAS: ${tarea.horas}h / HORAS EXTRA: ${calculoExtras}h / LUGAR: ${infoLugar} / OBSERVACIONES: ${notaGeneral || "Ninguna"}`;
 
