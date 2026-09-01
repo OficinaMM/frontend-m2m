@@ -979,101 +979,116 @@ const infoLugar = requiereLugar
     </div>
   </div>
 )}
-            {pantallaActual === 'nuevo-parte' && (
-              <div style={{ textAlign: 'left' }}>
-                <h2 style={{ color: '#043424', marginTop: 0, fontSize: '20px', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>📝 Nuevo Parte de Trabajo</h2>
+           {pantallaActual === 'nuevo-parte' && (
+            <div style={{ textAlign: 'left' }}>
+              <h2 style={{ color: '#043424', marginTop: 0, fontSize: '20px', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>📝 Nuevo Parte de Trabajo</h2>
+              
+              <form onSubmit={manejarEnviarParte} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                 
-                <form onSubmit={manejarEnviarParte} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                  
-                  <div>
-                    <label style={{ display: 'block', fontWeight: 'bold', fontSize: '13px', color: '#444', marginBottom: '5px' }}>Fecha del Parte:</label>
-                    <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} required style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '15px', boxSizing: 'border-box' }} />
+                <div>
+                  <label style={{ display: 'block', fontWeight: 'bold', fontSize: '13px', color: '#444', marginBottom: '5px' }}>Fecha del Parte:</label>
+                  <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} required style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '15px', boxSizing: 'border-box' }} />
+                </div>
+
+                <div style={{ borderTop: '1px solid #eee', paddingTop: '10px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <h3 style={{ margin: 0, fontSize: '15px', color: '#043424' }}>Tareas / Trabajos realizados</h3>
+                    <button type="button" onClick={añadirFilaTarea} style={{ padding: '6px 12px', background: '#135c3e', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold' }}>➕ Añadir Otra Tarea</button>
                   </div>
 
-                  <div style={{ borderTop: '1px solid #eee', paddingTop: '10px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                      <h3 style={{ margin: 0, fontSize: '15px', color: '#043424' }}>Tareas / Trabajos realizados</h3>
-                      <button type="button" onClick={añadirFilaTarea} style={{ padding: '6px 12px', background: '#135c3e', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold' }}>➕ Añadir Otra Tarea</button>
-                    </div>
-
-                    {tareasDelDia.map((tarea, index) => (
-                      <div key={index} style={{ background: '#f9f9f9', padding: '12px', borderRadius: '8px', border: '1px solid #e0e0e0', marginBottom: '10px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                        
-                        <div style={{ display: 'flex', gap: '10px' }}>
-                          <div style={{ flex: 1 }}>
-                            <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '3px' }}>Obra:</label>
-                            <select value={tarea.obra} onChange={(e) => actualizarObraEnTarea(index, e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '13px' }}>
-                              {listaObras.map(obraNombre => (
-                                <option key={obraNombre} value={obraNombre}>{obraNombre}</option>
-                              ))}
-                            </select>
-                          </div>
-
-                          <div style={{ width: '100px' }}>
-                            <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '3px' }}>Horas:</label>
-                            <input type="number" step="0.5" min="0" max="24" value={tarea.horas} onChange={(e) => actualizarCampoTarea(index, 'horas', e.target.value)} required style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '13px', boxSizing: 'border-box' }} />
-                          </div>
-                        </div>
-
-                        <div>
-                          <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '3px' }}>Trabajo Realizado:</label>
-                          <select value={tarea.trabajo} onChange={(e) => actualizarCampoTarea(index, 'trabajo', e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '13px' }}>
-                            {(baseDatosObras[tarea.obra] || ['OTROS']).map(trabajoNombre => (
-                              <option key={trabajoNombre} value={trabajoNombre}>{trabajoNombre}</option>
+                  {tareasDelDia.map((tarea, index) => (
+                    <div key={index} style={{ background: '#f9f9f9', padding: '12px', borderRadius: '8px', border: '1px solid #e0e0e0', marginBottom: '10px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '3px' }}>Obra:</label>
+                          <select value={tarea.obra} onChange={(e) => actualizarObraEnTarea(index, e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '13px' }}>
+                            {listaObras.map(obraNombre => (
+                              <option key={obraNombre} value={obraNombre}>{obraNombre}</option>
                             ))}
                           </select>
                         </div>
 
-                        {tarea.trabajo === 'OTROS' && (
-                          <div>
-                            <input type="text" placeholder="Especifica el trabajo realizado..." value={tarea.especificarOtros} onChange={(e) => actualizarCampoTarea(index, 'especificarOtros', e.target.value)} required style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '13px', boxSizing: 'border-box' }} />
-                          </div>
-                        )}
-
-                   {['TRABAJOS CON RODADO', 'TIENDAS', 'TRABAJOS VARIOS'].includes(tarea.obra?.toUpperCase()) && (
-  <div>
-    <label style={{ fontSize: '11px', color: '#b27d14', fontWeight: 'bold', display: 'block', marginBottom: '3px' }}>Lugar exacto del trabajo:</label>
-    <input type="text" placeholder="Ej: Calle Principal / Localización..." value={tarea.lugarTrabajo} onChange={(e) => actualizarCampoTarea(index, 'lugarTrabajo', e.target.value)} required style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #b27d14', fontSize: '13px', boxSizing: 'border-box', background: '#fffdf5' }} />
-  </div>
-)}
-
-                        {tareasDelDia.length > 1 && (
-                          <div style={{ textAlign: 'right' }}>
-                            <button type="button" onClick={() => eliminarFilaTarea(index)} style={{ background: '#d32f2f', color: '#fff', border: 'none', borderRadius: '4px', padding: '4px 8px', fontSize: '11px', cursor: 'pointer' }}>🗑️ Eliminar Fila</button>
-                          </div>
-                        )}
-
+                        <div style={{ width: '100px' }}>
+                          <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '3px' }}>Horas:</label>
+                          <input type="number" step="0.5" min="0" max="24" value={tarea.horas} onChange={(e) => actualizarCampoTarea(index, 'horas', e.target.value)} required style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '13px', boxSizing: 'border-box' }} />
+                        </div>
                       </div>
-                    ))}
-                  </div>
 
-                  <div>
-                    <label style={{ display: 'block', fontWeight: 'bold', fontSize: '13px', color: '#444', marginBottom: '5px' }}>Observaciones generales (Opcional):</label>
-                    <textarea placeholder="Incidencias, materiales..." value={notaGeneral} onChange={(e) => setNotaGeneral(e.target.value)} rows="2" style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px', boxSizing: 'border-box' }} />
-                  </div>
+                      <div>
+                        <label style={{ fontSize: '11px', color: '#666', display: 'block', marginBottom: '3px' }}>Trabajo Realizado:</label>
+                        <select value={tarea.trabajo} onChange={(e) => actualizarCampoTarea(index, 'trabajo', e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '13px' }}>
+                          {(baseDatosObras[tarea.obra] || ['OTROS']).map(trabajoNombre => (
+                            <option key={trabajoNombre} value={trabajoNombre}>{trabajoNombre}</option>
+                          ))}
+                        </select>
+                      </div>
 
-                  <button 
-                    type="submit" 
-                    disabled={enviandoParte}
-                    style={{ 
-                      padding: '16px', 
-                      background: enviandoParte ? '#888' : '#043424', 
-                      color: '#ffffff', 
-                      border: 'none', 
-                      borderRadius: '10px', 
-                      fontWeight: 'bold', 
-                      fontSize: '16px', 
-                      cursor: enviandoParte ? 'not-allowed' : 'pointer',
-                      boxShadow: '0 4px 10px rgba(4, 52, 36, 0.3)' 
-                    }}
-                  >
-                    {enviandoParte ? '⏳ Enviando parte y notificando...' : '🚀 Enviar Parte de Trabajo'}
-                  </button>
+                      {tarea.trabajo === 'OTROS' && (
+                        <div>
+                          <input type="text" placeholder="Especifica el trabajo realizado..." value={tarea.especificarOtros} onChange={(e) => actualizarCampoTarea(index, 'especificarOtros', e.target.value)} required style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '13px', boxSizing: 'border-box' }} />
+                        </div>
+                      )}
 
-                </form>
-              </div>
-            )}
+                      {['TRABAJOS CON RODADO', 'TIENDAS', 'TRABAJOS VARIOS'].includes(tarea.obra?.toUpperCase()) && (
+                        <div>
+                          <label style={{ fontSize: '11px', color: '#b27d14', fontWeight: 'bold', display: 'block', marginBottom: '3px' }}>Lugar exacto del trabajo:</label>
+                          <input 
+                            type="text" 
+                            placeholder="Ej: Calle Principal / Localización..." 
+                            value={tarea.lugarTrabajo} 
+                            onChange={(e) => actualizarCampoTarea(index, 'lugarTrabajo', e.target.value)} 
+                            required 
+                            style={{ 
+                              width: '100%', 
+                              padding: '8px', 
+                              borderRadius: '6px', 
+                              border: '1px solid #b27d14', 
+                              fontSize: '13px', 
+                              boxSizing: 'border-box', 
+                              background: '#fffdf5',
+                              color: '#000000' // <-- Color predefinido a negro añadido aquí
+                            }} 
+                          />
+                        </div>
+                      )}
 
+                      {tareasDelDia.length > 1 && (
+                        <div style={{ textAlign: 'right' }}>
+                          <button type="button" onClick={() => eliminarFilaTarea(index)} style={{ background: '#d32f2f', color: '#fff', border: 'none', borderRadius: '4px', padding: '4px 8px', fontSize: '11px', cursor: 'pointer' }}>🗑️ Eliminar Fila</button>
+                        </div>
+                      )}
+
+                    </div>
+                  ))}
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontWeight: 'bold', fontSize: '13px', color: '#444', marginBottom: '5px' }}>Observaciones generales (Opcional):</label>
+                  <textarea placeholder="Incidencias, materiales..." value={notaGeneral} onChange={(e) => setNotaGeneral(e.target.value)} rows="2" style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px', boxSizing: 'border-box' }} />
+                </div>
+
+                <button 
+                  type="submit" 
+                  disabled={enviandoParte}
+                  style={{ 
+                    padding: '16px', 
+                    background: enviandoParte ? '#888' : '#043424', 
+                    color: '#ffffff', 
+                    border: 'none', 
+                    borderRadius: '10px', 
+                    fontWeight: 'bold', 
+                    fontSize: '16px', 
+                    cursor: enviandoParte ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 4px 10px rgba(4, 52, 36, 0.3)' 
+                  }}
+                >
+                  {enviandoParte ? '⏳ Enviando parte y notificando...' : '🚀 Enviar Parte de Trabajo'}
+                </button>
+
+              </form>
+            </div>
+          )}
             {pantallaActual === 'historial' && (
               <div style={{ textAlign: 'left' }}>
                 <h2 style={{ color: '#043424', marginTop: 0, fontSize: '20px', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>📊 Historial de Mis Partes</h2>
