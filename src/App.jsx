@@ -102,6 +102,13 @@ function App() {
   const [montoPlus, setMontoPlus] = useState('');
   const [conceptoPlus, setConceptoPlus] = useState('');
 
+  // ESTADOS DE NÓMINAS (NUEVOS)
+  const [historialNominas, setHistorialNominas] = useState([]);
+  const [archivoNomina, setArchivoNomina] = useState(null);
+  const [empleadoNomina, setEmpleadoNomina] = useState('');
+  const [mesNomina, setMesNomina] = useState('');
+  const [subiendoNomina, setSubiendoNomina] = useState(false);
+
   const [horasExtrasHistorial, setHorasExtrasHistorial] = useState(() => {
     const guardado = localStorage.getItem('m2m_horas_extras');
     return guardado ? JSON.parse(guardado) : [];
@@ -210,6 +217,99 @@ function App() {
 
     checkUsuarioYActualizarDatos();
   }, [usuarioConectado]);
+
+  // CARGAR NÓMINAS DESDE SUPABASE
+  const cargarNominas = async () => {
+    try {
+      let query = supabase.from('nominas').select('*');
+      if (usuarioConectado !== EMAIL_ADMIN_MASTER) {
+        query = query.eq('empleado', usuarioConectado);
+      }
+      const { data, error } = await query.order('created_at', { ascending: false });
+      if (error) {
+        console.error("Error al cargar nóminas:", error);
+      } else if (data) {
+        setHistorialNominas(data);
+      }
+    } catch (err) {
+      console.error("Error de conexión al cargar nóminas:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (usuarioConectado) {
+      cargarNominas();
+    }
+  }, [usuarioConectado]);
+
+  // SUBIR NÓMINA (ADMINISTRACIÓN)
+  const manejarSubirNomina = async (e) => {
+    e.preventDefault();
+    if (!archivoNomina || !empleadoNomina || !mesNomina) {
+      alert('⚠️ Por favor, selecciona un empleado, el mes y el archivo PDF.');
+      return;
+    }
+
+    setSubiendoNomina(true);
+
+    try {
+      const nombreArchivoOriginal = archivoNomina.name.replace(/[^a-zA-Z0-9_.-]/g, '_');
+      const rutaArchivo = `${empleadoNomina}/${Date.now()}_${nombreArchivoOriginal}`;
+
+      const { error: storageError } = await supabase.storage
+        .from('nominas')
+        .upload(rutaArchivo, archivoNomina);
+
+      if (storageError) {
+        throw new Error(`Error en Storage: ${storageError.message}`);
+      }
+
+      const { data: urlData } = supabase.storage
+        .from('nominas')
+        .getPublicUrl(rutaArchivo);
+
+      const urlPublica = urlData.publicUrl;
+
+      const { error: dbError } = await supabase
+        .from('nominas')
+        .insert([{
+          empleado: empleadoNomina,
+          mes: mesNomina,
+          url_archivo: urlPublica,
+          subido_por: usuarioConectado
+        }]);
+
+      if (dbError) {
+        throw new Error(`Error en Base de Datos: ${dbError.message}`);
+      }
+
+      alert('✅ ¡Nómina subida y asignada con éxito al empleado!');
+      setArchivoNomina(null);
+      setEmpleadoNomina('');
+      setMesNomina('');
+      cargarNominas();
+    } catch (err) {
+      console.error("Error al subir la nómina:", err);
+      alert(`❌ No se pudo subir la nómina: ${err.message}`);
+    } finally {
+      setSubiendoNomina(false);
+    }
+  };
+
+  // ELIMINAR NÓMINA (ADMINISTRACIÓN)
+  const manejarEliminarNomina = async (idNomina) => {
+    if (!window.confirm('⚠️ ¿Estás seguro de que deseas eliminar esta nómina?')) return;
+
+    try {
+      const { error } = await supabase.from('nominas').delete().eq('id', idNomina);
+      if (error) throw error;
+      alert('🗑️ Nómina eliminada correctamente.');
+      cargarNominas();
+    } catch (err) {
+      console.error("Error al eliminar la nómina:", err);
+      alert('❌ Ocurrió un error al intentar eliminar la nómina.');
+    }
+  };
 
  // CARGAR HISTORIAL DE PARTES SEGÚN ROL (TODOS PARA ADMIN / TÉCNICO PROYECTOS)
   useEffect(() => {
@@ -959,6 +1059,10 @@ const infoLugar = requiereLugar
         ⏱️ Historial de Horas Extras
       </button>
 
+      <button onClick={() => setPantallaActual('nominas')} style={{ padding: '16px 20px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '10px', background: '#ffffff', color: '#000000', border: '2px solid #b27d14', boxShadow: '0 4px 10px rgba(0, 0, 0, 0.08)' }}>
+       📄 Mis Nóminas
+    </button>
+
       {(usuarioConectado === EMAIL_ADMIN_MASTER || posicionUser === 'Técnico de Proyectos') && (
         <>
           <div style={{ borderTop: '2px dashed #ccc', margin: '10px 0' }}></div>
@@ -979,6 +1083,7 @@ const infoLugar = requiereLugar
     </div>
   </div>
 )}
+            
            {pantallaActual === 'nuevo-parte' && (
             <div style={{ textAlign: 'left' }}>
               <h2 style={{ color: '#043424', marginTop: 0, fontSize: '20px', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>📝 Nuevo Parte de Trabajo</h2>
@@ -1248,7 +1353,83 @@ const infoLugar = requiereLugar
     )}
   </div>
 )}
-     
+     {/* PANTALLA DE NÓMINAS */}
+            {pantallaActual === 'nominas' && (
+              <div style={{ textAlign: 'left' }}>
+                <h2 style={{ color: '#b27d14', marginTop: 0, fontSize: '20px', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>
+                  {usuarioConectado === EMAIL_ADMIN_MASTER ? '📄 Gestión y Subida de Nóminas' : '📄 Mis Nóminas'}
+                </h2>
+                
+                {usuarioConectado === EMAIL_ADMIN_MASTER && (
+                  <form onSubmit={manejarSubirNomina} style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '25px', background: '#fcfcfc', padding: '15px', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
+                    <h3 style={{ margin: '0 0 5px 0', fontSize: '15px', color: '#043424' }}>Subir Nómina en PDF para un Empleado</h3>
+                    
+                    <select value={empleadoNomina} onChange={(e) => setEmpleadoNomina(e.target.value)} required style={{ padding: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px' }}>
+                      <option value="">Selecciona el empleado...</option>
+                      {correosAutorizados.map(correoEmp => (
+                        <option key={correoEmp} value={correoEmp}>
+                          {datosEmpleadosPredeterminados[correoEmp]?.nombre} {datosEmpleadosPredeterminados[correoEmp]?.apellidos} ({correoEmp})
+                        </option>
+                      ))}
+                    </select>
+
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                      <div style={{ flex: 1, minWidth: '130px' }}>
+                        <label style={{ fontSize: '11px', color: '#555', display: 'block', marginBottom: '3px' }}>Mes de la nómina:</label>
+                        <input type="month" value={mesNomina} onChange={(e) => setMesNomina(e.target.value)} required style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px', boxSizing: 'border-box' }} />
+                      </div>
+                      <div style={{ flex: 1, minWidth: '130px' }}>
+                        <label style={{ fontSize: '11px', color: '#555', display: 'block', marginBottom: '3px' }}>Archivo PDF:</label>
+                        <input type="file" accept=".pdf" onChange={(e) => setArchivoNomina(e.target.files[0])} required style={{ width: '100%', fontSize: '13px', paddingTop: '4px' }} />
+                      </div>
+                    </div>
+
+                    <button type="submit" disabled={subiendoNomina} style={{ padding: '12px', background: subiendoNomina ? '#888' : '#b27d14', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: subiendoNomina ? 'not-allowed' : 'pointer' }}>
+                      {subiendoNomina ? '⏳ Subiendo archivo...' : '📤 Subir y Asignar Nómina'}
+                    </button>
+                  </form>
+                )}
+
+                <h3 style={{ fontSize: '15px', color: '#333', marginBottom: '10px' }}>Documentos Disponibles</h3>
+                
+                {historialNominas.length === 0 ? (
+                  <p style={{ textAlign: 'center', color: '#666', padding: '20px', background: '#fafafa', borderRadius: '8px', border: '1px solid #eee' }}>
+                    No hay nóminas disponibles en este momento.
+                  </p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '50vh', overflowY: 'auto', paddingRight: '4px' }}>
+                    {historialNominas.map((nom) => {
+                      const infoEmp = datosEmpleadosPredeterminados[nom.empleado] || {};
+                      const nombreCompletoEmp = `${infoEmp.nombre || ''} ${infoEmp.apellidos || ''}`.trim() || nom.empleado;
+
+                      return (
+                        <div key={nom.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', background: '#fff', border: '1px solid #eee', borderRadius: '8px', fontSize: '13px', boxShadow: '0 2px 5px rgba(0,0,0,0.03)' }}>
+                          <div>
+                            <div style={{ fontWeight: 'bold', color: '#043424', fontSize: '14px' }}>📅 Mes: {nom.mes}</div>
+                            {usuarioConectado === EMAIL_ADMIN_MASTER && (
+                              <div style={{ color: '#b27d14', fontWeight: 'bold' }}>👤 Empleado: {nombreCompletoEmp}</div>
+                            )}
+                            <div style={{ fontSize: '11px', color: '#888', marginTop: '2px' }}>Subido el: {new Date(nom.created_at).toLocaleDateString()}</div>
+                          </div>
+
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <a href={nom.url_archivo} target="_blank" rel="noopener noreferrer" style={{ padding: '6px 12px', background: '#043424', color: '#fff', textDecoration: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '12px' }}>
+                              📥 Ver PDF
+                            </a>
+
+                            {usuarioConectado === EMAIL_ADMIN_MASTER && (
+                              <button onClick={() => manejarEliminarNomina(nom.id)} style={{ background: '#d32f2f', color: '#fff', border: 'none', borderRadius: '6px', padding: '6px 10px', fontSize: '11px', cursor: 'pointer', fontWeight: 'bold' }}>
+                                🗑️
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
             {pantallaActual === 'admin-general' && (
               <div style={{ textAlign: 'left' }}>
                 <h2 style={{ color: '#135c3e', marginTop: 0, fontSize: '20px', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>🛠️ Panel de Gestión (Partes de Obra)</h2>
