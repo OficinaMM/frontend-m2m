@@ -679,11 +679,20 @@ function App() {
     setTareasDelDia(nuevasTareas);
   };
 
-  // ENVIAR PARTE CON BLOQUEO DE DUPLICADOS Y ESTADO DE CARGA
+// ENVIAR PARTE CON BLOQUEO DE DUPLICADOS, VALIDACIÓN DE HORA Y ESTADO DE CARGA
   const manejarEnviarParte = async (e) => {
     e.preventDefault();
 
     if (enviandoParte) return;
+
+    // --- NUEVA VALIDACIÓN: IMPEDIR ENVÍO SI LAS HORAS TOTALES SON 0 ---
+    const totalHorasCalculadas = tareasDelDia.reduce((suma, t) => suma + Number(t.horas || 0), 0);
+
+    if (totalHorasCalculadas <= 0) {
+      alert('⚠️ El total de horas del parte no puede ser 0. Por favor, introduce las horas trabajadas.');
+      return;
+    }
+    // -----------------------------------------------------------------
 
     const yaExisteParte = historialPartes.some(
       (parte) => parte.empleado === usuarioConectado && parte.fecha === fecha
@@ -698,7 +707,7 @@ function App() {
     setEnviandoParte(true);
 
     try {
-      const totalHoras = tareasDelDia.reduce((suma, t) => suma + Number(t.horas), 0);
+      const totalHoras = totalHorasCalculadas;
       const [ano, mes, dia] = fecha.split('-');
       const diaSemana = new Date(Date.UTC(ano, mes - 1, dia)).getUTCDay();
       const esFinDeSemana = diaSemana === 6 || diaSemana === 0;
@@ -709,12 +718,12 @@ function App() {
       for (const tarea of tareasDelDia) {
         const nombreCompleto = (nombreEdit || datosEmpleadosPredeterminados[usuarioConectado]?.nombre) + " " + (apellidosEdit || datosEmpleadosPredeterminados[usuarioConectado]?.apellidos);
         const trabajoRealizado = tarea.trabajo === 'OTROS' ? tarea.especificarOtros : tarea.trabajo;
-      const obraUpper = tarea.obra ? tarea.obra.toUpperCase() : '';
-const requiereLugar = ['TRABAJOS CON RODADO', 'TIENDAS', 'VARIOS'].includes(obraUpper);
+        const obraUpper = tarea.obra ? tarea.obra.toUpperCase() : '';
+        const requiereLugar = ['TRABAJOS CON RODADO', 'TIENDAS', 'VARIOS'].includes(obraUpper);
 
-const infoLugar = requiereLugar 
-  ? (tarea.lugarTrabajo ? tarea.lugarTrabajo.trim() : "No especificado") 
-  : "Aplicación Web";
+        const infoLugar = requiereLugar 
+          ? (tarea.lugarTrabajo ? tarea.lugarTrabajo.trim() : "No especificado") 
+          : "Aplicación Web";
 
         const textoFormateadoBarras = `FECHA: ${fecha.split('-').reverse().join('/')} / EMPLEADO: ${nombreCompleto} / OBRA: ${tarea.obra} / TRABAJO: ${trabajoRealizado} / HORAS: ${tarea.horas}h / HORAS EXTRA: ${calculoExtras}h / LUGAR: ${infoLugar} / OBSERVACIONES: ${notaGeneral || "Ninguna"}`;
 
@@ -761,7 +770,7 @@ const infoLugar = requiereLugar
               horas: Number(tarea.horas),
               horas_extra: Number(calculoExtras),
               notes: notaGeneral,
-             lugarTrabajo: requiereLugar ? infoLugar : ''
+              lugarTrabajo: requiereLugar ? infoLugar : ''
             };
             tareasInsertadasParaHistorial.push(formatoParteHistorial);
           }
@@ -786,7 +795,7 @@ const infoLugar = requiereLugar
             horas: calculoExtras, 
             motivo: motivoExtra, 
             obrasDelDia: obrasTocadasHoy,
-            importe_pagado: 0 // Inicializamos en 0 para no borrar ni afectar partes
+            importe_pagado: 0 
           }, ...horasExtrasHistorial];
           
           setHorasExtrasHistorial(nuevoHistorialExtras);
@@ -811,6 +820,7 @@ const infoLugar = requiereLugar
       setEnviandoParte(false);
     }
   };
+
 
   const cerrarSesion = () => { setUsuarioConectado(null); setCorreo(''); setPassword(''); setPantallaActual('menu'); };
   const limpiarFiltrosGeneral = () => { setFiltroParteMes(''); setFiltroParteSemana(false); setOrdenPartes('desc'); };
